@@ -1,0 +1,20 @@
+doGet
+
+doPOST
+{
+	"ID_KH":"KH123",
+	"....."
+}
+
+doPUT
+{
+	"ID_KH":"KH123"
+	"....."
+}
+
+doDELETE
+
+
+{
+	"ID_KH":["KH01","KH02","KH03"]
+}
