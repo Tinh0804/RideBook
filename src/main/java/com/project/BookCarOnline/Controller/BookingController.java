@@ -44,6 +44,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/bookings")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BookingController {
 

@@ -27,6 +27,9 @@ public enum ErrorCode {
     LOGIN_FAILED(401,"Login failed",HttpStatus.UNAUTHORIZED),
     ACCOUNT_NOT_ACTIVE(403,"Account not active",HttpStatus.FORBIDDEN),
     EXCHANGE_TOKEN_FAIL(403,"Exchange token fail",HttpStatus.FORBIDDEN),
+    TOKEN_NOT_FOUND(404,"Token not found",HttpStatus.NOT_FOUND),
+    PROFILE_NOT_FOUND(404,"Profile not found",HttpStatus.NOT_FOUND),
+    ACCOUNT_NOT_EXISTS(404,"Account not exists",HttpStatus.NOT_FOUND),
     
     // Driver related errors
     DRIVER_EMAIL_EXISTED(400,"Email tài xế đã tồn tại",HttpStatus.BAD_REQUEST),

@@ -12,8 +12,9 @@ import java.util.Date;
 @Entity
 @Data
 @Builder
+@NoArgsConstructor
 @AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "INVALID_TOKEN")
 public class InvalidToken {
     @Id

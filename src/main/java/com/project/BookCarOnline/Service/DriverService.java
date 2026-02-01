@@ -15,6 +15,7 @@ import com.project.BookCarOnline.Mapper.DriverMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.DriverRepository;
 import com.project.BookCarOnline.Repository.RoleRepository;
+import com.project.BookCarOnline.Utils.SecurityUtils;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -43,11 +44,9 @@ public class DriverService {
      * Get driver info by authenticated account
      */
     public DriverResponse getMyInfo() {
-        var context = SecurityContextHolder.getContext();
-        String accountId = context.getAuthentication().getName();
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
-        Driver driver = driverRepository.findByAccountId(account.getAccountId())
+
+        String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        Driver driver = driverRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         return mapper.toDriverResponse(driver);

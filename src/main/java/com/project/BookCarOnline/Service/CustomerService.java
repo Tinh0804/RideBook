@@ -13,6 +13,7 @@ import com.project.BookCarOnline.Mapper.CustomerMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.CustomerRepository;
 import com.project.BookCarOnline.Repository.RoleRepository;
+import com.project.BookCarOnline.Utils.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -89,14 +90,12 @@ public class CustomerService {
         return  customerRepository.findAll();
     }
     public CustomerResponse getMyInfo(){
-        var context = SecurityContextHolder.getContext();
-        String name = context.getAuthentication().getName();
-        Customer customer = customerRepository.findById(name)
+        String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()-> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        Customer customer = customerRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         Role role = roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getDescription())
                 .orElseThrow(()->new AppException(ErrorCode.ROLE_NOT_EXISTS));
-
 
 
         return CustomerResponse.builder()

@@ -17,6 +17,7 @@ import com.project.BookCarOnline.Repository.CustomerRepository;
 import com.project.BookCarOnline.Repository.DriverRepository;
 import com.project.BookCarOnline.Repository.InvalidTokenRepository;
 import com.project.BookCarOnline.Repository.AccountRepository;
+import com.project.BookCarOnline.Utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -162,35 +163,59 @@ public class AuthenticationService {
             throw  new AppException(ErrorCode.UNAUTHENTACATED);
         return  signedJWT;
     }
-    public void logout(String token) throws ParseException, JOSEException {
-        SignedJWT signedJWT = verifyToken(token, true);
-        String jit = signedJWT.getJWTClaimsSet().getJWTID();
-        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+    public void logout(String refreshToken) throws ParseException, JOSEException {
+        String token = SecurityUtils.getCurrentToken().orElseThrow(()->new AppException(ErrorCode.TOKEN_NOT_FOUND));
+        SignedJWT signedRefresh = verifyToken(refreshToken, true);
+        SignedJWT signedAccess = verifyToken(token, false);
 
-        InvalidToken invalidatedToken = InvalidToken.builder()
-                .id(jit)
-                .expiryTime(expiryTime)
-                .reason("Logout")
-                .build();
-        invalidTokenRepository.save(invalidatedToken);
+
+        List<InvalidToken> blacklist = new ArrayList<>();
+        blacklist.add(InvalidToken.builder()
+                        .id(signedRefresh.getJWTClaimsSet().getJWTID())
+                        .expiryTime(signedRefresh.getJWTClaimsSet().getExpirationTime())
+                        .reason("Logout Refresh Token")
+                .build());
+
+        blacklist.add(InvalidToken.builder()
+                        .id(signedAccess.getJWTClaimsSet().getJWTID())
+                        .expiryTime(signedAccess.getJWTClaimsSet().getExpirationTime())
+                        .reason("Logout Access Token")
+                .build());
+
+        invalidTokenRepository.saveAll(blacklist);
     }
 
-    public String refresToken(String token) throws ParseException, JOSEException {
-        SignedJWT signedJWT = verifyToken(token, true);
-        String jit = signedJWT.getJWTClaimsSet().getJWTID();
-        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
 
-        InvalidToken invalidatedToken = InvalidToken.builder()
-                .id(jit)
-                .expiryTime(expiryTime)
-                .reason("Refresh Token")
+    public AuthenticationResponse refreshToken(String refreshToken) throws ParseException, JOSEException {
+        String token = SecurityUtils.getCurrentToken().orElseThrow(()->new AppException(ErrorCode.TOKEN_NOT_FOUND));
+
+        SignedJWT signedRefresh = verifyToken(refreshToken, true);
+        SignedJWT signedAccess = verifyToken(token, false);
+
+        List<InvalidToken> blacklist = new ArrayList<>();
+
+        blacklist.add(InvalidToken.builder()
+                .id(signedAccess.getJWTClaimsSet().getJWTID())
+                .expiryTime(signedAccess.getJWTClaimsSet().getExpirationTime())
+                .reason("Old Access Token after Refresh")
+                .build());
+
+        blacklist.add(InvalidToken.builder()
+                .id(signedRefresh.getJWTClaimsSet().getJWTID())
+                .expiryTime(signedRefresh.getJWTClaimsSet().getExpirationTime())
+                .reason("Old Refresh Token after Refresh")
+                .build());
+
+        invalidTokenRepository.saveAll(blacklist);
+
+        Account account = accountRepository.findById(signedRefresh.getJWTClaimsSet().getSubject())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        return AuthenticationResponse.builder()
+                .token(generateToken(account, VALID_DURATION))
+                .refreshToken(generateToken(account, REFRESHABLE_DURATION))
+                .success(true)
                 .build();
-        invalidTokenRepository.save(invalidatedToken);
-        Account account = accountRepository.findById(signedJWT.getJWTClaimsSet().getSubject())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        String newToken = generateToken(account,VALID_DURATION);
-        log.info("New token generated: {}", newToken);
-        return newToken;
     }
 
 

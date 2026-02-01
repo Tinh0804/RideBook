@@ -16,6 +16,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/customer")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
 public class CustomerController {
     CustomerService service;

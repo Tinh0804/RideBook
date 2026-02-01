@@ -4,6 +4,7 @@ import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
 import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
+import com.project.BookCarOnline.DTO.Response.DriverResponse;
 import com.project.BookCarOnline.Entity.VehicleType;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
@@ -46,6 +47,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/drivers")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DriverController {
     
@@ -65,6 +67,15 @@ public class DriverController {
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế")
                 .result(drivers)
+                .build();
+    }
+    @GetMapping("/my-info")
+    public APIResponse<DriverResponse> getMyInfo(){
+        DriverResponse response = driverService.getMyInfo();
+        return APIResponse.<DriverResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Thông tin tài xế")
+                .result(response)
                 .build();
     }
 
