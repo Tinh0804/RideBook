@@ -1,13 +1,17 @@
 package com.project.BookCarOnline.Service;
 
+import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.DTO.Request.CreateBookingRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
 import com.project.BookCarOnline.Entity.*;
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
+import com.project.BookCarOnline.Entity.Payment;
+import com.project.BookCarOnline.Service.PaymentTimeoutService;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,17 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Booking Service
- * Converted from: ChuyenXeService.java (Servlet)
- * 
- * Handles ride booking operations:
- * - Create booking (đặt xe)
- * - Get available rides
- * - Assign driver to ride
- * - Cancel ride
- * - Complete ride
- */
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,43 +34,65 @@ public class BookingService {
     RideBookRepository bookingRepository;
     CustomerRepository customerRepository;
     DriverRepository driverRepository;
+    GoogleMapService googleMapService;
+    RideDispatcherService dispatcherService;
+    PaymentRepository paymentRepository;
+    PaymentTimeoutService paymentTimeoutService;
 
-    /**
-     * Create new booking
-     * Converted from: ChuyenXeService.bookRide()
-     */
+
     @Transactional
     public BookingDetailResponse createBooking(CreateBookingRequest request) {
-        log.info("Creating new booking for customer: {}", request.getCustomerId());
+        GeocodingResult result = googleMapService.geocode(request.getPickupLocation());
+        double lat = result.geometry.location.lat;
+        double lng = result.geometry.location.lng;
 
-        // Get customer
+
+        List<Driver> availableDrivers = driverRepository.findTrulyAvailableDriversNearby(
+                lat, lng, 3.0);
+
+        // 2. Thuật toán Surge Pricing (Tăng giá động)
+        double surgeMultiplier = 1.0;
+        if (availableDrivers.size() == 0) {
+            throw new AppException(ErrorCode.NO_DRIVER_AVAILABLE);
+        } else if (availableDrivers.size() < 3) {
+            surgeMultiplier = 1.3; // Tăng 30% giá nếu chỉ có dưới 3 tài xế rảnh
+        }
+
+        double basePrice = request.getDistance() * 15000;
+        double finalPrice = basePrice * surgeMultiplier;
+
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        // Calculate price (basic calculation, can be enhanced)
-        double totalPrice = request.getDistance() * 15000; // Default price per km
+        // 3. Lưu Booking với giá đã tính
+        Payment payment = Payment.builder()
+                .paymentType("ONLINE")
+                .amount(finalPrice)
+                .paymentStatus(false)
+                .build();
+        Payment savedPayment = paymentRepository.save(payment);
 
-        // Create booking
         Booking booking = Booking.builder()
                 .customerNo(customer)
                 .pickupLocation(request.getPickupLocation())
                 .dropoffLocation(request.getDropoffLocation())
-                .totalPrice(totalPrice)
+                .totalPrice(finalPrice)
                 .bookingTime(Timestamp.valueOf(LocalDateTime.now()))
-                .bookingStatus("Đang chờ") // Waiting for driver
+                .bookingStatus(BookingStatus.PENDING) // Waiting for driver
                 .distance(request.getDistance())
+                .paymentNo(savedPayment)
                 .build();
-
         Booking savedBooking = bookingRepository.save(booking);
-        log.info("Booking created successfully with ID: {}", savedBooking.getBookingId());
 
+        // Schedule timeout: cancel if not paid within 10 minutes
+        paymentTimeoutService.schedulePaymentTimeout(savedBooking.getBookingId(), 10 * 60 * 1000L);
+
+        // Chỉ điều phối sau khi thanh toán thành công
         return mapToBookingDetailResponse(savedBooking);
     }
 
-    /**
-     * Get all bookings
-     * Converted from: ChuyenXeController.doGet()
-     */
+
+
     public List<BookingDetailResponse> getAllBookings() {
         log.info("Fetching all bookings");
         List<Booking> bookings = bookingRepository.findAll();
@@ -85,10 +101,7 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get available rides (waiting for driver assignment)
-     * Converted from: ChuyenXeService.getAvailableRides()
-     */
+
     public List<AvailableRideResponse> getAvailableRides(String driverArea) {
         log.info("Fetching available rides for area: {}", driverArea);
         
@@ -96,9 +109,9 @@ public class BookingService {
         if (driverArea != null && !driverArea.isEmpty()) {
             // Extract city from driver address
             String city = DriverService.extractCityFromAddress(driverArea);
-            availableBookings = bookingRepository.findByBookingStatusAndDriverNoIsNullAndPickupLocationContainingOrderByBookingTimeAsc("Đang chờ",city);
+            availableBookings = bookingRepository.findByBookingStatusAndDriverNoIsNullAndPickupLocationContainingOrderByBookingTimeAsc(BookingStatus.PENDING,city);
         } else {
-            availableBookings = bookingRepository.findByBookingStatusAndDriverNoIsNullOrderByBookingTimeAsc("Đang chờ");
+            availableBookings = bookingRepository.findByBookingStatusAndDriverNoIsNullOrderByBookingTimeAsc(BookingStatus.PENDING);
         }
 
         return availableBookings.stream()
@@ -106,10 +119,7 @@ public class BookingService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Assign driver to booking
-     * Converted from: ChuyenXeService.ganTaiXeNhanDon()
-     */
+
     @Transactional
     public BookingDetailResponse assignDriver(String bookingId, String driverId) {
         log.info("Assigning driver {} to booking {}", driverId, bookingId);
@@ -128,14 +138,14 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         // Check if driver is already on another ride
-        Booking ongoingRide = bookingRepository.findByDriverNo_DriverIdAndBookingStatus(driverId,"Đang thực hiện");
+        Booking ongoingRide = bookingRepository.findByDriverNo_DriverIdAndBookingStatus(driverId, BookingStatus.CONFIRMED);
         if (ongoingRide != null) {
             throw new IllegalStateException("Tài xế đang thực hiện chuyến khác");
         }
 
         // Assign driver and update status
         booking.setDriverNo(driver);
-        booking.setBookingStatus("Đang thực hiện");
+        booking.setBookingStatus(BookingStatus.CONFIRMED);
         booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
 
         Booking updatedBooking = bookingRepository.save(booking);
@@ -144,10 +154,7 @@ public class BookingService {
         return mapToBookingDetailResponse(updatedBooking);
     }
 
-    /**
-     * Cancel booking
-     * Converted from: ChuyenXeService.huyChuyenXe()
-     */
+
     @Transactional
     public void cancelBooking(String bookingId) {
         log.info("Cancelling booking: {}", bookingId);
@@ -155,16 +162,12 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        booking.setBookingStatus("Đã huỷ");
+        booking.setBookingStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
 
         log.info("Booking cancelled successfully: {}", bookingId);
     }
 
-    /**
-     * Complete booking
-     * Converted from driver API
-     */
     @Transactional
     public BookingDetailResponse completeBooking(String bookingId) {
         log.info("Completing booking: {}", bookingId);
@@ -176,7 +179,7 @@ public class BookingService {
             throw new IllegalStateException("Chuyến xe chưa được bắt đầu");
         }
 
-        booking.setBookingStatus("Hoàn thành");
+        booking.setBookingStatus(BookingStatus.COMPLETED);
         booking.setArrivalTime(Timestamp.valueOf(LocalDateTime.now()));
 
         Booking updatedBooking = bookingRepository.save(booking);

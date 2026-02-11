@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 @Getter
 public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(1000,"Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
+
     KEY_INVALID(401,"Key invalid",HttpStatus.BAD_REQUEST),
     USER_EXITED(401,"User existed",HttpStatus.BAD_REQUEST),
     USER_EXISTED(401,"User existed",HttpStatus.BAD_REQUEST),
@@ -20,7 +21,7 @@ public enum ErrorCode {
     INVALID_DOB(402,"Your age must be at least {min}",HttpStatus.BAD_REQUEST),
     INVALID_TOKEN(402,"Your token invalid",HttpStatus.UNAUTHORIZED),
     ROLE_NOT_FOUND(402,"Role not found",HttpStatus.BAD_REQUEST),
-    ACCESS_DENIED(403,"Access denied",HttpStatus.FORBIDDEN),
+    ACCESS_DENIED(403,"You haven't permission to access this endpoint",HttpStatus.FORBIDDEN),
     ROLE_NOT_EXISTS(402,"Role not exists",HttpStatus.BAD_REQUEST),
     AUTHENTICATION_SERVICE_ERROR(500,"Authentication service error",HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_NOT_FOUND(404,"Account not found",HttpStatus.NOT_FOUND),
@@ -30,6 +31,7 @@ public enum ErrorCode {
     TOKEN_NOT_FOUND(404,"Token not found",HttpStatus.NOT_FOUND),
     PROFILE_NOT_FOUND(404,"Profile not found",HttpStatus.NOT_FOUND),
     ACCOUNT_NOT_EXISTS(404,"Account not exists",HttpStatus.NOT_FOUND),
+    AVATAR_NOT_FOUND(404,"Avatar not found",HttpStatus.NOT_FOUND),
     
     // Driver related errors
     DRIVER_EMAIL_EXISTED(400,"Email tài xế đã tồn tại",HttpStatus.BAD_REQUEST),
@@ -52,7 +54,7 @@ public enum ErrorCode {
     INVALID_INPUT(400,"Dữ liệu đầu vào không hợp lệ",HttpStatus.BAD_REQUEST),
     MISSING_REQUIRED_FIELD(400,"Thiếu trường bắt buộc",HttpStatus.BAD_REQUEST),
 
-    ;
+    NO_DRIVER_AVAILABLE(400,"Không có tài xế khả dụng",HttpStatus.BAD_REQUEST);
 
     private final int status;
     private final String message;

@@ -1,6 +1,7 @@
 package com.project.BookCarOnline.DTO.Response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -35,7 +36,7 @@ public class BookingDetailResponse {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     Timestamp arrivalTime;
     
-    String bookingStatus;
+    BookingStatus bookingStatus;
     Double distance;
     Double duration;
     String paymentMethod;

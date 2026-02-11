@@ -381,6 +381,63 @@ VALUES
     -- Admin account (unchanged)
     ('0355160346', '12345', 'ADMIN', NULL, 1);
 
+
+CREATE PROCEDURE Pr_Find10DriverCloserCustomer
+    @lat DECIMAL(9,6),
+    @lng DECIMAL(9,6)
+AS
+BEGIN
+    SELECT TOP 10 
+        ID_TX, 
+        TENTX, 
+        SDT,
+        (6371 * ACOS(
+            COS(RADIANS(@lat)) 
+            * COS(RADIANS(VIDO)) 
+            * COS(RADIANS(KINHDO) - RADIANS(@lng)) 
+            + SIN(RADIANS(@lat)) 
+            * SIN(RADIANS(VIDO))
+        )) AS distance
+    FROM TAIXE
+    WHERE TRANGTHAIHD = 1
+      AND (6371 * ACOS(
+            COS(RADIANS(@lat)) 
+            * COS(RADIANS(VIDO)) 
+            * COS(RADIANS(KINHDO) - RADIANS(@lng)) 
+            + SIN(RADIANS(@lat)) 
+            * SIN(RADIANS(VIDO))
+        )) <= 5
+    ORDER BY distance ASC;
+END;
+-- Index cho việc kiểm tra trạng thái chuyến xe
+CREATE INDEX idx_Booking_Status_Driver ON DATXE (TRANGTHAI, ID_TXNO);
+
+-- Index cho tọa độ tài xế để tính toán Haversine nhanh hơn
+CREATE INDEX idx_Driver_Location ON TAIXE (VIDO, KINHDO) WHERE TRANGTHAIHD = 1;
+CREATE PROCEDURE Pr_FindAvailableDriversCloserCustomer
+    @lat FLOAT,
+    @lng FLOAT,
+    @radius FLOAT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT d.*, 
+        (6371 * acos(cos(radians(@lat)) * cos(radians(d.VIDO)) 
+        * cos(radians(d.KINHDO) - radians(@lng)) + sin(radians(@lat)) 
+        * sin(radians(d.VIDO)))) AS Distance
+    FROM TAIXE d
+    WHERE d.TRANGTHAIHD = 1 -- Đang bật app
+    AND NOT EXISTS (
+        SELECT 1 FROM DATXE b 
+        WHERE b.ID_TXNO = d.ID_TX 
+        AND b.TRANGTHAI IN (N'Đang chờ', N'Đang thực hiện') -- Dùng N để hỗ trợ tiếng Việt
+    )
+    AND (6371 * acos(cos(radians(@lat)) * cos(radians(d.VIDO)) 
+        * cos(radians(d.KINHDO) - radians(@lng)) + sin(radians(@lat)) 
+        * sin(radians(d.VIDO)))) <= @radius
+    ORDER BY Distance ASC;
+END;
 --------------------------------------------------------------------------------------HÀM_THỦ TỤC_TRIGGER----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 go
 CREATE TRIGGER Tr_KhachHang_Delete

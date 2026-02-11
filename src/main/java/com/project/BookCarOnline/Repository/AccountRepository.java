@@ -18,4 +18,5 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     // Sửa lỗi cú pháp :role và đảm bảo alias chuẩn
     @Query(value = "SELECT * FROM TAIKHOAN WHERE SDT = :userName AND MATKHAU = :passWord AND ID_VAITRONO = :role", nativeQuery = true)
     Optional<Account> login(@Param("userName") String userName, @Param("passWord") String passWord, @Param("role") String role);
+    Optional<Account> findByProviderAndProviderId(String provider,String providerId);
 }

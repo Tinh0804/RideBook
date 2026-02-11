@@ -3,10 +3,12 @@ package com.project.BookCarOnline.Controller;
 import com.nimbusds.jose.JOSEException;
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.AuthenticationRequest;
+import com.project.BookCarOnline.DTO.Request.ExchangeTokenRequest;
 import com.project.BookCarOnline.DTO.Response.AuthenticationResponse;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Service.AuthenticationService;
+import com.project.BookCarOnline.Service.OAuth2ExchangeService;
 import com.project.BookCarOnline.Utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,6 +28,8 @@ import java.text.ParseException;
 @Slf4j
 public class AuthenticationController {
     AuthenticationService service;
+    OAuth2ExchangeService oAuth2ExchangeService;
+
 
     @PostMapping("/login")
     APIResponse<AuthenticationResponse> authenticateLogin(@RequestBody AuthenticationRequest request){
@@ -69,5 +73,18 @@ public class AuthenticationController {
                 .message("Token refreshed successfully")
                 .build();
     }
+
+    @PostMapping("oauth2/external-login")
+    public APIResponse<AuthenticationResponse> exchangeToken(@RequestBody ExchangeTokenRequest request) {
+        log.info(request.getCode());
+        AuthenticationResponse response = oAuth2ExchangeService.exchange(request);
+        return APIResponse.<AuthenticationResponse>builder()
+                .result(response)
+                .status(response.isSuccess() ? 200 : 401)
+                .message(response.isSuccess() ? "Token exchange successful" : "Token exchange failed")
+                .build();
+    }
+
+
 
 }

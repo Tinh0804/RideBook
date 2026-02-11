@@ -22,7 +22,7 @@ public class JWTAuthenticationEntryPoint implements AuthenticationEntryPoint {
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
 
-        ErrorCode errorCode = ErrorCode.UNAUTHENTACATED;
+        ErrorCode errorCode = ErrorCode.ACCESS_DENIED;
 
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.validator.constraints.UUID;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Date;
 
@@ -51,9 +52,9 @@ public class UpdateDriverRequest {
     Boolean activityStatus;
 
     // For file uploads
-    String avatar;
-    String citizenIdImage;
-    String drivingLicenseImage;
+    MultipartFile avatar;
+    MultipartFile citizenIdImage;
+    MultipartFile drivingLicenseImage;
 
     // Location tracking
     Double currentLat;

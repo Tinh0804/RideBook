@@ -1,5 +1,6 @@
 package com.project.BookCarOnline.DTO.Response;
 
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -16,5 +17,5 @@ public class AvailableRideResponse {
     String dropoffLocation;
     Double distance;
     Double price;
-    String bookingStatus;
+    BookingStatus bookingStatus;
 }

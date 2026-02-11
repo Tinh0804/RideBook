@@ -21,10 +21,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -40,22 +42,17 @@ public class DriverService {
     DriverMapper mapper;
     PasswordEncoder passwordEncoder;
 
-    /**
-     * Get driver info by authenticated account
-     */
-    public DriverResponse getMyInfo() {
+    FirebaseStorageService firebaseStorageService;
 
+    public DriverDetailResponse getMyInfo() {
         String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
         Driver driver = driverRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        return mapper.toDriverResponse(driver);
+        return mapper.toDriverDetailResponse(driver);
     }
 
-    /**
-     * Get all drivers with account status
-     * Converted from: TaiXeController.doGet()
-     */
+    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
     public List<DriverDetailResponse> getAllDrivers() {
         log.info("Fetching all drivers");
         List<Driver> drivers = driverRepository.findAll();
@@ -64,9 +61,7 @@ public class DriverService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get all active drivers
-     */
+
     public List<DriverDetailResponse> getAllActiveDrivers() {
         log.info("Fetching all active drivers");
         List<Driver> drivers = driverRepository.findByActivityStatusTrue();
@@ -75,10 +70,6 @@ public class DriverService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Create new driver with account
-     * Converted from: TaiXeService.themTaiXe()
-     */
     @Transactional
     public DriverDetailResponse createDriver(CreateDriverRequest request, VehicleType vehicleType) {
         log.info("Creating new driver: {}", request.getEmail());
@@ -87,7 +78,7 @@ public class DriverService {
         validateDriverUniqueness(request);
 
         // Create Account for Driver
-        Role driverRole = roleRepository.findByRoleId(PredefinedRole.DRIVER.getDescription())
+        Role driverRole = roleRepository.findByRoleId(PredefinedRole.DRIVER.getRoleName())
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXISTS));
 
 
@@ -119,7 +110,7 @@ public class DriverService {
 
 
     @Transactional
-    public DriverDetailResponse updateDriver(String driverId, UpdateDriverRequest request, VehicleType vehicleType) {
+    public DriverDetailResponse updateDriver(String driverId, UpdateDriverRequest request, VehicleType vehicleType) throws IOException {
         log.info("Updating driver: {}", driverId);
 
         Driver driver = driverRepository.findById(driverId)
@@ -146,9 +137,50 @@ public class DriverService {
                 throw new AppException(ErrorCode.USER_EXISTED);
             }
         }
+        if(request.getAvatar()!=null){
+            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getAvatar());
+            if (oldFilePath != null) {
+                firebaseStorageService.deleteFile(oldFilePath);
+                log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
+            }
+            else {
+                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+                String folderPath = "drivers"+ "/" + accountID + "/avatar";
+                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                driver.setAvatar(fileURL);
+            }
+        }
+        mapper.updateDriver(driver, request);
+
+        if(request.getCitizenIdImage()!=null){
+            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getAvatar());
+            if (oldFilePath != null) {
+                firebaseStorageService.deleteFile(oldFilePath);
+                log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
+            }
+            else {
+                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+                String folderPath = "drivers"+ "/" + accountID + "/citizenId";
+                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                driver.setCitizenId(fileURL);
+            }
+        }
+        if(request.getDrivingLicenseImage()!=null){
+            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getDrivingLicense());
+            if (oldFilePath != null) {
+                firebaseStorageService.deleteFile(oldFilePath);
+                log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
+            }
+            else {
+                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+                String folderPath = "drivers"+ "/" + accountID + "/drivingLicense";
+                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                driver.setDrivingLicense(fileURL);
+            }
+        }
 
         // Update driver fields
-        mapper.updateDriver(driver, request);
+
         
         if (vehicleType != null) {
             driver.setVehicleType(vehicleType);
@@ -160,10 +192,7 @@ public class DriverService {
         return mapper.toDriverDetailResponse(updatedDriver);
     }
 
-    /**
-     * Delete driver
-     * Converted from: TaiXeController.doDelete()
-     */
+    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
     @Transactional
     public void deleteDriver(String driverId) {
         log.info("Deleting driver: {}", driverId);
@@ -178,9 +207,7 @@ public class DriverService {
         log.info("Driver deleted successfully: {}", driverId);
     }
 
-    /**
-     * Get driver by ID
-     */
+    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
     public DriverDetailResponse getDriverById(String driverId) {
         log.info("Fetching driver by ID: {}", driverId);
         Driver driver = driverRepository.findById(driverId)
@@ -188,9 +215,7 @@ public class DriverService {
         return mapper.toDriverDetailResponse(driver);
     }
 
-    /**
-     * Get drivers by area
-     */
+
     public List<DriverDetailResponse> getDriversByArea(String area) {
         log.info("Fetching drivers by area: {}", area);
         List<Driver> drivers = driverRepository.findByAreaAndActivityStatusTrue(area);
@@ -199,9 +224,7 @@ public class DriverService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Get drivers by vehicle type
-     */
+
     public List<DriverDetailResponse> getDriversByVehicleType(String vehicleTypeId) {
         log.info("Fetching drivers by vehicle type: {}", vehicleTypeId);
         List<Driver> drivers = driverRepository.findByVehicleType_VehicleTypeIdAndActivityStatusTrue(vehicleTypeId);
@@ -210,9 +233,7 @@ public class DriverService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Validate driver uniqueness
-     */
+
     private void validateDriverUniqueness(CreateDriverRequest request) {
         if (driverRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.USER_EXISTED);
@@ -228,10 +249,7 @@ public class DriverService {
         }
     }
 
-    /**
-     * Extract city from address
-     * Converted from: TaiXeService.layThanhPho()
-     */
+
     public static String extractCityFromAddress(String address) {
         if (address == null || !address.contains(",")) {
             return "";

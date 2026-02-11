@@ -32,6 +32,10 @@ public interface DriverMapper {
 
     @Mapping(target = "vehicleType", ignore = true)
 
+    @Mapping(target = "avatar", ignore = true)
+    @Mapping(target = "citizenId", ignore = true)
+    @Mapping(target = "drivingLicense", ignore = true)
+    @Mapping(target = "criminalRecord", ignore = true)
     void updateDriver(@MappingTarget Driver driver, UpdateDriverRequest request);
 
     @Mapping(source = "vehicleType.vehicleTypeId", target = "vehicleTypeId")

@@ -18,7 +18,9 @@ spring:
         show-sql: true
         format-sql: true
         database-platform: org.hibernate.dialect.SQLServerDialect
-
+    sql:
+        init:
+            enabled=true:
     security:
         user:
             name: "admin"
@@ -54,10 +56,14 @@ spring:
                         token-uri: https://graph.facebook.com/v20.0/oauth/access_token
                         user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
                         user-name-attribute: id
+    servlet:
+        multipart:
+            max-file-size: 5MB
+            max-request-size: 5MB
 jwt:
     signerKey: "5be00bd883e235f0aca7bdd710ec6abf06d87a3e5a8222662868ba3f6fbcac39"
-    valid-duration : 360
-    refreshable-duration : 3600
+    valid-duration : 3600
+    refreshable-duration : 36000
 
 vnpay:
     tmn-code: "963W7U7G"
@@ -76,7 +82,9 @@ momo:
     return-url: "http://localhost:8080/RideBook/payments/momo/return"
     notify-url: "http://localhost:8080/RideBook/payments/momo/callback"
     request-type: "captureMoMoWallet"
-
+firebase:
+    bucket-name: "ridebook-dc1ad.firebasestorage.app"
+    config-path: "firebase/firebase-adminsdk.json"
 springdoc:
     api-docs:
         enabled: true
@@ -86,5 +94,7 @@ springdoc:
         path: /swagger-ui.html
         operations-sorter: method
         tags-sorter: alpha
-
+google:
+    maps:
+        api-key: "AIzaSyC3Qe2gdrLQ0-Q79IiOUym_hAibXewVfUA"
 

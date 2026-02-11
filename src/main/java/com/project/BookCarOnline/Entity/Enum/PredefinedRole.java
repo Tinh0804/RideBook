@@ -3,17 +3,24 @@ package com.project.BookCarOnline.Entity.Enum;
 import java.util.Map;
 
 public enum PredefinedRole {
-    ADMIN,
-    CUSTOMER,
-    DRIVER;
+    ADMIN(RoleName.ADMIN),
+    CUSTOMER(RoleName.CUSTOMER),
+    DRIVER(RoleName.DRIVER);
 
-    private static final Map<PredefinedRole, String> roleDescriptions = Map.of(
-            ADMIN, "11111111-2222-3333-4444-555555555555",
-            CUSTOMER, "USER",
-            DRIVER, "DRIVER"
-    );
+    private final String roleName;
 
-    public String getDescription() {
-        return roleDescriptions.get(this);
+    PredefinedRole(String roleName) {
+        this.roleName = roleName;
+    }
+
+    public String getRoleName() {
+        return roleName;
+    }
+
+    // Các hằng số static để dùng trong @PreAuthorize
+    public static class RoleName {
+        public static final String ADMIN = "ADMIN";
+        public static final String CUSTOMER = "CUSTOMER";
+        public static final String DRIVER = "DRIVER";
     }
 }

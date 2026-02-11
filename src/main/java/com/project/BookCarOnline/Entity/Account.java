@@ -43,6 +43,12 @@ public class Account {
     @Column(name = "TRANGTHAITK")
     private Boolean accountStatus;
 
+    @Column(name = "PROVIDER", length = 100)
+    private String provider="local";
+
+    @Column(name = "PROVIDER_ID", length = 255)
+    private String providerId;
+
 
 
 

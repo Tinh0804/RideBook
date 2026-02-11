@@ -1,5 +1,6 @@
 package com.project.BookCarOnline.Entity;
 
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -56,7 +57,7 @@ public class Booking {
     private Timestamp arrivalTime;
 
     @Column(name = "TRANGTHAI", length = 50)
-    private String bookingStatus;
+    private BookingStatus bookingStatus;
 
     @Column(name = "KHOANGCACH")
     private Double distance;

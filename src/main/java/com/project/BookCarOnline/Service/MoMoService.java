@@ -9,7 +9,15 @@ import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
+import com.project.BookCarOnline.Repository.PaymentRepository;
+import com.project.BookCarOnline.Repository.DriverRepository;
+import com.project.BookCarOnline.Service.RideDispatcherService;
+import com.project.BookCarOnline.Service.GoogleMapService;
 import com.project.BookCarOnline.Utils.PaymentUtils;
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import com.project.BookCarOnline.Entity.Payment;
+import com.google.maps.model.GeocodingResult;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -34,6 +42,8 @@ public class MoMoService {
 
     MoMoConfig moMoConfig;
     RideBookRepository bookingRepository;
+    PaymentRepository paymentRepository;
+    SimpMessagingTemplate messagingTemplate;
     RestTemplate restTemplate = new RestTemplate();
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -49,7 +59,7 @@ public class MoMoService {
 
         try {
             // Generate order ID and request ID
-            String orderId = request.getBookingId() + "_" + PaymentUtils.getCurrentTimestamp();
+            String orderId = PaymentUtils.generateOrderId(request.getBookingId());
             String requestId = orderId;
 
             // Build MoMo request parameters
@@ -188,6 +198,30 @@ public class MoMoService {
 
             log.info("MoMo payment status: {} for booking: {}", paymentStatus, bookingId);
 
+            if ("SUCCESS".equals(paymentStatus)) {
+                bookingRepository.findById(bookingId).ifPresent(booking -> {
+                    booking.setBookingStatus(BookingStatus.PENDING);
+                    if (booking.getPaymentNo() != null) {
+                        booking.getPaymentNo().setPaymentStatus(true);
+                        paymentRepository.save(booking.getPaymentNo());
+                    }
+                    bookingRepository.save(booking);
+                    if (booking.getCustomerNo() != null) {
+                        messagingTemplate.convertAndSend(
+                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                                "PAYMENT_SUCCESS:" + bookingId);
+                    }
+                });
+            } else {
+                bookingRepository.findById(bookingId).ifPresent(booking -> {
+                    if (booking.getCustomerNo() != null) {
+                        messagingTemplate.convertAndSend(
+                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                                "PAYMENT_FAILED:" + bookingId);
+                    }
+                });
+            }
+
             return PaymentCallbackResponse.builder()
                     .bookingId(bookingId)
                     .orderId(orderId)
@@ -301,9 +335,6 @@ public class MoMoService {
         }
     }
 
-    /**
-     * Get MoMo result code meaning
-     */
     public String getResultCodeMessage(String resultCode) {
         Map<String, String> resultCodes = new HashMap<>();
         resultCodes.put("0", "Giao dịch thành công");

@@ -7,13 +7,17 @@ import com.project.BookCarOnline.DTO.Response.ExchangeTokenResponse;
 import com.project.BookCarOnline.Entity.Account;
 import com.project.BookCarOnline.Entity.Customer;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
+import com.project.BookCarOnline.Entity.Enum.Provider;
 import com.project.BookCarOnline.Entity.Role;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
+import com.project.BookCarOnline.Mapper.AccountMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.CustomerRepository;
 import com.project.BookCarOnline.Repository.RoleRepository;
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,175 +40,41 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
+import java.util.Locale;
 import java.util.Map;
 
-////import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient;
-//import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
-//import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
-//import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-//import org.springframework.security.oauth2.core.user.OAuth2User;
-//import org.springframework.stereotype.Service;
-//
-//import java.util.*;
-//
-//@Slf4j
-//@Service
-//@RequiredArgsConstructor
-//public class OAuth2ExchangeService {
-//    CustomerRepository customerRepository;
-//    AccountRepository accountRepository;
-//    RoleRepository roleRepository;
-//    AuthenticationService authenticationService;
-//    private final ClientRegistrationRepository clientRegistrationRepository;
-//
-//    private final RestClientAuthorizationCodeTokenResponseClient tokenClient =
-//            new RestClientAuthorizationCodeTokenResponseClient();
-//
-//    private final DefaultOAuth2UserService oAuth2UserService = new DefaultOAuth2UserService();
-//
-//    public AuthenticationResponse exchange(ExchangeTokenRequest request) {
-//        ClientRegistration cr = ((org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository)
-//                clientRegistrationRepository).findByRegistrationId(request.getRegistrationId());
-//
-//        if (cr == null) {
-//            throw new IllegalArgumentException("Unknown provider: " + request.getRegistrationId());
-//        }
-//        log.info("Exchange with redirectUri = " + request.getRedirectUri());
-//
-//        // Tạo AuthorizationRequest “ảo” để khớp với code + redirectUri
-//        OAuth2AuthorizationRequest authRequest = OAuth2AuthorizationRequest.authorizationCode()
-//                .authorizationUri(cr.getProviderDetails().getAuthorizationUri())
-//                .clientId(cr.getClientId())
-//                .redirectUri(request.getRedirectUri()) // phải KHỚP 100% với lúc xin code
-//                .scopes(cr.getScopes())
-//                .state("state") // không dùng state trong flow mobile này
-//                .build();
-//
-//        OAuth2AuthorizationResponse authResponse = OAuth2AuthorizationResponse.success(request.getCode())
-//                .redirectUri(request.getRedirectUri())
-//                .state("state")
-//                .build();
-//
-//        OAuth2AuthorizationExchange exchange = new OAuth2AuthorizationExchange(authRequest, authResponse);
-//
-//        // Đổi code lấy token
-//        OAuth2AuthorizationCodeGrantRequest grantRequest = new OAuth2AuthorizationCodeGrantRequest(cr, exchange);
-//        OAuth2AccessTokenResponse tokenResponse = tokenClient.getTokenResponse(grantRequest);
-//
-//        // Lấy userinfo (Google có thể kèm id_token)
-//        OAuth2User oAuth2User = oAuth2UserService.loadUser(
-//                new OAuth2UserRequest(cr, tokenResponse.getAccessToken(), tokenResponse.getAdditionalParameters())
-//        );
-//        OAuth2ExchangeService.ExchangeResult result = new ExchangeResult(tokenResponse, oAuth2User);
-//        OAuth2AccessTokenResponse tokenAuth = result.token();
-//        OAuth2User user = result.user();
-//
-//        String token = exchangeToken(request.getRegistrationId(), user);
-//        return AuthenticationResponse.builder()
-//                .authenticated(true)
-//                .token(token)
-//                .build();
-//
-//    }
-//
-//   private String exchangeToken(String registrationId, OAuth2User oAuth2User){
-//       Map<String, Object> attributes = oAuth2User.getAttributes();
-//
-//       String userId;
-//       String email;
-//       String name;
-//       String picture;
-//
-//       try{
-//           if ("google".equals(registrationId)) {
-//               // Google trả về "sub" làm id duy nhất
-//               userId = (String) attributes.get("sub");
-//               email = (String) attributes.get("email");
-//               name = (String) attributes.get("name");
-//               picture = (String) attributes.get("picture");
-//           } else if ("facebook".equals(registrationId)) {
-//               // Facebook thường có "id" làm userId
-//               userId = (String) attributes.get("id");
-//               email = (String) attributes.get("email");
-//               name = (String) attributes.get("name");
-//
-//               // Facebook avatar thường nằm trong "picture.data.url"
-//               Map<String, Object> pictureObj = (Map<String, Object>) attributes.get("picture");
-//               Map<String, Object> data = pictureObj != null ? (Map<String, Object>) pictureObj.get("data") : null;
-//               picture = data != null ? (String) data.get("url") : null;
-//           } else {
-//               throw new IllegalArgumentException("Unsupported provider: " + registrationId);
-//           }
-//       } catch (RuntimeException e) {
-//           throw new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL);
-//       }
-//
-//       Set<Role> roles = new HashSet<>();
-//       roles.add(Role.builder()
-//                       .roleName(PredefinedRole.CUSTOMER.name())
-//               .build());
-//       Account account = accountRepository.findByUserName(email).orElseGet(
-//               ()-> saveCustomer(email,name,picture)
-//       );
-//       String token = authenticationService.generateToken(account);
-//
-//      return token;
-//
-//   }
-//
-//
-//   private Account saveCustomer(String email, String name, String picture){
-//       var account = accountRepository.save(
-//               Account.builder()
-//                       .userName(email)
-//                       .createdAt(new Date())
-//                       .roleNo(roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getDescription()).orElseThrow(
-//                               ()->new AppException(ErrorCode.ROLE_NOT_FOUND)
-//                       ))
-//                       .accountStatus(true)
-//                       .build()
-//       );
-//
-//       customerRepository.save(
-//               Customer.builder()
-//                       .customerName(name)
-//                       .accountNo(account)
-//                       .avatar(picture)
-//                       .build()
-//       );
-//
-//
-//       return account;
-//   }
-//
-//
-//    public record ExchangeResult(OAuth2AccessTokenResponse token, OAuth2User user) {}
-//}
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
 public class OAuth2ExchangeService {
-    private final CustomerRepository customerRepository;
-    private final AccountRepository accountRepository;
-    private final RoleRepository roleRepository;
-    private final AuthenticationService authenticationService;
-    private final ClientRegistrationRepository clientRegistrationRepository;
+    CustomerRepository customerRepository;
+    AccountRepository accountRepository;
+    RoleRepository roleRepository;
+    AuthenticationService authenticationService;
+    ClientRegistrationRepository clientRegistrationRepository;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    AccountMapper accountMapper;
+
+    RestTemplate restTemplate = new RestTemplate();
 
     @NonFinal
     @Value("${jwt.valid-duration}")
     protected long VALID_DURATION;
 
+    @NonFinal
+    @Value("${jwt.refreshable-duration}")
+    protected long REFRESHABLE_DURATION;
+
     public AuthenticationResponse exchange(ExchangeTokenRequest request) {
         ClientRegistration cr = ((org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository)
-                clientRegistrationRepository).findByRegistrationId(request.getRegistrationId());
+                clientRegistrationRepository).findByRegistrationId(request.getProvider());
 
         if (cr == null) {
-            throw new IllegalArgumentException("Unknown provider: " + request.getRegistrationId());
+            throw new IllegalArgumentException("Unknown provider: " + request.getProvider());
         }
 
-        log.info("Exchange code for token, provider={}, redirectUri={}", request.getRegistrationId(), request.getRedirectUri());
+        log.info("Exchange code for token, provider={}, redirectUri={}", request.getProvider(), request.getRedirectUri());
 
         // 1. Đổi code lấy access_token
         OAuth2AccessTokenResponse tokenResponse = exchangeCodeForToken(cr, request);
@@ -213,10 +83,18 @@ public class OAuth2ExchangeService {
         OAuth2User user = loadUserInfo(cr, tokenResponse);
 
         // 3. Lưu/tìm account trong DB
-        String token = exchangeToken(request.getRegistrationId(), user);
+        Account account = exchangeToken(request.getProvider(), user);
+
+        String token = authenticationService.generateToken(account, VALID_DURATION);
+        String refreshToken = authenticationService.generateToken(
+                accountRepository.findByProviderAndProviderId(request.getProvider(), user.getName())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED)),REFRESHABLE_DURATION
+        );
 
         return AuthenticationResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
+                .account(accountMapper.toAccountResponse(account))
                 .build();
     }
 
@@ -258,41 +136,53 @@ public class OAuth2ExchangeService {
         return delegate.loadUser(userRequest);
     }
 
-    private String exchangeToken(String registrationId, OAuth2User oAuth2User) {
+    private Account exchangeToken(String provider, OAuth2User oAuth2User) {
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
         String email, name, picture;
         try {
-            if ("google".equals(registrationId)) {
+            if (Provider.GOOGLE.name().toLowerCase(Locale.ROOT).equals(provider)) {
                 email = (String) attributes.get("email");
                 name = (String) attributes.get("name");
                 picture = (String) attributes.get("picture");
-            } else if ("facebook".equals(registrationId)) {
+            } else if (Provider.FACEBOOK.name().toLowerCase(Locale.ROOT).equals(provider)) {
                 email = (String) attributes.get("email");
                 name = (String) attributes.get("name");
                 Map<String, Object> pictureObj = (Map<String, Object>) attributes.get("picture");
                 Map<String, Object> data = pictureObj != null ? (Map<String, Object>) pictureObj.get("data") : null;
                 picture = data != null ? (String) data.get("url") : null;
             } else {
-                throw new IllegalArgumentException("Unsupported provider: " + registrationId);
+                throw new IllegalArgumentException("Unsupported provider: " + provider);
             }
         } catch (RuntimeException e) {
             throw new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL);
         }
 
-        Account account = accountRepository.findByUserName(email)
-                .orElseGet(() -> saveCustomer(email, name, picture));
+        return accountRepository.findByProviderAndProviderId(provider, oAuth2User.getName())
+                .orElseGet(() -> {
+                    return accountRepository.findByUserName(email)
+                            .map(existingAccount -> {
+                                // Cập nhật thông tin Provider cho tài khoản sẵn có
+                                existingAccount.setProvider(provider);
+                                existingAccount.setProviderId(oAuth2User.getName());
+                                return accountRepository.save(existingAccount);
+                            })
+                            // BƯỚC 3: Nếu Email cũng chưa có -> Tạo mới hoàn toàn
+                            .orElseGet(() -> saveCustomer(email, name, picture, provider, oAuth2User.getName()));
+                });
 
-        return authenticationService.generateToken(account,VALID_DURATION);
+
     }
 
-    private Account saveCustomer(String email, String name, String picture) {
+    private Account saveCustomer(String email, String name, String picture,String provider, String providerId) {
 
         var account = accountRepository.save(
                 Account.builder()
                         .userName(email)
+                        .provider(provider)
+                        .providerId(providerId)  // Lưu 'sub' hoặc 'id'
                         .createdAt(new Date())
-                        .roleNo(roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getDescription())
+                        .roleNo(roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getRoleName())
                                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND)))
                         .accountStatus(true)
                         .build());
@@ -304,6 +194,7 @@ public class OAuth2ExchangeService {
                         .account(account)
                         .build()
         );
+        customerRepository.save(customer);
 
 
         return account;

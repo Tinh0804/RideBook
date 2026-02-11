@@ -13,9 +13,6 @@ import lombok.Getter;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class ExchangeTokenRequest {
     private final String code;
-    private final String clientId;
-//    private final String clientSecret;
-    private final String registrationId;
+    private final String provider;
     private final String redirectUri;
-    private final String grantType;
 }

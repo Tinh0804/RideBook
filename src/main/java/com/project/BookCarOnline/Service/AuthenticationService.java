@@ -87,13 +87,13 @@ public class AuthenticationService {
         Driver driver = null;
         String roleId = account.getRoleNo().getRoleId();
         String userId = null;
-        if(roleId.equalsIgnoreCase(PredefinedRole.CUSTOMER.getDescription()))
+        if(roleId.equalsIgnoreCase(PredefinedRole.CUSTOMER.getRoleName()))
         {
              customer = customerRepository.findByAccountId(account.getAccountId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
                 userId = customer.getCustomerId();
         }
-        else if(roleId.equalsIgnoreCase(PredefinedRole.DRIVER.getDescription()))
+        else if(roleId.equalsIgnoreCase(PredefinedRole.DRIVER.getRoleName()))
         {
              driver = driverRepository.findByAccountId(account.getAccountId()).orElseThrow(
                      () -> new AppException(ErrorCode.DRIVER_NOT_FOUND)
@@ -102,7 +102,9 @@ public class AuthenticationService {
         }
         else{
             log.info(account.toString());
-            throw new AppException(ErrorCode.ROLE_NOT_EXISTS);
+            customer = customerRepository.findByAccountId(account.getAccountId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+            userId = customer.getCustomerId();
         }
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()

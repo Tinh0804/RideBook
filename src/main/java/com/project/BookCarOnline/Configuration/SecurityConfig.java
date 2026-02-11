@@ -27,6 +27,9 @@ public class SecurityConfig {
     private final String[] SWAGGER_ENDPOINTS = {
             "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**"
     };
+    private final String[] SOCKET_ENDPOINTS = {
+            "/ws/**", "/topic/**", "/app/**"
+    };
 
 
 
@@ -39,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers(CUSTOMER_ENDPOINTS).permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         .requestMatchers(DRIVER_ENDPOINTS).permitAll()
+                        .requestMatchers(SOCKET_ENDPOINTS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .csrf(AbstractHttpConfigurer::disable);    // tắt CSRF

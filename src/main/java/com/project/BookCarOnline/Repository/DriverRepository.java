@@ -4,6 +4,7 @@ import com.project.BookCarOnline.Entity.Customer;
 import com.project.BookCarOnline.Entity.Driver;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.query.Procedure;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -51,4 +52,11 @@ public interface DriverRepository extends JpaRepository<Driver,String> {
 
     // Find by license plate
     Optional<Driver> findByLicensePlate(String licensePlate);
+
+    @Procedure(procedureName = "Pr_FindAvailableDriversCloserCustomer")
+    List<Driver> findTrulyAvailableDriversNearby(
+            @Param("lat") Double lat,
+            @Param("lng") Double lng,
+            @Param("radius") Double radius
+    );
 }

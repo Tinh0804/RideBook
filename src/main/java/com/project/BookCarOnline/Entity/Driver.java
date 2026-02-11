@@ -81,6 +81,9 @@ public class Driver {
     @JoinColumn(name = "ID_TAIKHOANNO", referencedColumnName = "ID_TAIKHOAN",columnDefinition = "VARCHAR(36)")
     private Account account;
 
+    @Transient // Không lưu vào DB, chỉ dùng để nhận giá trị tính toán từ Procedure
+    private Double distance;
+
     
     
 

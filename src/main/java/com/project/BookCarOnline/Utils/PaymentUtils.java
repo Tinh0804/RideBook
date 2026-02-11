@@ -9,6 +9,9 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
@@ -149,19 +152,26 @@ public class PaymentUtils {
     }
 
     /**
-     * Get current timestamp in VNPay format (yyyyMMddHHmmss)
+     * Generate unique order id using bookingId + timestamp + random suffix
      */
-    public static String getVNPayTimestamp() {
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
-        return String.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS", calendar);
+    public static String generateOrderId(String bookingId) {
+        return bookingId + "_" + System.currentTimeMillis() + "_" + getRandomNumber(4);
     }
 
     /**
-     * Get expire time for VNPay (15 minutes from now)
+     * Get current timestamp in VNPay format (yyyyMMddHHmmss)
      */
-    public static String getVNPayExpireTime() {
-        Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
-        calendar.add(Calendar.MINUTE, 15);
-        return String.format("%1$tY%1$tm%1$td%1$tH%1$tM%1$tS", calendar);
+    public static String getVNPayTimestamp() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        return LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .format(formatter);
     }
+
+    public static String getVNPayExpireTime() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+        return LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+                .plusMinutes(15)
+                .format(formatter);
+    }
+
 }
