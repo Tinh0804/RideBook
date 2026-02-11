@@ -67,7 +67,7 @@ jwt:
 
 vnpay:
     tmn-code: "963W7U7G"
-    hash-secret: "M5V5UBA4XZZUUOBFF1I1AHPWJ3JRQ9Z4"
+    hash-secret: "SW0WJCUP1KEASD4PJCNUOE01R52BD82A"
     api-url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
     return-url: "http://localhost:8080/RideBook/payments/vnpay/return"
     version: "2.1.0"
@@ -78,7 +78,7 @@ momo:
     partner-code: "MOMO"
     access-key: "F8BBA842ECF85"
     secret-key: "K951B6PE1waDMi640xX08PD3vg6EkVlz"
-    api-url: "https://test-payment.momo.vn/v2/gateway/api/create"
+    api-url: "https://test-payment.momo.vn/gw_payment/transactionProcessor"
     return-url: "http://localhost:8080/RideBook/payments/momo/return"
     notify-url: "http://localhost:8080/RideBook/payments/momo/callback"
     request-type: "captureMoMoWallet"

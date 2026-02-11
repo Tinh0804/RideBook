@@ -64,6 +64,16 @@ public class RideDispatcherService {
                 BookingStatus status = bookingRepository.findBookingStatusByBookingId(bookingId);
 
                 if (BookingStatus.CONFIRMED.equals(status)) {
+                    bookingRepository.findById(bookingId).ifPresent(booking -> {
+                        if (booking.getCustomerNo() != null && booking.getDriverNo() != null) {
+                            String payload = "DRIVER_ASSIGNED:" + bookingId + ":" +
+                                    booking.getDriverNo().getDriverName() + ":" +
+                                    booking.getDriverNo().getPhone();
+                            messagingTemplate.convertAndSend(
+                                    "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                                    payload);
+                        }
+                    });
                     return true;
                 }
 

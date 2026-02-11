@@ -50,6 +50,10 @@ public class BookingService {
         List<Driver> availableDrivers = driverRepository.findTrulyAvailableDriversNearby(
                 lat, lng, 3.0);
 
+        if (availableDrivers.isEmpty()) {
+            throw new AppException(ErrorCode.NO_DRIVER_AVAILABLE);
+        }
+
         // 2. Thuật toán Surge Pricing (Tăng giá động)
         double surgeMultiplier = 1.0;
         if (availableDrivers.size() == 0) {
@@ -65,10 +69,13 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         // 3. Lưu Booking với giá đã tính
+        String method = request.getPaymentMethod() != null ? request.getPaymentMethod() : "ONLINE";
+        boolean cash = "CASH".equalsIgnoreCase(method);
+
         Payment payment = Payment.builder()
-                .paymentType("ONLINE")
+                .paymentType(cash ? "CASH" : "ONLINE")
                 .amount(finalPrice)
-                .paymentStatus(false)
+                .paymentStatus(cash)
                 .build();
         Payment savedPayment = paymentRepository.save(payment);
 
@@ -84,10 +91,15 @@ public class BookingService {
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
-        // Schedule timeout: cancel if not paid within 10 minutes
-        paymentTimeoutService.schedulePaymentTimeout(savedBooking.getBookingId(), 10 * 60 * 1000L);
+        if (cash) {
+            // Cash payments can be dispatched immediately
+            List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(lat, lng, 5.0);
+            dispatcherService.startDispatching(savedBooking.getBookingId(), candidates);
+        } else {
+            // Schedule timeout: cancel if not paid within 10 minutes
+            paymentTimeoutService.schedulePaymentTimeout(savedBooking.getBookingId(), 10 * 60 * 1000L);
+        }
 
-        // Chỉ điều phối sau khi thanh toán thành công
         return mapToBookingDetailResponse(savedBooking);
     }
 
@@ -244,7 +256,8 @@ public class BookingService {
                 .bookingStatus(booking.getBookingStatus())
                 .distance(booking.getDistance())
                 .duration(booking.getDuration())
-                .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentId() : null)
+                .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentType() : null)
+                .paymentStatus(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentStatus() : null)
                 .promotionCode(booking.getPromotionNo() != null ? booking.getPromotionNo().getPromotionId() : null)
                 .build();
     }

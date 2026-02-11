@@ -59,43 +59,45 @@ public class MoMoService {
 
         try {
             // Generate order ID and request ID
+            // Generate orderId
             String orderId = PaymentUtils.generateOrderId(request.getBookingId());
             String requestId = orderId;
 
-            // Build MoMo request parameters
-            String returnUrl = request.getReturnUrl() != null ? request.getReturnUrl() : moMoConfig.getReturnUrl();
-            String notifyUrl = request.getNotifyUrl() != null ? request.getNotifyUrl() : moMoConfig.getNotifyUrl();
+            String returnUrl = moMoConfig.getReturnUrl();
+            String notifyUrl = moMoConfig.getNotifyUrl();
+            String extraData = "";
 
-            // Build raw signature string
-            String rawSignature = "accessKey=" + moMoConfig.getAccessKey() +
-                    "&amount=" + request.getAmount() +
-                    "&extraData=" + "" +
-                    "&ipnUrl=" + notifyUrl +
-                    "&orderId=" + orderId +
-                    "&orderInfo=" + request.getOrderInfo() +
-                    "&partnerCode=" + moMoConfig.getPartnerCode() +
-                    "&redirectUrl=" + returnUrl +
-                    "&requestId=" + requestId +
-                    "&requestType=" + moMoConfig.getRequestType();
+// RAW SIGNATURE (giống .NET 100%)
+            String rawSignature =
+                    "partnerCode=" + moMoConfig.getPartnerCode() +
+                            "&accessKey=" + moMoConfig.getAccessKey() +
+                            "&requestId=" + requestId +
+                            "&amount=" + request.getAmount() +
+                            "&orderId=" + orderId +
+                            "&orderInfo=" + request.getOrderInfo() +
+                            "&returnUrl=" + returnUrl +
+                            "&notifyUrl=" + notifyUrl +
+                            "&extraData=" + extraData;
 
-            // Generate signature
-            String signature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignature);
+            String signature = PaymentUtils.hmacSHA256(
+                    moMoConfig.getSecretKey(),
+                    rawSignature
+            );
 
-            // Build request body
+// Request body giống .NET
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("partnerCode", moMoConfig.getPartnerCode());
-            requestBody.put("partnerName", "Book Car Online");
-            requestBody.put("storeId", "BookCarStore");
-            requestBody.put("requestId", requestId);
-            requestBody.put("amount", request.getAmount());
-            requestBody.put("orderId", orderId);
-            requestBody.put("orderInfo", request.getOrderInfo());
-            requestBody.put("redirectUrl", returnUrl);
-            requestBody.put("ipnUrl", notifyUrl);
-            requestBody.put("lang", "vi");
-            requestBody.put("extraData", "");
+            requestBody.put("accessKey", moMoConfig.getAccessKey());
             requestBody.put("requestType", moMoConfig.getRequestType());
+            requestBody.put("notifyUrl", notifyUrl);
+            requestBody.put("returnUrl", returnUrl);
+            requestBody.put("orderId", orderId);
+            requestBody.put("amount", String.valueOf(request.getAmount()));
+            requestBody.put("orderInfo", request.getOrderInfo());
+            requestBody.put("requestId", requestId);
+            requestBody.put("extraData", extraData);
             requestBody.put("signature", signature);
+
 
             // Make HTTP POST request to MoMo API
             HttpHeaders headers = new HttpHeaders();
@@ -110,27 +112,29 @@ public class MoMoService {
             );
 
             Map<String, Object> responseBody = response.getBody();
-            
-            if (responseBody != null && "0".equals(String.valueOf(responseBody.get("resultCode")))) {
-                String payUrl = (String) responseBody.get("payUrl");
-                String deeplink = (String) responseBody.get("deeplink");
-                String qrCodeUrl = (String) responseBody.get("qrCodeUrl");
+            log.info("MoMo response: {}", responseBody);
 
-                log.info("MoMo payment URL created successfully for order: {}", orderId);
+            if (responseBody != null &&
+                    "0".equals(String.valueOf(responseBody.get("errorCode")))) {
+
+                String payUrl = (String) responseBody.get("payUrl");
 
                 return PaymentResponse.builder()
                         .status("SUCCESS")
                         .message("Tạo link thanh toán MoMo thành công")
-                        .paymentUrl(payUrl != null ? payUrl : deeplink)
+                        .paymentUrl(payUrl)
                         .orderId(orderId)
                         .amount(request.getAmount())
                         .paymentMethod("MOMO")
                         .build();
             } else {
-                String errorMessage = responseBody != null ? (String) responseBody.get("message") : "Unknown error";
-                log.error("MoMo payment creation failed: {}", errorMessage);
+                String errorMessage = responseBody != null
+                        ? String.valueOf(responseBody.get("message"))
+                        : "Unknown error";
+
                 throw new IllegalStateException("Tạo thanh toán MoMo thất bại: " + errorMessage);
             }
+
 
         } catch (Exception e) {
             log.error("Error creating MoMo payment: {}", e.getMessage());
@@ -138,9 +142,6 @@ public class MoMoService {
         }
     }
 
-    /**
-     * Handle MoMo callback (IPN - Instant Payment Notification)
-     */
     public PaymentCallbackResponse handleCallback(Map<String, String> params) {
         log.info("Handling MoMo callback");
 
@@ -159,26 +160,64 @@ public class MoMoService {
             String responseTime = params.get("responseTime");
             String extraData = params.get("extraData");
             String receivedSignature = params.get("signature");
+            String localMessage = params.get("localMessage");
 
-            // Build raw signature for verification
-            String rawSignature = "accessKey=" + moMoConfig.getAccessKey() +
-                    "&amount=" + amount +
-                    "&extraData=" + extraData +
-                    "&message=" + message +
-                    "&orderId=" + orderId +
-                    "&orderInfo=" + orderInfo +
-                    "&orderType=" + orderType +
-                    "&partnerCode=" + partnerCode +
-                    "&payType=" + payType +
-                    "&requestId=" + requestId +
-                    "&responseTime=" + responseTime +
-                    "&resultCode=" + resultCode +
-                    "&transId=" + transId;
+            String normalizedResultCode = resultCode == null ? "" : resultCode;
+            String normalizedMessage = message == null ? "" : message;
+            String normalizedLocalMessage = localMessage == null ? "" : localMessage;
+            String normalizedExtraData = extraData == null ? "" : extraData;
+
+            // Build raw signature for verification (support multiple variants)
+            String rawSignaturePrimary =
+                    "accessKey=" + moMoConfig.getAccessKey() +
+                            "&amount=" + amount +
+                            "&extraData=" + normalizedExtraData +
+                            "&message=" + normalizedMessage +
+                            "&orderId=" + orderId +
+                            "&orderInfo=" + orderInfo +
+                            "&orderType=" + orderType +
+                            "&partnerCode=" + partnerCode +
+                            "&payType=" + payType +
+                            "&requestId=" + requestId +
+                            "&responseTime=" + responseTime +
+                            "&resultCode=" + normalizedResultCode +
+                            "&transId=" + transId;
+
+            String rawSignatureAlt =
+                    "partnerCode=" + partnerCode +
+                            "&accessKey=" + moMoConfig.getAccessKey() +
+                            "&requestId=" + requestId +
+                            "&amount=" + amount +
+                            "&orderId=" + orderId +
+                            "&orderInfo=" + orderInfo +
+                            "&orderType=" + orderType +
+                            "&transId=" + transId +
+                            "&resultCode=" + normalizedResultCode +
+                            "&message=" + normalizedMessage +
+                            "&payType=" + payType +
+                            "&responseTime=" + responseTime +
+                            "&extraData=" + normalizedExtraData;
+
+            String rawSignatureWithLocal = rawSignaturePrimary + "&localMessage=" + normalizedLocalMessage;
 
             // Verify signature
-            String calculatedSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignature);
+            boolean signatureValid = false;
+            String calculatedSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignaturePrimary);
+            if (calculatedSignature.equals(receivedSignature)) {
+                signatureValid = true;
+            } else {
+                String altSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignatureAlt);
+                if (altSignature.equals(receivedSignature)) {
+                    signatureValid = true;
+                } else {
+                    String localSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignatureWithLocal);
+                    if (localSignature.equals(receivedSignature)) {
+                        signatureValid = true;
+                    }
+                }
+            }
 
-            if (!calculatedSignature.equals(receivedSignature)) {
+            if (!signatureValid) {
                 log.error("Invalid MoMo signature");
                 return PaymentCallbackResponse.builder()
                         .paymentStatus("FAILED")
@@ -191,10 +230,10 @@ public class MoMoService {
             String bookingId = orderId.split("_")[0];
 
             // Determine payment status
-            String paymentStatus = "0".equals(resultCode) ? "SUCCESS" : "FAILED";
-            String statusMessage = "0".equals(resultCode) 
+            String paymentStatus = "0".equals(normalizedResultCode) ? "SUCCESS" : "FAILED";
+            String statusMessage = "0".equals(normalizedResultCode) 
                     ? "Thanh toán thành công" 
-                    : "Thanh toán thất bại: " + message;
+                    : "Thanh toán thất bại: " + normalizedMessage;
 
             log.info("MoMo payment status: {} for booking: {}", paymentStatus, bookingId);
 

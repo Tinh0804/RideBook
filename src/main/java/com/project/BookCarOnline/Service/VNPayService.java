@@ -77,6 +77,7 @@ public class VNPayService {
         String paymentUrl = PaymentUtils.buildPaymentUrl(vnPayConfig.getApiUrl(), vnpParams);
 
         log.info("VNPay payment URL created successfully for order: {}", orderId);
+        log.info("Payment URL: {}", paymentUrl);
 
         return PaymentResponse.builder()
                 .status("SUCCESS")

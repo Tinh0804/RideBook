@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.parameters.P;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -30,19 +31,23 @@ public class SecurityConfig {
     private final String[] SOCKET_ENDPOINTS = {
             "/ws/**", "/topic/**", "/app/**"
     };
+    private  final String[] PAYMENT_ENDPOINTS={
+            "/payments/momo/return","/payments/vnpay/return","/payments/momo/notify","/payments/vnpay/notify",
+            "/payments/momo/callback","/payments/vnpay/callback"
+    };
 
 
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, AUTH_ENDPOINTS).permitAll()
                         .requestMatchers(CUSTOMER_ENDPOINTS).permitAll()
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         .requestMatchers(DRIVER_ENDPOINTS).permitAll()
                         .requestMatchers(SOCKET_ENDPOINTS).permitAll()
+                        .requestMatchers(PAYMENT_ENDPOINTS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .csrf(AbstractHttpConfigurer::disable);    // tắt CSRF

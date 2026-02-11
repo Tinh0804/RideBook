@@ -40,5 +40,6 @@ public class BookingDetailResponse {
     Double distance;
     Double duration;
     String paymentMethod;
+    Boolean paymentStatus;
     String promotionCode;
 }

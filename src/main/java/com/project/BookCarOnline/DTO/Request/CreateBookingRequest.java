@@ -32,4 +32,7 @@ public class CreateBookingRequest {
 
     @NotBlank(message = "Loại xe không được để trống")
     String vehicleTypeId;
+
+    // ONLINE | CASH
+    String paymentMethod;
 }
