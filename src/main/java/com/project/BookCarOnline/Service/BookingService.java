@@ -141,7 +141,7 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         // Check if booking is available
-        if (!"Đang chờ".equals(booking.getBookingStatus())) {
+        if (!BookingStatus.PENDING.equals(booking.getBookingStatus())) {
             throw new IllegalStateException("Chuyến xe không còn khả dụng");
         }
 
@@ -150,20 +150,53 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         // Check if driver is already on another ride
-        Booking ongoingRide = bookingRepository.findByDriverNo_DriverIdAndBookingStatus(driverId, BookingStatus.CONFIRMED);
+        Booking ongoingRide = bookingRepository.findByDriverNo_DriverIdAndBookingStatus(driverId, BookingStatus.ACCEPTED);
         if (ongoingRide != null) {
             throw new IllegalStateException("Tài xế đang thực hiện chuyến khác");
         }
 
         // Assign driver and update status
         booking.setDriverNo(driver);
-        booking.setBookingStatus(BookingStatus.CONFIRMED);
+        booking.setBookingStatus(BookingStatus.ACCEPTED);
         booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
 
         Booking updatedBooking = bookingRepository.save(booking);
         log.info("Driver assigned successfully to booking {}", bookingId);
 
         return mapToBookingDetailResponse(updatedBooking);
+    }
+
+    @Transactional
+    public BookingDetailResponse updateStatus(String bookingId, BookingStatus newStatus){
+
+        log.info("Updating booking status for booking {}: {}", bookingId,newStatus);
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        BookingStatus currentStatus = booking.getBookingStatus();
+
+        boolean isValidTransition = switch (newStatus){
+            case ARRIVED -> currentStatus == BookingStatus.ACCEPTED;
+            case IN_PROGRESS -> currentStatus == BookingStatus.ARRIVED;
+            case COMPLETED -> currentStatus == BookingStatus.IN_PROGRESS;
+            case CANCELLED   -> currentStatus == BookingStatus.PENDING || currentStatus == BookingStatus.ACCEPTED;
+            default -> false;
+        };
+
+        if (!isValidTransition){
+            throw new IllegalStateException("Không thể chuyển trạng thái từ " + currentStatus + " sang " + newStatus);
+        }
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        switch (newStatus){
+            case ARRIVED -> booking.setPickupTime(now);
+            case COMPLETED -> booking.setArrivalTime(now);
+        }
+        booking.setBookingStatus(newStatus);
+
+
+        log.info("Booking status updated successfully for booking {}: {}", bookingId, newStatus);
+        return mapToBookingDetailResponse(bookingRepository.save(booking));
     }
 
 
@@ -187,7 +220,7 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        if (!"Đang thực hiện".equals(booking.getBookingStatus())) {
+        if (!BookingStatus.ACCEPTED.equals(booking.getBookingStatus())) {
             throw new IllegalStateException("Chuyến xe chưa được bắt đầu");
         }
 

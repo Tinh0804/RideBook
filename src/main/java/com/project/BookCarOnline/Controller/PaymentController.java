@@ -1,8 +1,7 @@
 package com.project.BookCarOnline.Controller;
 
 import com.project.BookCarOnline.DTO.APIResponse;
-import com.project.BookCarOnline.DTO.Request.MoMoPaymentRequest;
-import com.project.BookCarOnline.DTO.Request.VNPayPaymentRequest;
+import com.project.BookCarOnline.DTO.Request.PaymentRequest;
 import com.project.BookCarOnline.DTO.Response.PaymentCallbackResponse;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.Service.MoMoService;
@@ -49,9 +48,9 @@ public class PaymentController {
      */
     @PostMapping("/vnpay/create")
     @ResponseStatus(HttpStatus.CREATED)
-    public APIResponse<PaymentResponse> createVNPayPayment(@Valid @RequestBody VNPayPaymentRequest request) {
+    public APIResponse<PaymentResponse> createVNPayPayment(@Valid @RequestBody PaymentRequest request) {
         log.info("REST API: POST /payments/vnpay/create - Creating VNPay payment for booking: {}", 
-                request.getBookingId());
+                request.getReferenceId());
         
         PaymentResponse response = vnPayService.createPayment(request);
         
@@ -137,9 +136,9 @@ public class PaymentController {
      */
     @PostMapping("/momo/create")
     @ResponseStatus(HttpStatus.CREATED)
-    public APIResponse<PaymentResponse> createMoMoPayment(@Valid @RequestBody MoMoPaymentRequest request) {
+    public APIResponse<PaymentResponse> createMoMoPayment(@Valid @RequestBody PaymentRequest request) {
         log.info("REST API: POST /payments/momo/create - Creating MoMo payment for booking: {}", 
-                request.getBookingId());
+                request.getReferenceId());
         
         PaymentResponse response = moMoService.createPayment(request);
         

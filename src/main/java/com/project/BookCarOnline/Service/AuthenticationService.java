@@ -135,7 +135,6 @@ public class AuthenticationService {
             stringJoiner.add("ROLE_" + role.getRoleId().toUpperCase());
 
         }
-
         log.info(stringJoiner.toString());
         return stringJoiner.toString();
     }
@@ -165,6 +164,7 @@ public class AuthenticationService {
             throw  new AppException(ErrorCode.UNAUTHENTACATED);
         return  signedJWT;
     }
+
     public void logout(String refreshToken) throws ParseException, JOSEException {
         String token = SecurityUtils.getCurrentToken().orElseThrow(()->new AppException(ErrorCode.TOKEN_NOT_FOUND));
         SignedJWT signedRefresh = verifyToken(refreshToken, true);

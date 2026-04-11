@@ -11,6 +11,7 @@ import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
 import com.project.BookCarOnline.Service.DriverService;
+import com.project.BookCarOnline.Utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -57,7 +58,16 @@ public class DriverController {
                 .result(response)
                 .build();
     }
-
+    @PutMapping("/status-activity")
+    public APIResponse<Boolean> updateStatusActive(){
+        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        boolean isActive = driverService.toggleDriverActivityStatus(driverId);
+        return APIResponse.<Boolean>builder()
+                .status(HttpStatus.OK.value())
+                .message("Cập nhật trạng thái hoạt động thành công")
+                .result(isActive)
+                .build();
+    }
 
     @GetMapping("/{driverId}")
     @PreAuthorize("hasRole("+ PredefinedRole.RoleName.ADMIN +")")

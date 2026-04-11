@@ -23,9 +23,15 @@ public class RideDispatcherService {
 
     private final RideBookRepository bookingRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final DriverRepository driverRepository;
 
     @Async
     public void startDispatching(String bookingId, List<Driver> candidateDrivers) {
+        if (candidateDrivers == null || candidateDrivers.isEmpty()) {
+            log.warn("Không tìm thấy tài xế gần khách, fallback gửi tất cả tài xế đang hoạt động.");
+            candidateDrivers = driverRepository.findByActivityStatusTrue();
+        }
+
         log.info("Bắt đầu điều phối chuyến xe {} cho {} tài xế", bookingId, candidateDrivers.size());
 
         for (Driver driver : candidateDrivers) {
@@ -35,8 +41,10 @@ public class RideDispatcherService {
             }
 
             // 1. Gửi thông báo WebSocket
-            messagingTemplate.convertAndSend("/topic/driver/" + driver.getDriverId(), "NEW_RIDE:" + bookingId);
-            log.info("Đã gửi yêu cầu tới tài xế: {}", driver.getDriverId());
+            String destination = "/topic/driver/" + driver.getDriverId();
+            String payload = "NEW_RIDE:" + bookingId;
+            messagingTemplate.convertAndSend(destination, payload);
+            log.info("Đã gửi yêu cầu tới tài xế: {} - {}", driver.getDriverId(), destination);
 
             // 2. Đợi phản hồi (Dùng polling tối ưu)
             if (waitForAcceptance(bookingId, 20)) {
@@ -51,6 +59,9 @@ public class RideDispatcherService {
     private boolean isBookingTakenOrCancelled(String bookingId) {
         // Tối ưu: Chỉ lấy trường Status thay vì toàn bộ Entity
         BookingStatus currentStatus = bookingRepository.findBookingStatusByBookingId(bookingId);
+        if (currentStatus == null) {
+            return false;
+        }
         return currentStatus != BookingStatus.PENDING;
     }
 
@@ -63,7 +74,7 @@ public class RideDispatcherService {
                 // Lấy status gọn nhẹ nhất có thể
                 BookingStatus status = bookingRepository.findBookingStatusByBookingId(bookingId);
 
-                if (BookingStatus.CONFIRMED.equals(status)) {
+                if (BookingStatus.ACCEPTED.equals(status)) {
                     bookingRepository.findById(bookingId).ifPresent(booking -> {
                         if (booking.getCustomerNo() != null && booking.getDriverNo() != null) {
                             String payload = "DRIVER_ASSIGNED:" + bookingId + ":" +

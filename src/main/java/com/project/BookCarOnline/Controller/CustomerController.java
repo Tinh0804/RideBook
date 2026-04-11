@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/customer")
+@RequestMapping("/customers")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
@@ -33,7 +33,7 @@ public class CustomerController {
                 .build();
     }
 
-    @GetMapping("/myInfo")
+    @GetMapping("/my-info")
     APIResponse<CustomerResponse> getMyInfo() {
         CustomerResponse customerResponse = service.getMyInfo();
         return APIResponse.<CustomerResponse>builder()
@@ -51,6 +51,7 @@ public class CustomerController {
                 .message("All customers retrieved successfully")
                 .build();
     }
+
     @PutMapping(value = "/my-info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     APIResponse<CustomerResponse> updateMyInfo(@ModelAttribute UpdateCustomerRequest request) throws IOException {
         CustomerResponse customerResponse = service.updateMyInfo(request);
@@ -59,6 +60,7 @@ public class CustomerController {
                 .message("Your information has been updated successfully")
                 .build();
     }
+
     @DeleteMapping("/my-avatar")
     APIResponse<Boolean> deleteMyAvatar() throws IOException {
         Boolean result = service.deleteMyAvatar();

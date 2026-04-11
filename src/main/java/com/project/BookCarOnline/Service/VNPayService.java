@@ -1,7 +1,7 @@
 package com.project.BookCarOnline.Service;
 
 import com.project.BookCarOnline.Configuration.VNPayConfig;
-import com.project.BookCarOnline.DTO.Request.VNPayPaymentRequest;
+import com.project.BookCarOnline.DTO.Request.PaymentRequest;
 import com.project.BookCarOnline.DTO.Response.PaymentCallbackResponse;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.Entity.Booking;
@@ -10,8 +10,10 @@ import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
 import com.project.BookCarOnline.Repository.PaymentRepository;
+import com.project.BookCarOnline.Repository.DriverRepository;
+import com.project.BookCarOnline.Entity.Driver;
+import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.Utils.PaymentUtils;
-import com.project.BookCarOnline.Entity.Payment;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -37,46 +40,62 @@ public class VNPayService {
     RideBookRepository bookingRepository;
     PaymentRepository paymentRepository;
     SimpMessagingTemplate messagingTemplate;
+    RideDispatcherService dispatcherService;
+    DriverRepository driverRepository;
+    GoogleMapService googleMapService;
 
 
-    public PaymentResponse createPayment(VNPayPaymentRequest request) {
-        log.info("Creating VNPay payment for booking: {}", request.getBookingId());
+    public PaymentResponse createPayment(PaymentRequest request) {
 
-        // Validate booking exists
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+        log.info("Creating VNPay payment for booking: {}", request.getReferenceId());
 
-        // Generate order ID and timestamp
-        String orderId = PaymentUtils.generateOrderId(request.getBookingId());
-        String vnpTxnRef = orderId;
+
+        String orderId = PaymentUtils.generateOrderId(request.getReferenceId());
         String vnpCreateDate = PaymentUtils.getVNPayTimestamp();
-        String vnpExpireDate = PaymentUtils.getVNPayExpireTime();
 
-        // Build VNPay parameters
-        Map<String, String> vnpParams = new HashMap<>();
+        // 🔥 PHẢI dùng TreeMap
+        Map<String, String> vnpParams = new java.util.TreeMap<>();
+
+        long amountInVND = (long) Math.round(request.getAmount() * 100); // Convert to VND (1 USD = 100 VND)
+
         vnpParams.put("vnp_Version", vnPayConfig.getVersion());
         vnpParams.put("vnp_Command", vnPayConfig.getCommand());
         vnpParams.put("vnp_TmnCode", vnPayConfig.getTmnCode());
-        vnpParams.put("vnp_Amount", String.valueOf(request.getAmount() * 100)); // VNPay uses smallest currency unit
+        vnpParams.put("vnp_Amount", String.valueOf(amountInVND));
+        vnpParams.put("vnp_CreateDate", vnpCreateDate);
         vnpParams.put("vnp_CurrCode", "VND");
-        vnpParams.put("vnp_TxnRef", vnpTxnRef);
+        vnpParams.put("vnp_IpAddr", "127.0.0.1");
+        vnpParams.put("vnp_Locale",  "vn");
         vnpParams.put("vnp_OrderInfo", request.getOrderInfo());
         vnpParams.put("vnp_OrderType", vnPayConfig.getOrderType());
-        vnpParams.put("vnp_Locale", request.getLocale() != null ? request.getLocale() : "vn");
-        vnpParams.put("vnp_ReturnUrl", request.getReturnUrl() != null ? request.getReturnUrl() : vnPayConfig.getReturnUrl());
-        vnpParams.put("vnp_IpAddr", "127.0.0.1"); // Should be client IP
-        vnpParams.put("vnp_CreateDate", vnpCreateDate);
-        vnpParams.put("vnp_ExpireDate", vnpExpireDate);
+        vnpParams.put("vnp_ReturnUrl",
+                request.getReturnUrl() != null ? request.getReturnUrl() : vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_TxnRef", orderId);
 
-        // Build hash data and signature
-        String hashData = PaymentUtils.buildQueryString(vnpParams);
-        String vnpSecureHash = PaymentUtils.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
-        vnpParams.put("vnp_SecureHash", vnpSecureHash);
+        // 🔥 Build hash data KHÔNG encode
+        StringBuilder hashData = new StringBuilder();
+        for (Map.Entry<String, String> entry : vnpParams.entrySet()) {
+            if (hashData.length() > 0) {
+                hashData.append("&");
+            }
+            hashData.append(entry.getKey())
+                    .append("=")
+                    .append(entry.getValue());
+        }
 
-        // Build payment URL
-        String paymentUrl = PaymentUtils.buildPaymentUrl(vnPayConfig.getApiUrl(), vnpParams);
+        String secureHash = PaymentUtils.hmacSHA512(
+                vnPayConfig.getHashSecret(),
+                hashData.toString()
+        );
 
-        log.info("VNPay payment URL created successfully for order: {}", orderId);
+        // 🔥 Sau khi hash xong mới thêm SecureHash
+        vnpParams.put("vnp_SecureHash", secureHash);
+
+        // 🔥 Build URL (encode ở đây)
+        String paymentUrl = buildUrlWithEncode(vnPayConfig.getApiUrl(), vnpParams);
+
+        log.info("Hash data: {}", hashData);
+        log.info("Secure hash: {}", secureHash);
         log.info("Payment URL: {}", paymentUrl);
 
         return PaymentResponse.builder()
@@ -88,24 +107,87 @@ public class VNPayService {
                 .paymentMethod("VNPAY")
                 .build();
     }
+    private String buildUrlWithEncode(String baseUrl, Map<String, String> params) {
+
+        StringBuilder url = new StringBuilder(baseUrl);
+        url.append("?");
+
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            url.append(entry.getKey())
+                    .append("=")
+                    .append(java.net.URLEncoder.encode(entry.getValue(), java.nio.charset.StandardCharsets.UTF_8))
+                    .append("&");
+        }
+
+        url.deleteCharAt(url.length() - 1);
+
+        return url.toString();
+    }
+
 
     /**
      * Handle VNPay callback (IPN - Instant Payment Notification)
      */
     public PaymentCallbackResponse handleCallback(Map<String, String> params) {
-        log.info("Handling VNPay callback");
 
-        // Get signature from params
+        log.info("Handling VNPay callback...");
+
+        // 1️⃣ Lấy chữ ký VNPay gửi về
         String vnpSecureHash = params.get("vnp_SecureHash");
-        params.remove("vnp_SecureHash");
-        params.remove("vnp_SecureHashType");
 
-        // Validate signature
-        String hashData = PaymentUtils.buildQueryString(params);
-        String calculatedHash = PaymentUtils.hmacSHA512(vnPayConfig.getHashSecret(), hashData);
+        if (vnpSecureHash == null) {
+            return PaymentCallbackResponse.builder()
+                    .paymentStatus("FAILED")
+                    .message("Thiếu chữ ký VNPay")
+                    .paymentMethod("VNPAY")
+                    .build();
+        }
 
-        if (!calculatedHash.equals(vnpSecureHash)) {
-            log.error("Invalid VNPay signature");
+        // 2️⃣ Copy sang TreeMap để sort alphabet
+        Map<String, String> sortedParams = new java.util.TreeMap<>();
+
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            if (entry.getValue() != null
+                    && !entry.getKey().equals("vnp_SecureHash")
+                    && !entry.getKey().equals("vnp_SecureHashType")) {
+
+                sortedParams.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        // 3️⃣ Build hash data ĐÃ encode lại giống lúc gửi đi
+        StringBuilder hashData = new StringBuilder();
+
+        for (Map.Entry<String, String> entry : sortedParams.entrySet()) {
+
+            if (entry.getValue() != null && !entry.getValue().isEmpty()) {
+
+                if (hashData.length() > 0) {
+                    hashData.append("&");
+                }
+
+                hashData.append(entry.getKey())
+                        .append("=")
+                        .append(java.net.URLEncoder.encode(
+                                entry.getValue(),
+                                java.nio.charset.StandardCharsets.US_ASCII
+                        ));
+            }
+        }
+
+        // 4️⃣ Tính lại chữ ký
+        String calculatedHash = PaymentUtils.hmacSHA512(
+                vnPayConfig.getHashSecret(),
+                hashData.toString()
+        );
+
+        log.info("VNPay returned hash: {}", vnpSecureHash);
+        log.info("Calculated hash: {}", calculatedHash);
+        log.info("Raw hash data: {}", hashData);
+
+        // 5️⃣ So sánh chữ ký
+        if (!calculatedHash.equalsIgnoreCase(vnpSecureHash)) {
+            log.error("Invalid VNPay signature!");
             return PaymentCallbackResponse.builder()
                     .paymentStatus("FAILED")
                     .message("Chữ ký không hợp lệ")
@@ -113,23 +195,22 @@ public class VNPayService {
                     .build();
         }
 
-        // Extract payment info
+        // 6️⃣ Lấy dữ liệu thanh toán
         String vnpResponseCode = params.get("vnp_ResponseCode");
         String vnpTxnRef = params.get("vnp_TxnRef");
         String vnpTransactionNo = params.get("vnp_TransactionNo");
         String vnpAmount = params.get("vnp_Amount");
         String vnpPayDate = params.get("vnp_PayDate");
 
-        // Extract booking ID from order ID
         String bookingId = vnpTxnRef.split("_")[0];
 
-        // Determine payment status
         String paymentStatus = "00".equals(vnpResponseCode) ? "SUCCESS" : "FAILED";
-        String message = "00".equals(vnpResponseCode) 
-                ? "Thanh toán thành công" 
+
+        String message = "00".equals(vnpResponseCode)
+                ? "Thanh toán thành công"
                 : "Thanh toán thất bại - Mã lỗi: " + vnpResponseCode;
 
-        log.info("VNPay payment status: {} for booking: {}", paymentStatus, bookingId);
+        log.info("Payment status: {} - Booking: {}", paymentStatus, bookingId);
 
         if ("SUCCESS".equals(paymentStatus)) {
             bookingRepository.findById(bookingId).ifPresent(booking -> {
@@ -144,6 +225,13 @@ public class VNPayService {
                             "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
                             "PAYMENT_SUCCESS:" + bookingId);
                 }
+
+                GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
+                List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
+                        geo.geometry.location.lat,
+                        geo.geometry.location.lng,
+                        5.0);
+                dispatcherService.startDispatching(bookingId, candidates);
             });
         } else {
             bookingRepository.findById(bookingId).ifPresent(booking -> {
@@ -159,7 +247,7 @@ public class VNPayService {
                 .bookingId(bookingId)
                 .orderId(vnpTxnRef)
                 .transactionId(vnpTransactionNo)
-                .amount(Long.parseLong(vnpAmount) / 100) // Convert back to VND
+                .amount(Long.parseLong(vnpAmount) / 100)
                 .paymentStatus(paymentStatus)
                 .paymentMethod("VNPAY")
                 .message(message)

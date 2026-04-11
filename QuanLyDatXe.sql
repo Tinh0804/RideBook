@@ -414,6 +414,8 @@ CREATE INDEX idx_Booking_Status_Driver ON DATXE (TRANGTHAI, ID_TXNO);
 
 -- Index cho tọa độ tài xế để tính toán Haversine nhanh hơn
 CREATE INDEX idx_Driver_Location ON TAIXE (VIDO, KINHDO) WHERE TRANGTHAIHD = 1;
+
+
 CREATE PROCEDURE Pr_FindAvailableDriversCloserCustomer
     @lat FLOAT,
     @lng FLOAT,
@@ -438,6 +440,8 @@ BEGIN
         * sin(radians(d.VIDO)))) <= @radius
     ORDER BY Distance ASC;
 END;
+
+EXEC  Pr_FindAvailableDriversCloserCustomer 16.06657,108.19113,3
 --------------------------------------------------------------------------------------HÀM_THỦ TỤC_TRIGGER----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 go
 CREATE TRIGGER Tr_KhachHang_Delete

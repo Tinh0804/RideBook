@@ -18,7 +18,8 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
 
     @Query("SELECT b.bookingStatus FROM Booking b WHERE b.bookingId = :id")
     BookingStatus findStatusByBookingId(@Param("id") String id);
-    BookingStatus findBookingStatusByBookingId(String bookingId);
+    @Query("SELECT b.bookingStatus FROM Booking b WHERE b.bookingId = :bookingId")
+    BookingStatus findBookingStatusByBookingId(@Param("bookingId") String bookingId);
     // Customer bookings
     List<Booking> findByCustomerNo_CustomerIdOrderByBookingTimeDesc(String customerId);
 

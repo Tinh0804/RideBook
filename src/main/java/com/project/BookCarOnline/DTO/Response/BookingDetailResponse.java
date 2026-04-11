@@ -42,4 +42,6 @@ public class BookingDetailResponse {
     String paymentMethod;
     Boolean paymentStatus;
     String promotionCode;
+    Integer rating;
+    String review;
 }

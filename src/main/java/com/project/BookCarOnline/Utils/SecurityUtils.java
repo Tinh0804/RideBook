@@ -21,6 +21,14 @@ public class SecurityUtils {
         }
         return Optional.empty();
     }
+    public static Optional<String> getCurrentRole(){
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(authentication !=null && authentication.getPrincipal() instanceof Jwt jwt){
+            return Optional.ofNullable(jwt.getClaimAsString("scope"));
+        }
+        return Optional.empty();
+    }
+
     public static Optional<String> getCurrentToken(){
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if(authentication !=null && authentication.getPrincipal() instanceof Jwt jwt){

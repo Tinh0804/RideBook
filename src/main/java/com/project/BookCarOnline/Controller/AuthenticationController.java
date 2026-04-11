@@ -41,6 +41,7 @@ public class AuthenticationController {
                 .message(response.isSuccess() ? "Login successful" : "Login failed")
                .build();
     }
+
     @PostMapping("/introspect")
     @SecurityRequirement(name = "bearerAuth")
     APIResponse<Boolean> authenticateIntrospect() throws ParseException, JOSEException {

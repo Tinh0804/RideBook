@@ -15,6 +15,6 @@ public class PaymentResponse {
     String paymentUrl;
     String orderId;
     String transactionId;
-    Long amount;
+    Double amount;
     String paymentMethod; // "VNPAY" or "MOMO"
 }

@@ -5,6 +5,7 @@ import com.project.BookCarOnline.DTO.Request.CreateBookingRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Service.BookingService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
@@ -119,6 +120,18 @@ public class BookingController {
                 .build();
     }
 
+    @PutMapping("/{bookingId}/status")
+    public APIResponse<BookingDetailResponse> updateBookingStatus(
+            @PathVariable String bookingId,
+            @RequestParam String status) {
+        log.info("REST API: PUT /bookings/{}/status/{} - Updating booking status", bookingId, status);
+        BookingDetailResponse booking = bookingService.updateStatus(bookingId, BookingStatus.valueOf(status));
+        return APIResponse.<BookingDetailResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Cập nhật trạng thái chuyến xe thành công")
+                .result(booking)
+                .build();
+    }
 
     @PutMapping("/{bookingId}/complete")
     public APIResponse<BookingDetailResponse> completeBooking(@PathVariable String bookingId) {
@@ -141,4 +154,6 @@ public class BookingController {
                 .message("Huỷ chuyến thành công")
                 .build();
     }
+
+
 }

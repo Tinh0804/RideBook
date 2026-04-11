@@ -223,6 +223,15 @@ public class DriverService {
                 .map(mapper::toDriverDetailResponse)
                 .collect(Collectors.toList());
     }
+    public Boolean toggleDriverActivityStatus(String driverId) {
+        log.info("Toggling activity status for driver: {}", driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        driver.setActivityStatus(!driver.getActivityStatus());
+        driverRepository.save(driver);
+        log.info("Driver activity status toggled successfully: {} is now {}", driverId, driver.getActivityStatus());
+        return driver.getActivityStatus();
+    }
 
 
     public List<DriverDetailResponse> getDriversByVehicleType(String vehicleTypeId) {

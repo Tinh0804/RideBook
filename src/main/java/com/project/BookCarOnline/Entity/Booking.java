@@ -56,6 +56,7 @@ public class Booking {
     @Column(name = "THOIGIANDEN")
     private Timestamp arrivalTime;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "TRANGTHAI", length = 50)
     private BookingStatus bookingStatus;
 

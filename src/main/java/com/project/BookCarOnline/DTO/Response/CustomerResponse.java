@@ -19,6 +19,7 @@ public class CustomerResponse {
     private String email;
     private String gender;
     private String avatar;
+
     private String birthDate;
 
     private AccountResponse account;

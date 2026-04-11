@@ -2,7 +2,7 @@ package com.project.BookCarOnline.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.BookCarOnline.Configuration.MoMoConfig;
-import com.project.BookCarOnline.DTO.Request.MoMoPaymentRequest;
+import com.project.BookCarOnline.DTO.Request.PaymentRequest;
 import com.project.BookCarOnline.DTO.Response.PaymentCallbackResponse;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.Entity.Booking;
@@ -11,12 +11,10 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
 import com.project.BookCarOnline.Repository.PaymentRepository;
 import com.project.BookCarOnline.Repository.DriverRepository;
-import com.project.BookCarOnline.Service.RideDispatcherService;
-import com.project.BookCarOnline.Service.GoogleMapService;
+import com.project.BookCarOnline.Entity.Driver;
+import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.Utils.PaymentUtils;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
-import com.project.BookCarOnline.Entity.Payment;
-import com.google.maps.model.GeocodingResult;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,35 +43,39 @@ public class MoMoService {
     RideBookRepository bookingRepository;
     PaymentRepository paymentRepository;
     SimpMessagingTemplate messagingTemplate;
+    RideDispatcherService dispatcherService;
+    DriverRepository driverRepository;
+    GoogleMapService googleMapService;
     RestTemplate restTemplate = new RestTemplate();
     ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Create MoMo payment request
      */
-    public PaymentResponse createPayment(MoMoPaymentRequest request) {
-        log.info("Creating MoMo payment for booking: {}", request.getBookingId());
+    public PaymentResponse createPayment(PaymentRequest request) {
+        log.info("Creating MoMo payment for booking: {}", request.getReferenceId());
 
-        // Validate booking exists
-        Booking booking = bookingRepository.findById(request.getBookingId())
-                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+//        // Validate booking exists
+//        Booking booking = bookingRepository.findById(request.getReferenceId())
+//                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
 
         try {
             // Generate order ID and request ID
             // Generate orderId
-            String orderId = PaymentUtils.generateOrderId(request.getBookingId());
+            String orderId = PaymentUtils.generateOrderId(request.getReferenceId());
             String requestId = orderId;
 
             String returnUrl = moMoConfig.getReturnUrl();
             String notifyUrl = moMoConfig.getNotifyUrl();
             String extraData = "";
+            long amount = Math.round(request.getAmount()); // nếu là double
 
 // RAW SIGNATURE (giống .NET 100%)
             String rawSignature =
                     "partnerCode=" + moMoConfig.getPartnerCode() +
                             "&accessKey=" + moMoConfig.getAccessKey() +
                             "&requestId=" + requestId +
-                            "&amount=" + request.getAmount() +
+                            "&amount=" + amount +
                             "&orderId=" + orderId +
                             "&orderInfo=" + request.getOrderInfo() +
                             "&returnUrl=" + returnUrl +
@@ -92,7 +95,7 @@ public class MoMoService {
             requestBody.put("notifyUrl", notifyUrl);
             requestBody.put("returnUrl", returnUrl);
             requestBody.put("orderId", orderId);
-            requestBody.put("amount", String.valueOf(request.getAmount()));
+            requestBody.put("amount", String.valueOf(amount));
             requestBody.put("orderInfo", request.getOrderInfo());
             requestBody.put("requestId", requestId);
             requestBody.put("extraData", extraData);
@@ -143,82 +146,62 @@ public class MoMoService {
     }
 
     public PaymentCallbackResponse handleCallback(Map<String, String> params) {
+
         log.info("Handling MoMo callback");
 
         try {
-            // Extract parameters
+
             String partnerCode = params.get("partnerCode");
+            String accessKey = moMoConfig.getAccessKey();
             String orderId = params.get("orderId");
             String requestId = params.get("requestId");
             String amount = params.get("amount");
             String orderInfo = params.get("orderInfo");
             String orderType = params.get("orderType");
             String transId = params.get("transId");
-            String resultCode = params.get("resultCode");
             String message = params.get("message");
-            String payType = params.get("payType");
+            String localMessage = params.get("localMessage");
             String responseTime = params.get("responseTime");
+            String errorCode = params.get("resultCode");
+            if (errorCode == null) {
+                errorCode = params.get("errorCode");
+            }
+            String payType = params.get("payType");
             String extraData = params.get("extraData");
             String receivedSignature = params.get("signature");
-            String localMessage = params.get("localMessage");
 
-            String normalizedResultCode = resultCode == null ? "" : resultCode;
-            String normalizedMessage = message == null ? "" : message;
-            String normalizedLocalMessage = localMessage == null ? "" : localMessage;
-            String normalizedExtraData = extraData == null ? "" : extraData;
+            // Normalize null giống C#
+            if (errorCode == null) errorCode = "";
+            if (localMessage == null) localMessage = "";
+            if (extraData == null) extraData = "";
 
-            // Build raw signature for verification (support multiple variants)
-            String rawSignaturePrimary =
-                    "accessKey=" + moMoConfig.getAccessKey() +
-                            "&amount=" + amount +
-                            "&extraData=" + normalizedExtraData +
-                            "&message=" + normalizedMessage +
-                            "&orderId=" + orderId +
-                            "&orderInfo=" + orderInfo +
-                            "&orderType=" + orderType +
-                            "&partnerCode=" + partnerCode +
-                            "&payType=" + payType +
-                            "&requestId=" + requestId +
-                            "&responseTime=" + responseTime +
-                            "&resultCode=" + normalizedResultCode +
-                            "&transId=" + transId;
-
-            String rawSignatureAlt =
+            // RAW SIGNATURE GIỐNG C#
+            String rawSignature =
                     "partnerCode=" + partnerCode +
-                            "&accessKey=" + moMoConfig.getAccessKey() +
+                            "&accessKey=" + accessKey +
                             "&requestId=" + requestId +
                             "&amount=" + amount +
                             "&orderId=" + orderId +
                             "&orderInfo=" + orderInfo +
                             "&orderType=" + orderType +
                             "&transId=" + transId +
-                            "&resultCode=" + normalizedResultCode +
-                            "&message=" + normalizedMessage +
-                            "&payType=" + payType +
+                            "&message=" + message +
+                            "&localMessage=" + localMessage +
                             "&responseTime=" + responseTime +
-                            "&extraData=" + normalizedExtraData;
+                            "&errorCode=" + errorCode +
+                            "&payType=" + payType +
+                            "&extraData=" + extraData;
 
-            String rawSignatureWithLocal = rawSignaturePrimary + "&localMessage=" + normalizedLocalMessage;
+            String calculatedSignature = PaymentUtils.hmacSHA256(
+                    moMoConfig.getSecretKey(),
+                    rawSignature
+            );
 
-            // Verify signature
-            boolean signatureValid = false;
-            String calculatedSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignaturePrimary);
-            if (calculatedSignature.equals(receivedSignature)) {
-                signatureValid = true;
-            } else {
-                String altSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignatureAlt);
-                if (altSignature.equals(receivedSignature)) {
-                    signatureValid = true;
-                } else {
-                    String localSignature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignatureWithLocal);
-                    if (localSignature.equals(receivedSignature)) {
-                        signatureValid = true;
-                    }
-                }
-            }
+            if (!calculatedSignature.equals(receivedSignature)) {
+                log.error("Invalid signature");
+                log.error("Expected: {}", calculatedSignature);
+                log.error("Received: {}", receivedSignature);
 
-            if (!signatureValid) {
-                log.error("Invalid MoMo signature");
                 return PaymentCallbackResponse.builder()
                         .paymentStatus("FAILED")
                         .message("Chữ ký không hợp lệ")
@@ -226,47 +209,49 @@ public class MoMoService {
                         .build();
             }
 
-            // Extract booking ID from order ID
+            log.info("Signature verified successfully!");
+
             String bookingId = orderId.split("_")[0];
 
-            // Determine payment status
-            String paymentStatus = "0".equals(normalizedResultCode) ? "SUCCESS" : "FAILED";
-            String statusMessage = "0".equals(normalizedResultCode) 
-                    ? "Thanh toán thành công" 
-                    : "Thanh toán thất bại: " + normalizedMessage;
+            String paymentStatus = "0".equals(errorCode) ? "SUCCESS" : "FAILED";
+            String normalizedMessage = getResultCodeMessage(errorCode);
 
+            String statusMessage = "0".equals(errorCode) ? "Thanh toán thành công" : "Thanh toán thất bại: " + normalizedMessage;
             log.info("MoMo payment status: {} for booking: {}", paymentStatus, bookingId);
-
             if ("SUCCESS".equals(paymentStatus)) {
-                bookingRepository.findById(bookingId).ifPresent(booking -> {
-                    booking.setBookingStatus(BookingStatus.PENDING);
-                    if (booking.getPaymentNo() != null) {
-                        booking.getPaymentNo().setPaymentStatus(true);
-                        paymentRepository.save(booking.getPaymentNo());
-                    }
-                    bookingRepository.save(booking);
-                    if (booking.getCustomerNo() != null) {
-                        messagingTemplate.convertAndSend(
-                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
-                                "PAYMENT_SUCCESS:" + bookingId);
-                    }
-                });
-            } else {
-                bookingRepository.findById(bookingId).ifPresent(booking -> {
-                    if (booking.getCustomerNo() != null) {
-                        messagingTemplate.convertAndSend(
-                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
-                                "PAYMENT_FAILED:" + bookingId);
-                    }
-                });
+                bookingRepository.findById(bookingId).ifPresent(
+                        booking -> { booking.setBookingStatus(BookingStatus.PENDING);
+                            if (booking.getPaymentNo() != null) {
+                                booking.getPaymentNo().setPaymentStatus(true);
+                                paymentRepository.save(booking.getPaymentNo());
+                            }
+                            bookingRepository.save(booking);
+                            if (booking.getCustomerNo() != null) {
+                                messagingTemplate.convertAndSend( "/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_SUCCESS:" + bookingId);
+                            }
+                            GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
+                            List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
+                                    geo.geometry.location.lat,
+                                    geo.geometry.location.lng,
+                                    5.0);
+                            dispatcherService.startDispatching(bookingId, candidates);
+                        });
             }
-
+            else {
+                bookingRepository.findById(bookingId).ifPresent(
+                        booking -> {
+                            if (booking.getCustomerNo() != null) {
+                                messagingTemplate.convertAndSend( "/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_FAILED:" + bookingId);
+                            }
+                        });
+            }
             return PaymentCallbackResponse.builder()
                     .bookingId(bookingId)
                     .orderId(orderId)
                     .transactionId(transId)
                     .amount(Long.parseLong(amount))
                     .paymentStatus(paymentStatus)
+                    .message(message)
                     .paymentMethod("MOMO")
                     .message(statusMessage)
                     .paymentTime(responseTime)
@@ -276,11 +261,12 @@ public class MoMoService {
             log.error("Error handling MoMo callback: {}", e.getMessage());
             return PaymentCallbackResponse.builder()
                     .paymentStatus("FAILED")
-                    .message("Lỗi xử lý callback: " + e.getMessage())
+                    .message("Lỗi xử lý callback")
                     .paymentMethod("MOMO")
                     .build();
         }
     }
+
 
     /**
      * Query MoMo transaction status

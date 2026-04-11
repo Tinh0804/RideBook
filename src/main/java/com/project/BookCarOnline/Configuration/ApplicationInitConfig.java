@@ -43,23 +43,24 @@ public class ApplicationInitConfig {
     private static final String ADMIN_PASSWORD = "admin";
 
     @Bean
-    // Chỉ chạy logic này nếu cấu hình spring.sql.init.enabled=true (tùy chọn)
-    @ConditionalOnProperty(prefix = "spring.sql", name = "init.enabled", havingValue = "true", matchIfMissing = true)
     ApplicationRunner applicationRunner() {
         return args -> {
-            // 1. Khởi tạo Role ADMIN nếu chưa có
-            Role adminRole = roleRepository.findByRoleName(PredefinedRole.RoleName.ADMIN)
-                    .orElseGet(() -> roleRepository.save(
-                            Role.builder()
-                                    .roleId(PredefinedRole.RoleName.ADMIN)
-                                    .roleName("Quản trị viên")
-                                    .build()
-                    ));
+            log.info("Bắt đầu khởi tạo dữ liệu hệ thống...");
 
-            // 2. Khởi tạo Role CUSTOMER nếu chưa có (Để sẵn cho logic OAuth2)
+            // 1. Khởi tạo Role ADMIN
             if (!roleRepository.existsById(PredefinedRole.RoleName.ADMIN)) {
-                roleRepository.save(Role.builder().roleName(PredefinedRole.RoleName.CUSTOMER).build());
+                roleRepository.save(
+                        Role.builder()
+                                .roleId(PredefinedRole.RoleName.ADMIN) // ID là "ADMIN"
+                                .roleName("Quản trị viên")
+                                .build()
+                );
+                log.info("Đã tạo Role ADMIN");
             }
+
+
+            // Lấy role Admin để gán cho tài khoản (chắc chắn đã tồn tại sau bước 1)
+            Role adminRole = roleRepository.findById(PredefinedRole.RoleName.ADMIN).orElseThrow();
 
             // 3. Khởi tạo tài khoản Admin mặc định
             if (!accountRepository.existsByUserName(ADMIN_USER_NAME)) {
@@ -70,8 +71,11 @@ public class ApplicationInitConfig {
                         .accountStatus(true)
                         .provider(Provider.LOCAL.name().toLowerCase(Locale.ROOT))
                         .build();
-                accountRepository.save(account);
 
+                // Lưu Account trước
+                account = accountRepository.save(account);
+
+                // Sau đó mới tạo Profile Customer cho Admin
                 Customer adminProfile = Customer.builder()
                         .customerName("System Admin")
                         .phone("0366900821")
@@ -80,9 +84,9 @@ public class ApplicationInitConfig {
                         .build();
                 customerRepository.save(adminProfile);
 
-                log.warn("Account Admin khởi tạo thành công với mật khẩu mặc định: {}", ADMIN_PASSWORD);
+                log.warn(">>> Account Admin khởi tạo thành công với mật khẩu: {}", ADMIN_PASSWORD);
             } else {
-                log.info("Tài khoản Admin đã tồn tại, bỏ qua bước khởi tạo.");
+                log.info("Tài khoản Admin đã tồn tại.");
             }
         };
     }
