@@ -4,6 +4,7 @@ import com.nimbusds.jose.JOSEException;
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.AuthenticationRequest;
 import com.project.BookCarOnline.DTO.Request.ExchangeTokenRequest;
+import com.project.BookCarOnline.DTO.Request.ResetPasswordRequest;
 import com.project.BookCarOnline.DTO.Response.AuthenticationResponse;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
@@ -18,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.text.ParseException;
 
@@ -87,5 +89,24 @@ public class AuthenticationController {
     }
 
 
+    @GetMapping("/check-phone")
+    public APIResponse<Boolean> checkPhone(@RequestParam("phone") String phone) {
+        boolean exists = service.checkPhoneExist(phone);
+        return APIResponse.<Boolean>builder()
+                .result(exists)
+                .status(exists ? 200 : 404)
+                .message(exists ? "Phone exists" : "Phone does not exist")
+                .build();
+    }
+
+    @PutMapping("/reset-password")
+    public APIResponse<Boolean> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        service.resetPassword(request.getPhone(), request.getNewPassword());
+        return APIResponse.<Boolean>builder()
+                .result(true)
+                .status(200)
+                .message("Password updated successfully")
+                .build();
+    }
 
 }

@@ -220,5 +220,15 @@ public class AuthenticationService {
                 .build();
     }
 
+    public boolean checkPhoneExist(String phone) {
+        return accountRepository.findByUserName(phone).isPresent();
+    }
+
+    public void resetPassword(String phone, String newPassword) {
+        Account account = accountRepository.findByUserName(phone)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        account.setPassWord(encoder.encode(newPassword));
+        accountRepository.save(account);
+    }
 
 }
