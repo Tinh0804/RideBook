@@ -5,6 +5,7 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.validator.constraints.UUID;
 
+import java.sql.Timestamp;
 import java.time.LocalTime;
 import java.util.Date;
 

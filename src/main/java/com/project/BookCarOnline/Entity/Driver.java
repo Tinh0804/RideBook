@@ -23,7 +23,7 @@ public class Driver {
     private String driverId;
 
     @ManyToOne
-    @JoinColumn(name = "ID_LOAIXENO", referencedColumnName = "ID_LOAIXE",columnDefinition = "VARCHAR(5)")
+    @JoinColumn(name = "ID_LOAIXENO", referencedColumnName = "ID_LOAIXE")
     private VehicleType vehicleType;
 
     @Column(name = "TENTX")

@@ -37,16 +37,14 @@ public class RatingService {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Custom error in real world
         }
 
-        if (ratingRepository.findByBookingId(booking.getBookingId()).isPresent()) {
+        if (ratingRepository.findByBookingNo_BookingId(booking.getBookingId()).isPresent()) {
             throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION); // Already rated
         }
 
         Rating rating = Rating.builder()
-                .bookingId(booking.getBookingId())
-                .customerId(booking.getCustomerNo().getCustomerId())
-                .driverId(booking.getDriverNo() != null ? booking.getDriverNo().getDriverId() : null)
-                .score(request.getScore())
-                .review(request.getReview())
+                .bookingNo(booking)
+                .score(request.getRating())
+                .review(request.getFeedback())
                 .createdAt(new Date())
                 .build();
 
@@ -54,7 +52,9 @@ public class RatingService {
     }
 
     public List<RatingResponse> getRatingsByDriverId(String driverId) {
-        List<Rating> ratings = ratingRepository.findByDriverId(driverId);
+        List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
+        List<String> bookingIds = driverBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
+        List<Rating> ratings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
         return ratings.stream().map(ratingMapper::toRatingResponse).collect(Collectors.toList());
     }
 }

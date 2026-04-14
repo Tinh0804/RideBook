@@ -90,6 +90,7 @@ public class RideDispatcherService {
 
                 // Nếu khách hàng chủ động hủy chuyến trong lúc đang tìm tài xế
                 if (BookingStatus.CANCELLED.equals(status)) {
+                    bookingRepository.deleteById(bookingId);
                     return false;
                 }
             } catch (InterruptedException e) {
@@ -104,9 +105,8 @@ public class RideDispatcherService {
     protected void cancelBookingAutomatically(String bookingId) {
         bookingRepository.findById(bookingId).ifPresent(booking -> {
             if (BookingStatus.PENDING.equals(booking.getBookingStatus())) {
-                booking.setBookingStatus(BookingStatus.CANCELLED);
-                bookingRepository.save(booking);
                 log.warn("Không có tài xế nhận chuyến {}. Hệ thống tự động hủy.", bookingId);
+                bookingRepository.deleteById(bookingId);
                 // Thông báo cho khách hàng qua WebSocket
                 messagingTemplate.convertAndSend("/topic/customer/" + booking.getCustomerNo().getCustomerId(), "NO_DRIVER_FOUND");
             }

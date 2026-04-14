@@ -21,14 +21,12 @@ public class Rating {
     @Column( name ="ID_DANHGIA",nullable = false, unique = true,length = 36)
     private String ratingId;
 
-    @Column(name = "ID_DATXENO",unique = true,columnDefinition = "VARCHAR(36)")
-    private String bookingId;
+    @ManyToOne
+    @JoinColumn(name = "ID_DATXENO", referencedColumnName = "ID_DATXE",columnDefinition = "VARCHAR(36)")
+    private Booking bookingNo;
 
-    @Column(name = "ID_KHNO",unique = true,columnDefinition = "VARCHAR(36)")
-    private String customerId;
-
-    @Column(name = "ID_TXNO",unique = true,columnDefinition = "VARCHAR(36)")
-    private String driverId;
+    @Column(name = "LOAIDANHGIA")
+    private String ratingType;
 
     @Column(name = "DIEM")
     private double score;
@@ -38,9 +36,4 @@ public class Rating {
 
     @Column(name = "NGAY_TAO")
     private Date createdAt;
-
-
-
-
-
 }

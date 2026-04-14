@@ -33,9 +33,15 @@ public class Booking {
     @JoinColumn(name = "ID_THANHTOANNO", referencedColumnName = "ID_THANHTOAN",columnDefinition = "VARCHAR(36)")
     private Payment paymentNo;
 
+
     @ManyToOne
     @JoinColumn(name = "ID_KHUYENMAINO", referencedColumnName = "ID_KHUYENMAI",columnDefinition = "VARCHAR(36)")
     private Promotion promotionNo;
+
+    @ManyToOne
+    @JoinColumn(name = "ID_LOAIXENO", referencedColumnName = "ID_LOAIXE",columnDefinition = "VARCHAR(36)")
+    private VehicleType vehicleTypeNo;
+
 
     @Column(name = "DIEMDON")
     private String pickupLocation;
@@ -64,13 +70,13 @@ public class Booking {
     private Double distance;
 
 //    // Extra field not in original DB - keep for future use
-    @Column(name = "THOIGIAN")
-    private Double duration;
-
-    @Column(name = "DIEMSO")
-    private Integer rating;
-
-    @Column(name = "DANHGIA", length = 500)
-    private String review;
+//     @Column(name = "THOIGIAN")
+//     private Double duration;
+//
+//     @Column(name = "DIEMSO")
+//     private Integer rating;
+//
+//     @Column(name = "DANHGIA", length = 500)
+//     private String review;
 
 }

@@ -81,6 +81,7 @@ public class BookingController {
     }
 
 
+
     @GetMapping("/driver/{driverId}")
     @SecurityRequirement(name = "bearerAuth")
     public APIResponse<List<BookingDetailResponse>> getBookingsByDriver(@PathVariable String driverId) {
@@ -155,5 +156,14 @@ public class BookingController {
                 .build();
     }
 
+    @PostMapping("/estimate-price")
+    public APIResponse<com.project.BookCarOnline.DTO.Response.EstimatePriceResponse> estimatePrice(@Valid @RequestBody com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
+        log.info("REST API: POST /bookings/estimate-price - Estimating price for vehicle type {}", request.getVehicleTypeId());
+        return APIResponse.<com.project.BookCarOnline.DTO.Response.EstimatePriceResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy giá ước tính thành công")
+                .result(bookingService.estimatePrice(request))
+                .build();
+    }
 
 }

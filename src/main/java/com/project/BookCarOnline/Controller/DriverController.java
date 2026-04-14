@@ -58,6 +58,26 @@ public class DriverController {
                 .result(response)
                 .build();
     }
+
+    @GetMapping("/my-dashboard")
+    public APIResponse<com.project.BookCarOnline.DTO.Response.DriverDashboardResponse> getMyDashboard(){
+        com.project.BookCarOnline.DTO.Response.DriverDashboardResponse response = driverService.getDriverDashboard();
+        return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverDashboardResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Thống kê tài xế")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/my-revenue")
+    public APIResponse<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse> getMyRevenue(){
+        com.project.BookCarOnline.DTO.Response.DriverRevenueResponse response = driverService.getDriverRevenue();
+        return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy dữ liệu thống kê thành công")
+                .result(response)
+                .build();
+    }
     @PutMapping("/status-activity")
     public APIResponse<Boolean> updateStatusActive(){
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));

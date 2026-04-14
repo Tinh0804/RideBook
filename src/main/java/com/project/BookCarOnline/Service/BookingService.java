@@ -5,8 +5,10 @@ import com.project.BookCarOnline.DTO.Request.CreateBookingRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
+import com.project.BookCarOnline.DTO.Response.EstimatePriceResponse;
 import com.project.BookCarOnline.Entity.*;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import com.project.BookCarOnline.Entity.Enum.PaymentMethod;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
@@ -23,6 +25,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 
 @Slf4j
@@ -38,7 +41,30 @@ public class BookingService {
     RideDispatcherService dispatcherService;
     PaymentRepository paymentRepository;
     PaymentTimeoutService paymentTimeoutService;
+    VehicleTypeRepository vehicleTypeRepository;
+    VehicleTypeService vehicleTypeService;
+    SimpMessagingTemplate messagingTemplate;
 
+    public EstimatePriceResponse estimatePrice(com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
+        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        double basePrice = vehicleType.getPricePerKm() * request.getDistance();
+        double surcharge = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
+        double surgeMultiplier = 1.0;
+
+        // Note: Estimate price assumes basic surge (this can be calculated using real-time driver availability if needed)
+        double finalPrice = basePrice * surcharge * surgeMultiplier;
+
+        return com.project.BookCarOnline.DTO.Response.EstimatePriceResponse.builder()
+                .vehicleTypeId(vehicleType.getVehicleTypeId())
+                .distance(request.getDistance())
+                .basePrice(basePrice)
+                .surcharge(surcharge)
+                .surgeMultiplier(surgeMultiplier)
+                .totalPrice(finalPrice)
+                .build();
+    }
 
     @Transactional
     public BookingDetailResponse createBooking(CreateBookingRequest request) {
@@ -62,24 +88,29 @@ public class BookingService {
             surgeMultiplier = 1.3; // Tăng 30% giá nếu chỉ có dưới 3 tài xế rảnh
         }
 
-        double basePrice = request.getDistance() * 15000;
-        double finalPrice = basePrice * surgeMultiplier;
+        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        double basePrice = vehicleType.getPricePerKm() * request.getDistance();
+        double surcharge = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
+        double finalPrice = basePrice * surcharge * surgeMultiplier;
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         // 3. Lưu Booking với giá đã tính
         String method = request.getPaymentMethod() != null ? request.getPaymentMethod() : "ONLINE";
-        boolean cash = "CASH".equalsIgnoreCase(method);
+        boolean cash = PaymentMethod.CASH.name().equalsIgnoreCase(method);
 
         Payment payment = Payment.builder()
-                .paymentType(cash ? "CASH" : "ONLINE")
+                .paymentType(cash ?  PaymentMethod.CASH.name() : "ONLINE")
                 .amount(finalPrice)
                 .paymentStatus(cash)
                 .build();
         Payment savedPayment = paymentRepository.save(payment);
 
         Booking booking = Booking.builder()
+                .vehicleTypeNo(vehicleType)
                 .customerNo(customer)
                 .pickupLocation(request.getPickupLocation())
                 .dropoffLocation(request.getDropoffLocation())
@@ -193,10 +224,17 @@ public class BookingService {
             case COMPLETED -> booking.setArrivalTime(now);
         }
         booking.setBookingStatus(newStatus);
+        
+        Booking updatedBooking = bookingRepository.save(booking);
 
+        // Phát thông báo trạng thái qua WebSocket đến Khách Hàng
+        if (updatedBooking.getCustomerNo() != null) {
+            String payload = "STATUS_UPDATE:" + bookingId + ":" + newStatus.name();
+            messagingTemplate.convertAndSend("/topic/customer/" + updatedBooking.getCustomerNo().getCustomerId(), payload);
+        }
 
         log.info("Booking status updated successfully for booking {}: {}", bookingId, newStatus);
-        return mapToBookingDetailResponse(bookingRepository.save(booking));
+        return mapToBookingDetailResponse(updatedBooking);
     }
 
 
@@ -288,7 +326,7 @@ public class BookingService {
                 .arrivalTime(booking.getArrivalTime())
                 .bookingStatus(booking.getBookingStatus())
                 .distance(booking.getDistance())
-                .duration(booking.getDuration())
+                // .duration(booking.getDuration())
                 .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentType() : null)
                 .paymentStatus(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentStatus() : null)
                 .promotionCode(booking.getPromotionNo() != null ? booking.getPromotionNo().getPromotionId() : null)

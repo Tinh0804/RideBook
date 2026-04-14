@@ -4,6 +4,9 @@ import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
 import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
 import com.project.BookCarOnline.DTO.Response.DriverResponse;
+import com.project.BookCarOnline.DTO.Response.DriverRevenueResponse;
+import com.project.BookCarOnline.DTO.Response.RevenueDetailDTO;
+import com.project.BookCarOnline.DTO.Response.RevenueSummaryDTO;
 import com.project.BookCarOnline.Entity.Account;
 import com.project.BookCarOnline.Entity.Driver;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
@@ -21,14 +24,25 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import com.project.BookCarOnline.DTO.Response.DriverDashboardResponse;
+import com.project.BookCarOnline.Entity.Booking;
+import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import com.project.BookCarOnline.Entity.Rating;
+import com.project.BookCarOnline.Repository.RideBookRepository;
+import com.project.BookCarOnline.Repository.RatingRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,6 +55,8 @@ public class DriverService {
     RoleRepository roleRepository;
     DriverMapper mapper;
     PasswordEncoder passwordEncoder;
+    RideBookRepository rideBookRepository;
+    RatingRepository ratingRepository;
 
     FirebaseStorageService firebaseStorageService;
 
@@ -50,6 +66,111 @@ public class DriverService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         return mapper.toDriverDetailResponse(driver);
+    }
+
+    public DriverDashboardResponse getDriverDashboard() {
+        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+        List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
+
+        long totalRides = 0;
+        double totalIncome = 0.0;
+        double todayIncome = 0.0;
+        LocalDate today = LocalDate.now();
+
+        for (Booking b : driverBookings) {
+            if (b.getBookingStatus() == BookingStatus.COMPLETED) {
+                totalRides++;
+                if (b.getTotalPrice() != null) {
+                    totalIncome += b.getTotalPrice();
+                    if (b.getBookingTime() != null) {
+                        LocalDate bookingDate = b.getBookingTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                        if (bookingDate.isEqual(today)) {
+                            todayIncome += b.getTotalPrice();
+                        }
+                    }
+                }
+            }
+        }
+
+        List<String> bookingIds = driverBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
+        List<Rating> driverRatings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
+        double averageRating = 0.0;
+        if (!driverRatings.isEmpty()) {
+            double sum = 0;
+            for (Rating r : driverRatings) {
+                sum += r.getScore();
+            }
+            averageRating = sum / driverRatings.size();
+        } else {
+            averageRating = 5.0; // Default rating
+        }
+
+        return DriverDashboardResponse.builder()
+                .totalRides(totalRides)
+                .totalIncome(totalIncome)
+                .todayIncome(todayIncome)
+                .averageRating(Math.round(averageRating * 10.0) / 10.0)
+                .build();
+    }
+
+    public DriverRevenueResponse getDriverRevenue() {
+        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
+        
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        long totalTrips = 0;
+        double totalRevenue = 0.0;
+        
+        Map<String, RevenueDetailDTO> detailsMap = new TreeMap<>();
+        
+        for (Booking b : driverBookings) {
+            if (b.getBookingStatus() == BookingStatus.COMPLETED) {
+                totalTrips++;
+                double revenue = b.getTotalPrice() != null ? b.getTotalPrice() : 0.0;
+                totalRevenue += revenue;
+                
+                if (b.getBookingTime() != null) {
+                    LocalDate date = b.getBookingTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                    String timeLabel = date.format(formatter);
+                    
+                    if (detailsMap.containsKey(timeLabel)) {
+                        RevenueDetailDTO detail = detailsMap.get(timeLabel);
+                        detail.setTripCount(detail.getTripCount() + 1);
+                        detail.setRevenue(detail.getRevenue() + revenue);
+                    } else {
+                        detailsMap.put(timeLabel, RevenueDetailDTO.builder()
+                                .timeLabel(timeLabel)
+                                .tripCount(1)
+                                .revenue(revenue)
+                                .build());
+                    }
+                }
+            }
+        }
+        
+        RevenueSummaryDTO summary = RevenueSummaryDTO.builder()
+                .totalRevenue(totalRevenue)
+                .totalTrips(totalTrips)
+                .build();
+                
+        List<RevenueDetailDTO> details = detailsMap.values().stream()
+                .sorted((d1, d2) -> {
+                    try {
+                        LocalDate date1 = LocalDate.parse(d1.getTimeLabel(), formatter);
+                        LocalDate date2 = LocalDate.parse(d2.getTimeLabel(), formatter);
+                        return date2.compareTo(date1); // Descending
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                })
+                .collect(Collectors.toList());
+                
+        return DriverRevenueResponse.builder()
+                .summary(summary)
+                .details(details)
+                .build();
     }
 
     @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")

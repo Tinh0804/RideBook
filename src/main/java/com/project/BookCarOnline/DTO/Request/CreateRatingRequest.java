@@ -18,7 +18,7 @@ public class CreateRatingRequest {
 
     @Min(value = 1, message = "Điểm đánh giá phải từ 1 đến 5")
     @Max(value = 5, message = "Điểm đánh giá phải từ 1 đến 5")
-    double score;
+    double rating;
 
-    String review;
+    String feedback;
 }

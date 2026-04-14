@@ -2,11 +2,13 @@ server:
     servlet:
         context-path: "/RideBook"
 spring:
+    main:
+        allow-bean-definition-overriding: true
     application:
         name: BookCarOnline
     data:
         mongodb:
-            uri: mongodb://sa:%40Tinh0804@localhost:27017/Chat_RideBook?authSource=admin
+            uri: mongodb://sa:%40Tinh0804@localhost:27017/RideBookDB?authSource=admin
     datasource:
         url: jdbc:sqlserver://localhost:1433;databaseName=RideBookDB;encrypt=true;trustServerCertificate=true;
         username: sa

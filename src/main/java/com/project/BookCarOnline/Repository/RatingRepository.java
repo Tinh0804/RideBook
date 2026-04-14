@@ -9,6 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface RatingRepository extends JpaRepository<Rating, String> {
-    List<Rating> findByDriverId(String driverId);
-    Optional<Rating> findByBookingId(String bookingId);
+    List<Rating> findByBookingNo_BookingIdIn(List<String> bookingIds);
+    Optional<Rating> findByBookingNo_BookingId(String bookingId);
 }
