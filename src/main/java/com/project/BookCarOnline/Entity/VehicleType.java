@@ -30,7 +30,4 @@ public class VehicleType {
     @Column(name = "SOCHONGOI")
     private Integer maxPassengers;
 
-
-
-    
 }

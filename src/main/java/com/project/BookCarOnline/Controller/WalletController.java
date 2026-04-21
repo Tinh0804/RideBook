@@ -4,6 +4,7 @@ import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.PaymentRequest;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.DTO.Response.WalletResponse;
+import com.project.BookCarOnline.DTO.Response.WalletTransactionResponse;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
 import com.project.BookCarOnline.Entity.WalletTransaction;
 import com.project.BookCarOnline.Exception.AppException;
@@ -19,13 +20,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/wallets")
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
-@PreAuthorize("hasRole("+ PredefinedRole.RoleName.DRIVER +")")
+@PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
 @SecurityRequirement(name = "bearerAuth")
 public class WalletController {
     WalletService walletService;
@@ -41,6 +43,8 @@ public class WalletController {
                 .build();
     }
 
+
+
     @PostMapping("/deposit")
     public APIResponse<PaymentResponse> requestDeposit(@RequestBody PaymentRequest request) {
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
@@ -50,10 +54,11 @@ public class WalletController {
         WalletTransaction txn = walletService.createDepositRequest(driverId, amount);
 
         PaymentResponse paymentResponse =  switch (request.getMethod()) {
-            case VNPAY -> vnPayService.createPayment(request);
-            case MOMO -> moMoService.createPayment(request);
+            case VNPAY -> vnPayService.createTopUpPayment(driverId,request.getAmount(),request.getReturnUrl(),txn.getTransactionId());
+            case MOMO -> moMoService.createTopUpPayment(driverId,request.getAmount(),request.getReturnUrl(),txn.getTransactionId());
             default -> throw new AppException(ErrorCode.INVALID_PAYMENT_METHOD);
         };
+
 
         return APIResponse.<PaymentResponse>builder()
                 .result(paymentResponse)
@@ -87,6 +92,16 @@ public class WalletController {
                     .build();
     }
 
+    @GetMapping("/history-transactions")
+    public APIResponse<List<WalletTransactionResponse>> getTransactionHistory(@RequestParam String walletId) {
+        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
+        List<WalletTransactionResponse> response = walletService.getTransactionHistory(driverId,walletId);
+        return APIResponse.<List<WalletTransactionResponse>>builder()
+                .result(response)
+                .message("Lịch sử giao dịch retrieved successfully")
+                .build();
+    }
+
     /**
      * 4. API IPN (Webhook) dành riêng cho VNPay gọi về (KHÔNG PHẢI APP GỌI)
      * API: GET /api/wallets/vnpay-ipn
@@ -113,4 +128,5 @@ public class WalletController {
                     .build();
         }
     }
+
 }

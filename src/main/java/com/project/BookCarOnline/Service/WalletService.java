@@ -1,6 +1,7 @@
 package com.project.BookCarOnline.Service;
 
 import com.project.BookCarOnline.DTO.Response.WalletResponse;
+import com.project.BookCarOnline.DTO.Response.WalletTransactionResponse;
 import com.project.BookCarOnline.Entity.Driver;
 import com.project.BookCarOnline.Entity.Wallet;
 import com.project.BookCarOnline.Entity.WalletTransaction;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -53,13 +56,22 @@ public class WalletService {
     }
     public WalletResponse getMyBlance(){
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
-        String role = SecurityUtils.getCurrentRole().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
-        if (!role.equals("ROLE_DRIVER"))
-            throw new AppException(ErrorCode.ACCESS_DENIED);
         Wallet wallet = getOrCreateWallet(driverId);
         return mapper.toWalletResponse(wallet);
     }
-
+    public void addBalance(String driverId, Double amount) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        wallet.setBalance(wallet.getBalance() + amount);
+        walletRepository.save(wallet);
+    }
+    public void deductBalance(String driverId, Double amount) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        if (wallet.getBalance() < amount) {
+            throw new IllegalStateException("Số dư không đủ để thực hiện giao dịch");
+        }
+        wallet.setBalance(wallet.getBalance() - amount);
+        walletRepository.save(wallet);
+    }
     /**
      * 2. TẠO LỆNH NẠP TIỀN (Chờ VNPay/MoMo xử lý)
      */
@@ -83,17 +95,22 @@ public class WalletService {
      * 3. XỬ LÝ KẾT QUẢ NẠP TIỀN (Gọi bởi IPN/Callback từ VNPay/MoMo)
      */
     @Transactional
-    public void processPaymentCallback(String transactionId, boolean isSuccess, String referenceId) {
-        WalletTransaction txn = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new IllegalStateException("Không tìm thấy giao dịch"));
+    public boolean processPaymentCallback(String orderId, boolean isSuccess, String momoTransId) {
+        Optional<WalletTransaction> txnOpt = transactionRepository.findById(orderId);
+
+        if (txnOpt.isEmpty()) {
+            log.error("Không tìm thấy giao dịch nạp tiền với ID: {}", orderId);
+            return false;
+        }
+
+        WalletTransaction txn = txnOpt.get();
 
         // Chống lặp giao dịch (Double-spending prevention)
         if (txn.getStatus() != TransactionStatus.PENDING) {
-            log.warn("Giao dịch {} đã được xử lý trước đó với trạng thái {}", transactionId, txn.getStatus());
-            return;
+            log.warn("Giao dịch {} đã được xử lý trước đó với trạng thái {}", orderId, txn.getStatus());
+            return true; // Trả về true vì thực tế nó đã thành công từ trước rồi
         }
-
-        txn.setReferenceId(referenceId);
+        txn.setReferenceId(momoTransId);
 
         if (isSuccess) {
             Wallet wallet = txn.getWallet();
@@ -104,10 +121,11 @@ public class WalletService {
             log.info("Nạp tiền thành công {} cho ví {}", txn.getAmount(), wallet.getWalletId());
         } else {
             txn.setStatus(TransactionStatus.FAILED);
-            log.info("Giao dịch nạp tiền {} thất bại", transactionId);
+            log.info("Giao dịch nạp tiền {} thất bại", orderId);
         }
 
         transactionRepository.save(txn);
+        return true;
     }
 
     /**
@@ -164,5 +182,15 @@ public class WalletService {
 
         transactionRepository.save(txn);
         log.info("Đã trừ {} phí nền tảng từ ví tài xế {} cho chuyến {}", platformFee, driverId, bookingId);
+    }
+
+    public List<WalletTransactionResponse> getTransactionHistory(String driverId,String walletId) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        if (!wallet.getWalletId().equals(walletId)) {
+            throw new AppException(ErrorCode.WALLET_NOT_FOUND);
+        }
+        List<WalletTransaction> transactionHistory = transactionRepository.findByWallet_WalletId(wallet.getWalletId());
+        return mapper.toTransactionHistoryResponse(transactionHistory);
+
     }
 }

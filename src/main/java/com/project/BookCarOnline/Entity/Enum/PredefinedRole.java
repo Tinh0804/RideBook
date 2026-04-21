@@ -23,4 +23,7 @@ public enum PredefinedRole {
         public static final String CUSTOMER = "CUSTOMER";
         public static final String DRIVER = "DRIVER";
     }
+    public static final String HAS_ROLE_ADMIN    = "hasRole('ADMIN')";
+    public static final String HAS_ROLE_DRIVER   = "hasRole('DRIVER')";
+    public static final String HAS_ROLE_CUSTOMER = "hasRole('CUSTOMER')";
 }

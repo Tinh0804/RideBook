@@ -128,15 +128,11 @@ public class AuthenticationService {
 
     }
     private String buildScope(Account account) {
-        StringJoiner stringJoiner = new StringJoiner(" ");
-
-        Role role = account.getRoleNo(); // đây là một object
-        if (role != null) {
-            stringJoiner.add("ROLE_" + role.getRoleId().toUpperCase());
-
+        Role role = account.getRoleNo();
+        if (role == null || role.getRoleId() == null) {
+            return "";
         }
-        log.info(stringJoiner.toString());
-        return stringJoiner.toString();
+        return role.getRoleId().toUpperCase();   // Chỉ "DRIVER" hoặc "CUSTOMER"
     }
 
 

@@ -15,6 +15,7 @@ import com.project.BookCarOnline.Entity.Driver;
 import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.Utils.PaymentUtils;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import jakarta.transaction.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class MoMoService {
     PaymentRepository paymentRepository;
     SimpMessagingTemplate messagingTemplate;
     RideDispatcherService dispatcherService;
+    WalletService walletService;
     DriverRepository driverRepository;
     GoogleMapService googleMapService;
     RestTemplate restTemplate = new RestTemplate();
@@ -54,10 +56,6 @@ public class MoMoService {
      */
     public PaymentResponse createPayment(PaymentRequest request) {
         log.info("Creating MoMo payment for booking: {}", request.getReferenceId());
-
-//        // Validate booking exists
-//        Booking booking = bookingRepository.findById(request.getReferenceId())
-//                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
 
         try {
             // Generate order ID and request ID
@@ -145,6 +143,75 @@ public class MoMoService {
         }
     }
 
+    public PaymentResponse createTopUpPayment(String driverId, double amountValue, String returnUrl,String walletTransactionId) {
+        log.info("Creating MoMo top-up for driver: {}", driverId);
+
+        try {
+            // Sử dụng tiền tố TOPUP_ để đánh dấu giao dịch nạp tiền
+            String orderId = "TOPUP_" + driverId + "_" + walletTransactionId;
+            String requestId = orderId;
+
+            // Nếu không truyền returnUrl riêng thì dùng mặc định
+            String finalReturnUrl = (returnUrl != null && !returnUrl.isEmpty()) ? returnUrl : moMoConfig.getReturnUrl();
+            String notifyUrl = moMoConfig.getNotifyUrl();
+            String extraData = "";
+            long amount = Math.round(amountValue);
+            String orderInfo = "Nạp tiền vào ví tài xế " + driverId;
+
+            String rawSignature =
+                    "partnerCode=" + moMoConfig.getPartnerCode() +
+                            "&accessKey=" + moMoConfig.getAccessKey() +
+                            "&requestId=" + requestId +
+                            "&amount=" + amount +
+                            "&orderId=" + orderId +
+                            "&orderInfo=" + orderInfo +
+                            "&returnUrl=" + finalReturnUrl +
+                            "&notifyUrl=" + notifyUrl +
+                            "&extraData=" + extraData;
+
+            String signature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignature);
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("partnerCode", moMoConfig.getPartnerCode());
+            requestBody.put("accessKey", moMoConfig.getAccessKey());
+            requestBody.put("requestType", moMoConfig.getRequestType()); // Ví dụ: captureWallet
+            requestBody.put("notifyUrl", notifyUrl);
+            requestBody.put("returnUrl", finalReturnUrl);
+            requestBody.put("orderId", orderId);
+            requestBody.put("amount", String.valueOf(amount));
+            requestBody.put("orderInfo", orderInfo);
+            requestBody.put("requestId", requestId);
+            requestBody.put("extraData", extraData);
+            requestBody.put("signature", signature);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            log.info("Sending TopUp request to MoMo API: {}", moMoConfig.getApiUrl());
+            ResponseEntity<Map> response = restTemplate.postForEntity(moMoConfig.getApiUrl(), entity, Map.class);
+            Map<String, Object> responseBody = response.getBody();
+
+            if (responseBody != null && "0".equals(String.valueOf(responseBody.get("errorCode")))) {
+                String payUrl = (String) responseBody.get("payUrl");
+                return PaymentResponse.builder()
+                        .status("SUCCESS")
+                        .message("Tạo link nạp tiền MoMo thành công")
+                        .paymentUrl(payUrl)
+                        .orderId(orderId)
+                        .amount(amountValue)
+                        .paymentMethod("MOMO")
+                        .build();
+            } else {
+                String errorMessage = responseBody != null ? String.valueOf(responseBody.get("message")) : "Unknown error";
+                throw new IllegalStateException("Tạo thanh toán nạp tiền MoMo thất bại: " + errorMessage);
+            }
+        } catch (Exception e) {
+            log.error("Error creating MoMo top-up: {}", e.getMessage());
+            throw new IllegalStateException("Lỗi khi tạo nạp tiền MoMo: " + e.getMessage());
+        }
+    }
+    @Transactional
     public PaymentCallbackResponse handleCallback(Map<String, String> params) {
 
         log.info("Handling MoMo callback");
@@ -211,47 +278,82 @@ public class MoMoService {
 
             log.info("Signature verified successfully!");
 
-            String bookingId = orderId.split("_")[0];
+//            String bookingId = orderId.split("_")[0];
 
             String paymentStatus = "0".equals(errorCode) ? "SUCCESS" : "FAILED";
             String normalizedMessage = getResultCodeMessage(errorCode);
 
             String statusMessage = "0".equals(errorCode) ? "Thanh toán thành công" : "Thanh toán thất bại: " + normalizedMessage;
-            log.info("MoMo payment status: {} for booking: {}", paymentStatus, bookingId);
+            log.info("MoMo payment status: {} for booking: {}", paymentStatus, orderId);
             if ("SUCCESS".equals(paymentStatus)) {
-                bookingRepository.findById(bookingId).ifPresent(
-                        booking -> { booking.setBookingStatus(BookingStatus.PENDING);
-                            if (booking.getPaymentNo() != null) {
-                                booking.getPaymentNo().setPaymentStatus(true);
-                                paymentRepository.save(booking.getPaymentNo());
-                            }
-                            bookingRepository.save(booking);
-                            if (booking.getCustomerNo() != null) {
-                                messagingTemplate.convertAndSend( "/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_SUCCESS:" + bookingId);
-                            }
-                            GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
-                            List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
-                                    geo.geometry.location.lat,
-                                    geo.geometry.location.lng,
-                                    5.0);
-                            dispatcherService.startDispatching(bookingId, candidates);
-                        });
+                // LUỒNG 1: XỬ LÝ NẠP TIỀN VÍ TÀI XẾ (Bắt đầu bằng TOPUP_)
+                if (orderId.startsWith("TOPUP_")) {
+                    String driverId = orderId.split("_")[1];
+                    long topUpAmount = Long.parseLong(amount);
+                    String walletTransactionId = orderId.split("_")[2];
+
+                    driverRepository.findById(driverId).ifPresent(driver -> {
+                        boolean isProcessed = walletService.processPaymentCallback(walletTransactionId, true, transId);
+
+                        if (isProcessed) {
+                            messagingTemplate.convertAndSend(
+                                    "/topic/driver/" + driverId,
+                                    "TOPUP_SUCCESS:" + topUpAmount);
+                            log.info("Cộng {} VND vào ví tài xế {} thành công qua MoMo", topUpAmount, driverId);
+                        } else {
+                            log.error("Xử lý cộng tiền ví thất bại do không tìm thấy giao dịch {}", orderId);
+                        }
+                    });
+                }
+                // LUỒNG 2: XỬ LÝ THANH TOÁN CHUYẾN XE
+                else {
+                    String bookingId = orderId.split("_")[0];
+                    bookingRepository.findById(bookingId).ifPresent(
+                            booking -> {
+                                booking.setBookingStatus(BookingStatus.PENDING);
+                                if (booking.getPaymentNo() != null) {
+                                    booking.getPaymentNo().setPaymentStatus(true);
+                                    paymentRepository.save(booking.getPaymentNo());
+                                }
+                                bookingRepository.save(booking);
+
+                                if (booking.getCustomerNo() != null) {
+                                    messagingTemplate.convertAndSend("/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_SUCCESS:" + bookingId);
+                                }
+
+                                GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
+                                List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
+                                        geo.geometry.location.lat,
+                                        geo.geometry.location.lng,
+                                        5.0);
+                                dispatcherService.startDispatching(bookingId, candidates);
+                            });
+                }
+            } else {
+                // Xử lý thất bại
+                if (orderId.startsWith("TOPUP_")) {
+                    String driverId = orderId.split("_")[1];
+                    messagingTemplate.convertAndSend("/topic/driver/" + driverId, "TOPUP_FAILED:" + errorCode);
+                } else {
+                    String bookingId = orderId.split("_")[0];
+                    bookingRepository.findById(bookingId).ifPresent(
+                            booking -> {
+                                if (booking.getCustomerNo() != null) {
+                                    messagingTemplate.convertAndSend("/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_FAILED:" + bookingId);
+                                }
+                            });
+                }
             }
-            else {
-                bookingRepository.findById(bookingId).ifPresent(
-                        booking -> {
-                            if (booking.getCustomerNo() != null) {
-                                messagingTemplate.convertAndSend( "/topic/customer/" + booking.getCustomerNo().getCustomerId(), "PAYMENT_FAILED:" + bookingId);
-                            }
-                        });
-            }
+
+            // Tách bookingId để trả về object. Nếu là TOPUP thì gán bookingId = rỗng hoặc chính orderId để tránh lỗi Null
+            String returnedBookingId = orderId.startsWith("TOPUP_") ? "" : orderId.split("_")[0];
+
             return PaymentCallbackResponse.builder()
-                    .bookingId(bookingId)
+                    .bookingId(returnedBookingId)
                     .orderId(orderId)
                     .transactionId(transId)
                     .amount(Long.parseLong(amount))
                     .paymentStatus(paymentStatus)
-                    .message(message)
                     .paymentMethod("MOMO")
                     .message(statusMessage)
                     .paymentTime(responseTime)

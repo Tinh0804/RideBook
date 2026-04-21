@@ -3,11 +3,10 @@ package com.project.BookCarOnline.Configuration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.core.parameters.P;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -16,10 +15,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
-
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
+@EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
@@ -82,7 +79,7 @@ public class SecurityConfig {
     JwtAuthenticationConverter jwtAuthenticationConverter(){
 
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter=new JwtGrantedAuthoritiesConverter();
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");//mặt định là SCOPE_(do ở phần generate token đã fix ROLE + role.getName() nên không cần set ROLE_)
+        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");//mặt định là SCOPE_(do ở phần generate token đã fix ROLE + role.getName() nên không cần set ROLE_)
         jwtGrantedAuthoritiesConverter.setAuthoritiesClaimName("scope"); // Đọc từ scope
 
         JwtAuthenticationConverter jwtAuthenticationConverter=new JwtAuthenticationConverter();

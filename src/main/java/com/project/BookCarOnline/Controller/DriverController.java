@@ -3,6 +3,7 @@ package com.project.BookCarOnline.Controller;
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
+import com.project.BookCarOnline.DTO.Response.DriverDashboardResponse;
 import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
 import com.project.BookCarOnline.DTO.Response.DriverResponse;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
@@ -39,7 +40,7 @@ public class DriverController {
 
 
     @GetMapping
-    @PreAuthorize("hasRole("+ PredefinedRole.RoleName.ADMIN +")")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public APIResponse<List<DriverDetailResponse>> getAllDrivers() {
         log.info("REST API: GET /drivers - Fetching all drivers");
         List<DriverDetailResponse> drivers = driverService.getAllDrivers();
@@ -60,8 +61,8 @@ public class DriverController {
     }
 
     @GetMapping("/my-dashboard")
-    public APIResponse<com.project.BookCarOnline.DTO.Response.DriverDashboardResponse> getMyDashboard(){
-        com.project.BookCarOnline.DTO.Response.DriverDashboardResponse response = driverService.getDriverDashboard();
+    public APIResponse<DriverDashboardResponse> getMyDashboard(){
+        DriverDashboardResponse response = driverService.getDriverDashboard();
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverDashboardResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Thống kê tài xế")
@@ -90,7 +91,7 @@ public class DriverController {
     }
 
     @GetMapping("/{driverId}")
-    @PreAuthorize("hasRole("+ PredefinedRole.RoleName.ADMIN +")")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public APIResponse<DriverDetailResponse> getDriverById(@PathVariable String driverId) {
         log.info("REST API: GET /drivers/{} - Fetching driver by ID", driverId);
         DriverDetailResponse driver = driverService.getDriverById(driverId);
@@ -154,7 +155,7 @@ public class DriverController {
 
 
     @PutMapping("/{driverId}")
-    @PreAuthorize("hasRole("+ PredefinedRole.RoleName.ADMIN +")")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public APIResponse<DriverDetailResponse> updateDriver(
             @PathVariable String driverId,
             @Valid @RequestBody UpdateDriverRequest request) throws IOException {
@@ -173,7 +174,7 @@ public class DriverController {
 
 
     @DeleteMapping("/{driverId}")
-    @PreAuthorize("hasRole("+ PredefinedRole.RoleName.ADMIN +")")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public APIResponse<Void> deleteDriver(@PathVariable String driverId) {
         log.info("REST API: DELETE /drivers/{} - Deleting driver", driverId);
         driverService.deleteDriver(driverId);

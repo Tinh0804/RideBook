@@ -55,7 +55,8 @@ public enum ErrorCode {
     MISSING_REQUIRED_FIELD(400,"Thiếu trường bắt buộc",HttpStatus.BAD_REQUEST),
 
     NO_DRIVER_AVAILABLE(400,"Không có tài xế khả dụng",HttpStatus.BAD_REQUEST),
-    INVALID_PAYMENT_METHOD(400,"Phương thức thanh toán không hợp lệ",HttpStatus.BAD_REQUEST);
+    INVALID_PAYMENT_METHOD(400,"Phương thức thanh toán không hợp lệ",HttpStatus.BAD_REQUEST),
+    WALLET_NOT_FOUND(404,"Ví không tồn tại",HttpStatus.NOT_FOUND);
 
 
     private final int status;

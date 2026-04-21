@@ -79,7 +79,7 @@ public class DriverService {
         LocalDate today = LocalDate.now();
 
         for (Booking b : driverBookings) {
-            if (b.getBookingStatus() == BookingStatus.COMPLETED) {
+            if (b.getBookingStatus() == BookingStatus.COMPLETED && b.getPickupTime().toLocalDateTime().toLocalDate().equals(today)) {
                 totalRides++;
                 if (b.getTotalPrice() != null) {
                     totalIncome += b.getTotalPrice();
@@ -173,7 +173,7 @@ public class DriverService {
                 .build();
     }
 
-    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
+
     public List<DriverDetailResponse> getAllDrivers() {
         log.info("Fetching all drivers");
         List<Driver> drivers = driverRepository.findAll();
@@ -313,7 +313,6 @@ public class DriverService {
         return mapper.toDriverDetailResponse(updatedDriver);
     }
 
-    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
     @Transactional
     public void deleteDriver(String driverId) {
         log.info("Deleting driver: {}", driverId);
@@ -328,7 +327,6 @@ public class DriverService {
         log.info("Driver deleted successfully: {}", driverId);
     }
 
-    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"'))")
     public DriverDetailResponse getDriverById(String driverId) {
         log.info("Fetching driver by ID: {}", driverId);
         Driver driver = driverRepository.findById(driverId)

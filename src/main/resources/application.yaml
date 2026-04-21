@@ -104,3 +104,6 @@ google:
     maps:
         api-key: "AIzaSyC3Qe2gdrLQ0-Q79IiOUym_hAibXewVfUA"
 
+app:
+    commission:
+        platform-rate: 20

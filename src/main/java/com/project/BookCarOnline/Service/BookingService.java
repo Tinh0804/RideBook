@@ -18,7 +18,10 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -43,7 +46,12 @@ public class BookingService {
     PaymentTimeoutService paymentTimeoutService;
     VehicleTypeRepository vehicleTypeRepository;
     VehicleTypeService vehicleTypeService;
+    WalletService walletService;
     SimpMessagingTemplate messagingTemplate;
+
+    @NonFinal
+    @Value("${app.commission.platform-rate}")
+    protected long platformCommissionRate;
 
     public EstimatePriceResponse estimatePrice(com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
         VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
@@ -54,7 +62,7 @@ public class BookingService {
         double surgeMultiplier = 1.0;
 
         // Note: Estimate price assumes basic surge (this can be calculated using real-time driver availability if needed)
-        double finalPrice = basePrice * surcharge * surgeMultiplier;
+        double finalPrice = Math.round(basePrice * surcharge * surgeMultiplier /1000.0 ) * 1000.0;
 
         return com.project.BookCarOnline.DTO.Response.EstimatePriceResponse.builder()
                 .vehicleTypeId(vehicleType.getVehicleTypeId())
@@ -93,7 +101,8 @@ public class BookingService {
 
         double basePrice = vehicleType.getPricePerKm() * request.getDistance();
         double surcharge = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
-        double finalPrice = basePrice * surcharge * surgeMultiplier;
+        double finalPrice = Math.round(basePrice * surcharge * surgeMultiplier / 1000.0) *1000.0; // Làm tròn đến 0 chữ số thập phân
+
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
@@ -101,6 +110,7 @@ public class BookingService {
         // 3. Lưu Booking với giá đã tính
         String method = request.getPaymentMethod() != null ? request.getPaymentMethod() : "ONLINE";
         boolean cash = PaymentMethod.CASH.name().equalsIgnoreCase(method);
+
 
         Payment payment = Payment.builder()
                 .paymentType(cash ?  PaymentMethod.CASH.name() : "ONLINE")
@@ -221,7 +231,15 @@ public class BookingService {
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
         switch (newStatus){
             case ARRIVED -> booking.setPickupTime(now);
-            case COMPLETED -> booking.setArrivalTime(now);
+            case COMPLETED -> {
+                booking.setArrivalTime(now);
+                if (booking.getPaymentNo() != null && "ONLINE".equalsIgnoreCase(booking.getPaymentNo().getPaymentType())) {
+                    walletService.addBalance(booking.getDriverNo().getDriverId(), booking.getTotalPrice()*(1 - platformCommissionRate));
+                }
+                else{
+                    walletService.deductBalance(booking.getDriverNo().getDriverId(), booking.getTotalPrice()*(platformCommissionRate));
+                }
+            }
         }
         booking.setBookingStatus(newStatus);
         

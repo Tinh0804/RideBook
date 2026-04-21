@@ -14,6 +14,7 @@ import com.project.BookCarOnline.Repository.DriverRepository;
 import com.project.BookCarOnline.Entity.Driver;
 import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.Utils.PaymentUtils;
+import jakarta.transaction.Transactional;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,8 @@ public class VNPayService {
     SimpMessagingTemplate messagingTemplate;
     RideDispatcherService dispatcherService;
     DriverRepository driverRepository;
+
+    WalletService walletService;
     GoogleMapService googleMapService;
 
 
@@ -107,6 +110,53 @@ public class VNPayService {
                 .paymentMethod("VNPAY")
                 .build();
     }
+    @Transactional
+    public PaymentResponse createTopUpPayment(String driverId, double amount, String returnUrl,String walletTransactionId) {
+        log.info("Creating VNPay top-up for driver: {}", driverId);
+
+        // Gắn tiền tố TOPUP_ để dễ dàng phân biệt khi nhận callback
+        String vnpCreateDate = PaymentUtils.getVNPayTimestamp();
+        String orderId = "TOPUP_" + driverId + "_" + walletTransactionId;
+
+        Map<String, String> vnpParams = new java.util.TreeMap<>();
+        long amountInVND = (long) Math.round(amount * 100);
+
+        vnpParams.put("vnp_Version", vnPayConfig.getVersion());
+        vnpParams.put("vnp_Command", vnPayConfig.getCommand());
+        vnpParams.put("vnp_TmnCode", vnPayConfig.getTmnCode());
+        vnpParams.put("vnp_Amount", String.valueOf(amountInVND));
+        vnpParams.put("vnp_CreateDate", vnpCreateDate);
+        vnpParams.put("vnp_CurrCode", "VND");
+        vnpParams.put("vnp_IpAddr", "127.0.0.1");
+        vnpParams.put("vnp_Locale", "vn");
+        vnpParams.put("vnp_OrderInfo", "Nạp tiền vào ví tài xế " + driverId);
+        vnpParams.put("vnp_OrderType", "topup"); // Có thể đổi type theo cấu hình của bạn
+        vnpParams.put("vnp_ReturnUrl", returnUrl != null ? returnUrl : vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_TxnRef", orderId);
+
+        StringBuilder hashData = new StringBuilder();
+        for (Map.Entry<String, String> entry : vnpParams.entrySet()) {
+            if (hashData.length() > 0) {
+                hashData.append("&");
+            }
+            hashData.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+
+        String secureHash = PaymentUtils.hmacSHA512(vnPayConfig.getHashSecret(), hashData.toString());
+        vnpParams.put("vnp_SecureHash", secureHash);
+
+        String paymentUrl = buildUrlWithEncode(vnPayConfig.getApiUrl(), vnpParams);
+
+        return PaymentResponse.builder()
+                .status("SUCCESS")
+                .message("Tạo link nạp tiền VNPay thành công")
+                .paymentUrl(paymentUrl)
+                .orderId(orderId)
+                .amount(amount)
+                .paymentMethod("VNPAY")
+                .build();
+    }
+
     private String buildUrlWithEncode(String baseUrl, Map<String, String> params) {
 
         StringBuilder url = new StringBuilder(baseUrl);
@@ -128,6 +178,7 @@ public class VNPayService {
     /**
      * Handle VNPay callback (IPN - Instant Payment Notification)
      */
+
     public PaymentCallbackResponse handleCallback(Map<String, String> params) {
 
         log.info("Handling VNPay callback...");
@@ -210,37 +261,76 @@ public class VNPayService {
                 ? "Thanh toán thành công"
                 : "Thanh toán thất bại - Mã lỗi: " + vnpResponseCode;
 
-        log.info("Payment status: {} - Booking: {}", paymentStatus, bookingId);
+        log.info("Payment status: {} - TxnRef: {}", paymentStatus, vnpTxnRef);
 
         if ("SUCCESS".equals(paymentStatus)) {
-            bookingRepository.findById(bookingId).ifPresent(booking -> {
-                booking.setBookingStatus(BookingStatus.PENDING);
-                if (booking.getPaymentNo() != null) {
-                    booking.getPaymentNo().setPaymentStatus(true);
-                    paymentRepository.save(booking.getPaymentNo());
-                }
-                bookingRepository.save(booking);
-                if (booking.getCustomerNo() != null) {
-                    messagingTemplate.convertAndSend(
-                            "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
-                            "PAYMENT_SUCCESS:" + bookingId);
-                }
 
-                GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
-                List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
-                        geo.geometry.location.lat,
-                        geo.geometry.location.lng,
-                        5.0);
-                dispatcherService.startDispatching(bookingId, candidates);
-            });
+            // -------------------------------------------------------------
+            // LUỒNG 1: XỬ LÝ NẠP TIỀN VÍ TÀI XẾ (Bắt đầu bằng TOPUP_)
+            // -------------------------------------------------------------
+            if (vnpTxnRef.startsWith("TOPUP_")) {
+                // vnpTxnRef có dạng: TOPUP_{driverId}_{walletTransactionId}
+                String driverId = vnpTxnRef.split("_")[1];
+                long topUpAmount = Long.parseLong(vnpAmount) / 100;
+                String walletTransactionId =  vnpTxnRef.split("_")[2];
+                driverRepository.findById(driverId).ifPresent(driver -> {
+                    boolean isProcessed =  walletService.processPaymentCallback(vnpTransactionNo, true, vnpTransactionNo);
+                    if (isProcessed) {
+                        messagingTemplate.convertAndSend(
+                                "/topic/driver/" + driverId,
+                                "TOPUP_SUCCESS:" + topUpAmount);
+                        log.info("Cộng {} VND vào ví tài xế {} thành công qua VNPAY", topUpAmount, driverId);
+                    } else {
+                        log.error("Xử lý cộng tiền ví thất bại do không tìm thấy giao dịch {}", vnpTransactionNo);
+                    }
+
+                });
+            }
+
+            // LUỒNG 2: XỬ LÝ THANH TOÁN CHUYẾN XE
+            else {
+                bookingId = vnpTxnRef.split("_")[0];
+                String finalBookingId = bookingId;
+                bookingRepository.findById(bookingId).ifPresent(booking -> {
+                    booking.setBookingStatus(BookingStatus.PENDING);
+                    if (booking.getPaymentNo() != null) {
+                        booking.getPaymentNo().setPaymentStatus(true);
+                        paymentRepository.save(booking.getPaymentNo());
+                    }
+                    bookingRepository.save(booking);
+
+                    if (booking.getCustomerNo() != null) {
+                        messagingTemplate.convertAndSend(
+                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                                "PAYMENT_SUCCESS:" + finalBookingId);
+                    }
+
+                    GeocodingResult geo = googleMapService.geocode(booking.getPickupLocation());
+                    List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
+                            geo.geometry.location.lat,
+                            geo.geometry.location.lng,
+                            5.0);
+                    dispatcherService.startDispatching(finalBookingId, candidates);
+                });
+            }
         } else {
-            bookingRepository.findById(bookingId).ifPresent(booking -> {
-                if (booking.getCustomerNo() != null) {
-                    messagingTemplate.convertAndSend(
-                            "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
-                            "PAYMENT_FAILED:" + bookingId);
-                }
-            });
+            // Xử lý thất bại
+            if (vnpTxnRef.startsWith("TOPUP_")) {
+                String driverId = vnpTxnRef.split("_")[1];
+                messagingTemplate.convertAndSend(
+                        "/topic/driver/" + driverId,
+                        "TOPUP_FAILED:" + vnpResponseCode);
+            } else {
+                bookingId = vnpTxnRef.split("_")[0];
+                String finalBookingId = bookingId;
+                bookingRepository.findById(bookingId).ifPresent(booking -> {
+                    if (booking.getCustomerNo() != null) {
+                        messagingTemplate.convertAndSend(
+                                "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                                "PAYMENT_FAILED:" + finalBookingId);
+                    }
+                });
+            }
         }
 
         return PaymentCallbackResponse.builder()

@@ -419,7 +419,8 @@ CREATE INDEX idx_Driver_Location ON TAIXE (VIDO, KINHDO) WHERE TRANGTHAIHD = 1;
 CREATE PROCEDURE Pr_FindAvailableDriversCloserCustomer
     @lat FLOAT,
     @lng FLOAT,
-    @radius FLOAT
+    @radius FLOAT,
+    @vehical_type VARCHAR(36)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -428,8 +429,10 @@ BEGIN
         (6371 * acos(cos(radians(@lat)) * cos(radians(d.VIDO)) 
         * cos(radians(d.KINHDO) - radians(@lng)) + sin(radians(@lat)) 
         * sin(radians(d.VIDO)))) AS Distance
-    FROM TAIXE d
-    WHERE d.TRANGTHAIHD = 1 -- Đang bật app
+    FROM TAIXE d,LOAIXE lx
+    JOIN LOAIXE lx 
+        ON d.ID_LXNO = lx.ID_LOAIXE
+    WHERE d.TRANGTHAIHD = 1   -- Đang bật app 
     AND NOT EXISTS (
         SELECT 1 FROM DATXE b 
         WHERE b.ID_TXNO = d.ID_TX 
