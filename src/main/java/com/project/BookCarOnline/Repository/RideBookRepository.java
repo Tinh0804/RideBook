@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import javax.swing.text.html.Option;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,9 +21,60 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
     BookingStatus findStatusByBookingId(@Param("id") String id);
     @Query("SELECT b.bookingStatus FROM Booking b WHERE b.bookingId = :bookingId")
     BookingStatus findBookingStatusByBookingId(@Param("bookingId") String bookingId);
+
+
+    @Query("""
+            SELECT COUNT(b)
+            FROM Booking b
+            WHERE b.driverNo.driverId = :driverId
+            AND b.bookingStatus = 'COMPLETED'
+        """)
+    long countCompletedRides(@Param("driverId") String driverId);
+
+    @Query("""
+            SELECT SUM(b.totalPrice)
+            FROM Booking b
+            WHERE b.driverNo.driverId = :driverId
+            AND b.bookingStatus = 'COMPLETED'
+        """)
+    Double sumTotalIncome(@Param("driverId") String driverId);
+
+    @Query("""
+        SELECT SUM(b.totalPrice)
+        FROM Booking b
+        WHERE b.driverNo.driverId = :driverId
+        AND b.bookingStatus = 'COMPLETED'
+        AND b.bookingTime >= :startOfDay
+        AND b.bookingTime < :endOfDay
+    """)
+        Double sumTodayIncome(
+                @Param("driverId") String driverId,
+                @Param("startOfDay") LocalDateTime startOfDay,
+                @Param("endOfDay") LocalDateTime endOfDay
+        );
     // Customer bookings
     List<Booking> findByCustomerNo_CustomerIdOrderByBookingTimeDesc(String customerId);
 
+    @Query(value = """
+        SELECT 
+            CAST(b.booking_time AS DATE) AS date,
+            COUNT(*) AS tripCount,
+            SUM(b.total_price) AS revenue
+        FROM BOOKING b
+        WHERE b.driver_id = :driverId
+        AND b.status = 'COMPLETED'
+        GROUP BY CAST(b.booking_time AS DATE)
+        ORDER BY date DESC
+    """, nativeQuery = true)
+    List<Object[]> getRevenueByDate(@Param("driverId") String driverId);
+
+    @Query("""
+        SELECT COUNT(b), SUM(b.totalPrice)
+        FROM Booking b
+        WHERE b.driverNo.driverId = :driverId
+        AND b.bookingStatus = 'COMPLETED'
+    """)
+    Object[] getRevenueSummary(@Param("driverId") String driverId);
     // Driver bookings
     List<Booking> findByDriverNo_DriverIdOrderByBookingTimeDesc(String driverId);
 

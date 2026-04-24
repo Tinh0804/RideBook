@@ -16,20 +16,20 @@ import java.io.Serializable;
 public class VehicleType_Time {
 
     @EmbeddedId
-    private VehicleType_Time_ID id;
+     VehicleType_Time_ID id;
 
     @ManyToOne
     @MapsId("vehicleTypeId")
     @JoinColumn(name = "ID_LOAIXENO",columnDefinition = "VARCHAR(36)")
-    private VehicleType vehicleType;
+     VehicleType vehicleType;
 
     @ManyToOne
     @MapsId("timeId")
     @JoinColumn(name = "ID_GIONO",columnDefinition = "VARCHAR(36)")
-    private Time time;
+     Time time;
 
     @Column(name = "PHUTHU")
-    private double surcharge;
+     double surcharge;
 
 
 }

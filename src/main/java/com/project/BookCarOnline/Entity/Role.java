@@ -21,15 +21,15 @@ public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_VAITRO", nullable = false, unique = true, length = 36)
-    private String roleId;
+     String roleId;
 
     @Column(name = "TENVAITRO",columnDefinition = "NVARCHAR(255)")
-    private String roleName;
+     String roleName;
 
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @OneToMany(mappedBy = "roleNo")
     @JsonIgnore
-    private Set<Account> accounts;
+     Set<Account> accounts;
 
 }

@@ -2,12 +2,16 @@ package com.project.BookCarOnline.Repository;
 
 import com.project.BookCarOnline.Entity.Customer;
 import com.project.BookCarOnline.Entity.Driver;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.query.Procedure;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,4 +63,17 @@ public interface DriverRepository extends JpaRepository<Driver,String> {
             @Param("lng") Double lng,
             @Param("radius") Double radius
     );
+
+    @Modifying
+    @Transactional
+    @Query("""
+        UPDATE Driver d
+        SET d.lastTripTime = :time
+        WHERE d.driverId = :driverId
+    """)
+    void updateLastTripTime(
+            @Param("driverId") String driverId,
+            @Param("time") LocalDateTime time
+    );
+
 }

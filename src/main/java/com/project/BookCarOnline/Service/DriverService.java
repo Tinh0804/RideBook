@@ -33,16 +33,14 @@ import com.project.BookCarOnline.Repository.RatingRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -69,104 +67,113 @@ public class DriverService {
     }
 
     public DriverDashboardResponse getDriverDashboard() {
-        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
 
-        List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
+        long totalRides = rideBookRepository.countCompletedRides(driverId);
+        double totalIncome = Optional.ofNullable(
+                rideBookRepository.sumTotalIncome(driverId)
+        ).orElse(0.0);
 
-        long totalRides = 0;
-        double totalIncome = 0.0;
-        double todayIncome = 0.0;
         LocalDate today = LocalDate.now();
 
-        for (Booking b : driverBookings) {
-            if (b.getBookingStatus() == BookingStatus.COMPLETED && b.getPickupTime().toLocalDateTime().toLocalDate().equals(today)) {
-                totalRides++;
-                if (b.getTotalPrice() != null) {
-                    totalIncome += b.getTotalPrice();
-                    if (b.getBookingTime() != null) {
-                        LocalDate bookingDate = b.getBookingTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                        if (bookingDate.isEqual(today)) {
-                            todayIncome += b.getTotalPrice();
-                        }
-                    }
-                }
-            }
-        }
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+        double todayIncome = Optional.ofNullable(
+                rideBookRepository.sumTodayIncome(driverId,startOfDay,endOfDay)
+        ).orElse(0.0);
 
-        List<String> bookingIds = driverBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
-        List<Rating> driverRatings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
-        double averageRating = 0.0;
-        if (!driverRatings.isEmpty()) {
-            double sum = 0;
-            for (Rating r : driverRatings) {
-                sum += r.getScore();
-            }
-            averageRating = sum / driverRatings.size();
-        } else {
-            averageRating = 5.0; // Default rating
-        }
+        double averageRating = Optional.ofNullable(
+                ratingRepository.getAverageRatingByDriver(driverId)
+        ).orElse(5.0);
 
         return DriverDashboardResponse.builder()
                 .totalRides(totalRides)
                 .totalIncome(totalIncome)
                 .todayIncome(todayIncome)
-                .averageRating(Math.round(averageRating * 10.0) / 10.0)
+                .averageRating(Math.round(averageRating))
                 .build();
     }
 
     public DriverRevenueResponse getDriverRevenue() {
-        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
-        List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
-        
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        
+
+        // 🔹 summary
+        Object[] summaryResult = rideBookRepository.getRevenueSummary(driverId);
+
+        // ✅ Fix: Xử lý an toàn, tránh ClassCastException
         long totalTrips = 0;
         double totalRevenue = 0.0;
-        
-        Map<String, RevenueDetailDTO> detailsMap = new TreeMap<>();
-        
-        for (Booking b : driverBookings) {
-            if (b.getBookingStatus() == BookingStatus.COMPLETED) {
-                totalTrips++;
-                double revenue = b.getTotalPrice() != null ? b.getTotalPrice() : 0.0;
-                totalRevenue += revenue;
-                
-                if (b.getBookingTime() != null) {
-                    LocalDate date = b.getBookingTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-                    String timeLabel = date.format(formatter);
-                    
-                    if (detailsMap.containsKey(timeLabel)) {
-                        RevenueDetailDTO detail = detailsMap.get(timeLabel);
-                        detail.setTripCount(detail.getTripCount() + 1);
-                        detail.setRevenue(detail.getRevenue() + revenue);
-                    } else {
-                        detailsMap.put(timeLabel, RevenueDetailDTO.builder()
-                                .timeLabel(timeLabel)
-                                .tripCount(1)
-                                .revenue(revenue)
-                                .build());
-                    }
+
+        if (summaryResult != null && summaryResult.length > 0) {
+            // Kiểm tra và xử lý từng phần tử
+            Object tripsObj = summaryResult[0];
+            if (tripsObj instanceof Number) {
+                totalTrips = ((Number) tripsObj).longValue();
+            } else if (tripsObj instanceof Object[]) {
+                // Trường hợp query trả về mảng lồng nhau
+                Object[] inner = (Object[]) tripsObj;
+                if (inner.length > 0 && inner[0] instanceof Number) {
+                    totalTrips = ((Number) inner[0]).longValue();
+                }
+            }
+
+            Object revenueObj = summaryResult.length > 1 ? summaryResult[1] : null;
+            if (revenueObj instanceof Number) {
+                totalRevenue = ((Number) revenueObj).doubleValue();
+            } else if (revenueObj instanceof Object[]) {
+                Object[] inner = (Object[]) revenueObj;
+                if (inner.length > 0 && inner[0] instanceof Number) {
+                    totalRevenue = ((Number) inner[0]).doubleValue();
                 }
             }
         }
-        
+
         RevenueSummaryDTO summary = RevenueSummaryDTO.builder()
-                .totalRevenue(totalRevenue)
                 .totalTrips(totalTrips)
+                .totalRevenue(totalRevenue)
                 .build();
-                
-        List<RevenueDetailDTO> details = detailsMap.values().stream()
-                .sorted((d1, d2) -> {
-                    try {
-                        LocalDate date1 = LocalDate.parse(d1.getTimeLabel(), formatter);
-                        LocalDate date2 = LocalDate.parse(d2.getTimeLabel(), formatter);
-                        return date2.compareTo(date1); // Descending
-                    } catch (Exception e) {
-                        return 0;
+
+        // 🔹 details (group by date)
+        List<Object[]> results = rideBookRepository.getRevenueByDate(driverId);
+
+        List<RevenueDetailDTO> details = results.stream()
+                .map(r -> {
+                    // ✅ Fix phần detail tương tự
+                    LocalDate date = null;
+                    int tripCount = 0;
+                    double revenue = 0.0;
+
+                    if (r != null && r.length > 0) {
+                        // Xử lý date
+                        if (r[0] instanceof java.sql.Date) {
+                            date = ((java.sql.Date) r[0]).toLocalDate();
+                        } else if (r[0] instanceof LocalDate) {
+                            date = (LocalDate) r[0];
+                        }
+
+                        // Xử lý tripCount
+                        if (r.length > 1 && r[1] instanceof Number) {
+                            tripCount = ((Number) r[1]).intValue();
+                        }
+
+                        // Xử lý revenue
+                        if (r.length > 2 && r[2] instanceof Number) {
+                            revenue = ((Number) r[2]).doubleValue();
+                        }
                     }
+
+                    return RevenueDetailDTO.builder()
+                            .timeLabel(date != null ? date.format(formatter) : "")
+                            .tripCount(tripCount)
+                            .revenue(revenue)
+                            .build();
                 })
-                .collect(Collectors.toList());
-                
+                .toList();
+
         return DriverRevenueResponse.builder()
                 .summary(summary)
                 .details(details)

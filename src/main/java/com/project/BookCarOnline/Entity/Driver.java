@@ -1,11 +1,13 @@
 package com.project.BookCarOnline.Entity;
 
+import com.google.api.client.util.DateTime;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.validator.constraints.UUID;
 
+import java.sql.Timestamp;
 import java.util.Date;
 
 
@@ -20,71 +22,74 @@ public class Driver {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_TX", nullable = false, unique = true, length = 36)
-    private String driverId;
+     String driverId;
 
     @ManyToOne
     @JoinColumn(name = "ID_LOAIXENO", referencedColumnName = "ID_LOAIXE")
-    private VehicleType vehicleType;
+     VehicleType vehicleType;
 
     @Column(name = "TENTX")
-    private String driverName;
+     String driverName;
 
     @Column(name = "NGSINH")
     @Temporal(TemporalType.DATE)
-    private Date birthDate;
+     Date birthDate;
 
     @Column(name = "CCCD", unique = true, length = 200)
-    private String citizenId;
+     String citizenId;
 
     @Column(name = "GPLX", length = 200)
-    private String drivingLicense;
+     String drivingLicense;
 
     // Extra field not in original DB - keep for future use
     @Column(name = "LLTP")
-    private String criminalRecord;
+     String criminalRecord;
 
     @Column(name = "SDT", unique = true, length = 15)
-    private String phone;
+     String phone;
 
     @Column(name = "EMAIL", unique = true, length = 100)
-    private String email;
+     String email;
 
     @Column(name = "BIENSOXE", unique = true, length = 20)
-    private String licensePlate;
+     String licensePlate;
 
     @Column(name = "TENXE")
-    private String vehicleName;
+     String vehicleName;
 
     // Extra fields not in original DB - keep for future use
     @Column(name = "ANHDAIDIEN")
-    private String avatar;
+     String avatar;
 
     @Column(name = "TRANGTHAIHD")
-    private Boolean activityStatus;
+     Boolean activityStatus;
 
     @Column(name = "GIOITINH")
-    private String gender;
+     String gender;
 
     @Column(name = "DIACHI")
-    private String address;
+     String address;
 
     @Column(name = "KHUVUC")
-    private String area;
+     String area;
 
     @Column(name = "VIDO")
-    private Double currentLat;
+     Double currentLat;
 
     @Column(name = "KINHDO")
-    private Double currentLng;
+     Double currentLng;
+
+    @Column(name = "CHUYENCUOI")
+     Timestamp lastTripTime;
+
+    @Column(name = "DIEMSO")
+    Double score;
 
     @OneToOne
     @JoinColumn(name = "ID_TAIKHOANNO", referencedColumnName = "ID_TAIKHOAN",columnDefinition = "VARCHAR(36)")
-    private Account account;
+     Account account;
 
     @Transient // Không lưu vào DB, chỉ dùng để nhận giá trị tính toán từ Procedure
-    private Double distance;
-
-    
-    
+     Double distance;
 
 }

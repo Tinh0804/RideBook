@@ -15,4 +15,5 @@ public class EstimatePriceResponse {
     Double surcharge;
     Double surgeMultiplier;
     Double totalPrice;
+    Double discount;
 }

@@ -62,6 +62,14 @@ public class WalletService {
     public void addBalance(String driverId, Double amount) {
         Wallet wallet = getOrCreateWallet(driverId);
         wallet.setBalance(wallet.getBalance() + amount);
+        WalletTransaction txn = new WalletTransaction();
+        txn.setWallet(wallet);
+        txn.setAmount(amount);
+        txn.setType(TransactionType.TRIP_INCOME);
+        txn.setStatus(TransactionStatus.COMPLETED);
+        txn.setReferenceId("AUTO_DEPOSIT_" + System.currentTimeMillis());
+        txn.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+        transactionRepository.save(txn);
         walletRepository.save(wallet);
     }
     public void deductBalance(String driverId, Double amount) {
@@ -70,6 +78,14 @@ public class WalletService {
             throw new IllegalStateException("Số dư không đủ để thực hiện giao dịch");
         }
         wallet.setBalance(wallet.getBalance() - amount);
+        WalletTransaction txn = new WalletTransaction();
+        txn.setWallet(wallet);
+        txn.setAmount(amount);
+        txn.setType(TransactionType.TRIP_FEE);
+        txn.setStatus(TransactionStatus.COMPLETED);
+        txn.setReferenceId("AUTO_WITHDRAW_" + System.currentTimeMillis());
+        txn.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+        transactionRepository.save(txn);
         walletRepository.save(wallet);
     }
     /**

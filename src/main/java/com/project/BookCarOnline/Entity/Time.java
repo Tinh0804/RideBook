@@ -20,16 +20,16 @@ public class Time {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_GIO", nullable = false,length = 36)
-    private String timeId;
+     String timeId;
 
     @Column(name="TEN")
-    private String slotName;
+     String slotName;
 
     @Column(name = "THOIGIANBATDAU")
-    private LocalTime startTime;
+     LocalTime startTime;
 
     @Column(name = "THOIGIANKETTHUC")
-    private LocalTime endTime;
+     LocalTime endTime;
 
 
 }

@@ -17,33 +17,33 @@ public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_KH", nullable = false, unique = true, length = 36)
-    private String customerId;
+     String customerId;
 
     @Column(name = "TENKH")
-    private String customerName;
+     String customerName;
 
     @Column(name = "SDT", unique = true, length = 15)
-    private String phone;
+     String phone;
 
     @Column(name = "DIACHI")
-    private String address;
+     String address;
 
 //    // Extra fields not in original DB - keep for future use
     @Column(name = "ANHDAIDIEN")
-    private String avatar;
+     String avatar;
 
     @Column(name = "EMAIL")
-    private String email;
+     String email;
 
     @Column(name = "NGSINH")
     @Temporal(TemporalType.DATE)
-    private java.util.Date birthDate;
+     java.util.Date birthDate;
 
     @Column(name = "GIOITINH")
-    private String gender;
+     String gender;
 
     @OneToOne
     @JoinColumn(name = "ID_TAIKHOANNO", referencedColumnName = "ID_TAIKHOAN",columnDefinition = "VARCHAR(36)")
-    private Account account;
+     Account account;
 
 }

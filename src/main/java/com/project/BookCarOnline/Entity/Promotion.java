@@ -20,33 +20,31 @@ public class Promotion {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_KHUYENMAI", nullable = false, unique = true, length = 36)
-    private String promotionId;
+     String promotionId;
 
-    // Extra field not in original DB - keep for future use
     @Column(name = "MAKHUYENMAI")
-    private String promotionCode;
+     String promotionCode;
 
     @Column(name = "TENKM")
-    private String promotionName;
+     String promotionName;
 
     @Column(name = "HANMUC")
-    private Double discountLimit;
+     Double discountLimit;
 
     @Column(name = "TGBATDAU")
-    private Timestamp startTime;
+     Timestamp startTime;
 
     @Column(name = "TGKETTHUC")
-    private Timestamp endTime;
+     Timestamp endTime;
 
     @Column(name = "DIEUKIENAPDUNG")
-    private String applicationCondition;
+     String applicationCondition;
 
     @Column(name = "SOLUONG")
-    private Integer quantity;
+     Integer quantity;
 
-    // Extra field not in original DB - keep for future use
     @Column(name = "HOATDONG")
-    private Boolean isActive;
+     Boolean isActive;
 
 
     

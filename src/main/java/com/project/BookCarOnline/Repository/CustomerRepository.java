@@ -13,7 +13,6 @@ public interface CustomerRepository extends JpaRepository<Customer,String> {
 
     Optional<Customer> findByPhone(String phone);
 
-    // Trong CustomerRepository.java
     @Query("SELECT c FROM Customer c WHERE c.account.accountId = :accId")
     Optional<Customer> findByAccountId(@Param("accId") String accId);
 

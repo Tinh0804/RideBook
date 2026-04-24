@@ -156,6 +156,24 @@ public class BookingController {
                 .build();
     }
 
+    /**
+     * Tài xế chủ động từ chối cuốc xe đang được dispatch đến mình.
+     * Dispatcher đang chạy sẽ phát hiện rejection qua DB và chuyển sang tài xế kế tiếp.
+     *
+     * POST /bookings/{bookingId}/reject?driverId={driverId}
+     */
+    @PostMapping("/{bookingId}/reject")
+    public APIResponse<Void> rejectBooking(
+            @PathVariable String bookingId,
+            @RequestParam String driverId) {
+        log.info("REST API: POST /bookings/{}/reject?driverId={} - Driver rejecting booking", bookingId, driverId);
+        bookingService.rejectBooking(bookingId, driverId);
+        return APIResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đã từ chối chuyến xe")
+                .build();
+    }
+
     @PostMapping("/estimate-price")
     public APIResponse<com.project.BookCarOnline.DTO.Response.EstimatePriceResponse> estimatePrice(@Valid @RequestBody com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
         log.info("REST API: POST /bookings/estimate-price - Estimating price for vehicle type {}", request.getVehicleTypeId());
@@ -163,6 +181,30 @@ public class BookingController {
                 .status(HttpStatus.OK.value())
                 .message("Lấy giá ước tính thành công")
                 .result(bookingService.estimatePrice(request))
+                .build();
+    }
+
+    // ── Admin endpoints ──────────────────────────────────────────────
+
+    /** GET /bookings/admin/all – Lấy toàn bộ booking (Admin) */
+    @GetMapping("/admin/all")
+    public APIResponse<List<BookingDetailResponse>> adminGetAll() {
+        log.info("REST API: GET /bookings/admin/all");
+        return APIResponse.<List<BookingDetailResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Toàn bộ chuyến xe")
+                .result(bookingService.getAllBookings())
+                .build();
+    }
+
+    /** GET /bookings/admin/summary – Thống kê tổng quan (Admin Dashboard) */
+    @GetMapping("/admin/summary")
+    public APIResponse<java.util.Map<String, Object>> adminSummary() {
+        log.info("REST API: GET /bookings/admin/summary");
+        return APIResponse.<java.util.Map<String, Object>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Thống kê tổng quan")
+                .result(bookingService.getAdminSummary())
                 .build();
     }
 

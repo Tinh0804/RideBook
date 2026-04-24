@@ -19,4 +19,6 @@ public class EstimatePriceRequest {
     @NotNull(message = "Khoảng cách không được để trống")
     @Positive(message = "Khoảng cách phải lớn hơn 0")
     Double distance;
+
+    String promotionCode;
 }

@@ -34,6 +34,7 @@ public class DriverDetailResponse {
     String gender;
     String address;
     String area;
+    Double rating;
     
     // Location
     Double currentLat;
@@ -43,6 +44,7 @@ public class DriverDetailResponse {
     String vehicleTypeId;
     String vehicleTypeName;
     Double pricePerKm;
+
 
     // Account Status
     AccountResponse account;

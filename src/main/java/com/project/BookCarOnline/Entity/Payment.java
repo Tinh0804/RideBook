@@ -18,15 +18,15 @@ public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_THANHTOAN", nullable = false, unique = true, length = 36)
-    private String paymentId;
+     String paymentId;
 
     @Column(name = "LOAIHINHTHANHTOAN")
-    private String paymentType;
+     String paymentType;
 
     @Column(name = "GIATIEN")
-    private Double amount;
+     Double amount;
 
     @Column(name = "TRANGTHAITT")
-    private Boolean paymentStatus;
+     Boolean paymentStatus;
 
 }

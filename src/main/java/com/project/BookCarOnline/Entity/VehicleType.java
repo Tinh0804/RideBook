@@ -18,16 +18,16 @@ public class VehicleType {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_LOAIXE", nullable = false, length = 36)
-    private String vehicleTypeId;
+     String vehicleTypeId;
 
     @Column(name = "TENLOAIXE")
-    private String vehicleTypeName;
+     String vehicleTypeName;
 
     @Column(name = "GIA1KM")
-    private Double pricePerKm;
+     Double pricePerKm;
 
     // Extra field not in original DB - keep for future use
     @Column(name = "SOCHONGOI")
-    private Integer maxPassengers;
+     Integer maxPassengers;
 
 }

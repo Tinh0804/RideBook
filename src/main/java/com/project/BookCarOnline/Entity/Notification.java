@@ -18,7 +18,7 @@ public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID_NOTIFICATION", nullable = false, unique = true, length = 36)
-    private String notificationId; // Lưu ý: Bỏ @GeneratedValue nếu bạn tự gán UUID từ code Servlet cũ sang
+     String notificationId;
 
     @ManyToOne
     @JoinColumn(
@@ -26,7 +26,7 @@ public class Notification {
             referencedColumnName = "ID_DATXE",
             columnDefinition = "VARCHAR(36)"
     )
-    private Booking bookingNo;
+     Booking bookingNo;
 
     @ManyToOne
     @JoinColumn(
@@ -34,18 +34,18 @@ public class Notification {
             referencedColumnName = "TENDANGNHAP",
             columnDefinition = "VARCHAR(11)"
     )
-    private Account accountNo;
+     Account accountNo;
 
     @Column(name = "TIEU_DE")
-    private String title;
+     String title;
 
     @Column(name = "NOI_DUNG", columnDefinition = "NVARCHAR(MAX)") // Để lưu tiếng Việt có dấu
-    private String message;
+     String message;
 
     @Column(name = "DOC")
-    private boolean isRead = false;
+     boolean isRead = false;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "NGAY_GUI")
-    private Date sentAt = new Date();
+     Date sentAt = new Date();
 }

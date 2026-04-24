@@ -14,16 +14,9 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * Payment Utility Class
- * Provides HMAC, SHA-256, URL encoding functions for VNPay and MoMo
- */
 @Slf4j
 public class PaymentUtils {
 
-    /**
-     * Generate HMAC SHA-512 signature for VNPay
-     */
     public static String hmacSHA512(String key, String data) {
         try {
             javax.crypto.Mac hmac512 = javax.crypto.Mac.getInstance("HmacSHA512");
@@ -48,9 +41,6 @@ public class PaymentUtils {
     }
 
 
-    /**
-     * Generate HMAC SHA-256 signature for MoMo
-     */
     public static String hmacSHA256(String key, String data) {
         try {
             Mac hmac256 = Mac.getInstance("HmacSHA256");
@@ -64,9 +54,6 @@ public class PaymentUtils {
         }
     }
 
-    /**
-     * Generate SHA-256 hash
-     */
     public static String sha256(String data) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -78,9 +65,6 @@ public class PaymentUtils {
         }
     }
 
-    /**
-     * Convert byte array to hex string
-     */
     private static String bytesToHex(byte[] bytes) {
         StringBuilder result = new StringBuilder();
         for (byte b : bytes) {
@@ -89,9 +73,6 @@ public class PaymentUtils {
         return result.toString();
     }
 
-    /**
-     * Build query string from map (sorted by key)
-     */
     public static String buildQueryString(Map<String, String> params) {
         List<String> fieldNames = new ArrayList<>(params.keySet());
         Collections.sort(fieldNames);
@@ -123,9 +104,6 @@ public class PaymentUtils {
     }
 
 
-    /**
-     * Build URL with query string
-     */
     public static String buildPaymentUrl(String baseUrl, Map<String, String> params) {
         try {
             List<String> fieldNames = new ArrayList<>(params.keySet());
@@ -153,9 +131,6 @@ public class PaymentUtils {
         }
     }
 
-    /**
-     * Generate random request ID
-     */
     public static String getRandomNumber(int len) {
         Random rnd = new Random();
         String chars = "0123456789";
@@ -166,23 +141,15 @@ public class PaymentUtils {
         return sb.toString();
     }
 
-    /**
-     * Get current timestamp in milliseconds
-     */
+
     public static String getCurrentTimestamp() {
         return String.valueOf(System.currentTimeMillis());
     }
 
-    /**
-     * Generate unique order id using bookingId + timestamp + random suffix
-     */
     public static String generateOrderId(String bookingId) {
         return bookingId + "_" + System.currentTimeMillis() + "_" + getRandomNumber(4);
     }
 
-    /**
-     * Get current timestamp in VNPay format (yyyyMMddHHmmss)
-     */
     public static String getVNPayTimestamp() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         return LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
