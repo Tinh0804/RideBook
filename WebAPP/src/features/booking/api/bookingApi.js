@@ -1,0 +1,43 @@
+import apiClient from '@/services/apiClient'
+import {
+  parseApiResponse,
+  parseApiArrayResponse,
+  EstimatePriceSchema,
+  BookingDetailSchema,
+  AvailableRideSchema,
+} from '@/schemas/dto'
+
+export const bookingApi = {
+  estimatePrice: (payload) =>
+    apiClient.post('/bookings/estimate-price', payload).then((r) => parseApiResponse(EstimatePriceSchema, r.data)),
+
+  createBooking: (payload) =>
+    apiClient.post('/bookings', payload).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  getAvailable: () =>
+    apiClient.get('/bookings/available').then((r) => parseApiArrayResponse(AvailableRideSchema, r.data)),
+
+  assignDriver: (bookingId) =>
+    apiClient.put(`/bookings/${bookingId}/assign-driver`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  updateStatus: (bookingId, status) =>
+    apiClient.put(`/bookings/${bookingId}/status`, { status }).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  completeBooking: (bookingId) =>
+    apiClient.put(`/bookings/${bookingId}/complete`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  getCustomerHistory: (customerId) =>
+    apiClient.get(`/bookings/customer/${customerId}`).then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
+
+  getDriverHistory: (driverId) =>
+    apiClient.get(`/bookings/driver/${driverId}`).then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
+
+  getAll: () =>
+    apiClient.get('/bookings').then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
+
+  getById: (bookingId) =>
+    apiClient.get(`/bookings/${bookingId}`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  cancelBooking: (bookingId) =>
+    apiClient.delete(`/bookings/${bookingId}`).then((r) => r.data),
+}

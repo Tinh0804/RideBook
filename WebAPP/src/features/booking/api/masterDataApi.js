@@ -1,0 +1,42 @@
+import apiClient from '@/services/apiClient'
+import {
+  parseApiResponse,
+  parseApiArrayResponse,
+  RatingSchema,
+  NotificationSchema,
+  VehicleTypeSchema,
+  PromotionSchema,
+} from '@/schemas/dto'
+
+export const ratingApi = {
+  create: (payload) =>
+    apiClient.post('/ratings', payload).then((r) => parseApiResponse(RatingSchema, r.data)),
+
+  getByDriver: (driverId) =>
+    apiClient.get(`/ratings/driver/${driverId}`).then((r) => parseApiArrayResponse(RatingSchema, r.data)),
+
+  getByCustomer: (customerId) =>
+    apiClient.get(`/ratings/customer/${customerId}`).then((r) => parseApiArrayResponse(RatingSchema, r.data)),
+}
+
+export const notificationApi = {
+  getAll: () =>
+    apiClient.get('/notifications').then((r) => parseApiArrayResponse(NotificationSchema, r.data)),
+
+  markRead: (id) =>
+    apiClient.put(`/notifications/${id}/read`).then((r) => parseApiResponse(NotificationSchema, r.data)),
+}
+
+export const masterDataApi = {
+  getVehicleTypes: () =>
+    apiClient.get('/vehicle-types').then((r) => parseApiArrayResponse(VehicleTypeSchema, r.data)),
+
+  getActivePromotions: () =>
+    apiClient.get('/promotions/active').then((r) => parseApiArrayResponse(PromotionSchema, r.data)),
+
+  getPromotionByCode: (code) =>
+    apiClient.get(`/promotions/${code}`).then((r) => parseApiResponse(PromotionSchema, r.data)),
+
+  createPromotion: (payload) =>
+    apiClient.post('/promotions', payload).then((r) => parseApiResponse(PromotionSchema, r.data)),
+}
