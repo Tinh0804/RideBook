@@ -13,6 +13,7 @@ import { paymentApi } from '@/features/payment/api/paymentApi'
 import { formatCurrency, formatDistance } from '@/utils/currency'
 import { PAYMENT_METHOD, BOOKING_STATUS } from '@/config'
 import Button from '@/components/Elements/Button'
+import AddressInput from '@/components/Map/AddressInput'
 import Input from '@/components/Elements/Input'
 import Spinner from '@/components/Elements/Spinner'
 import LocationAutocomplete from '@/components/Elements/LocationAutocomplete'
@@ -131,6 +132,21 @@ const BookingPage = () => {
   const discount    = promoData ? (estimatedPrice * (promoData.discountLimit || 0)) : 0
   const finalPrice  = Math.max(0, (estimatedPrice || 0) - discount)
 
+  const isValidLocation = (location) => {
+    return location && 
+          typeof location === 'object' &&
+          typeof location.lat === 'number' && 
+          typeof location.lng === 'number' &&
+          !isNaN(location.lat) && 
+          !isNaN(location.lng)
+  }
+
+  // Tọa độ mặc định (TP.HCM)
+  const DEFAULT_COORDINATES = { lat: 10.8231, lng: 106.6297 }
+
+  // Khi truyền vào InteractiveMap, đảm bảo tọa độ hợp lệ
+  const safePickup = isValidLocation(pickup) ? pickup : { ...pickup, ...DEFAULT_COORDINATES }
+  const safeDropoff = isValidLocation(dropoff) ? dropoff : { ...dropoff, ...DEFAULT_COORDINATES }
   const handleNextStep = () => {
     if (!pickup || !dropoff) {
       toast.error('Vui lòng chọn cả điểm đi và điểm đến')
@@ -172,11 +188,32 @@ const BookingPage = () => {
               </div>
               <div className="flex-1">
                 <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
-                <LocationAutocomplete 
+                {/* <LocationAutocomplete 
                   placeholder="Nhập địa chỉ đón..." 
                   value={pickup?.name || ''}
                   onSelectLocation={setPickup}
-                />
+                /> */}
+
+                 <AddressInput
+                    placeholder="Điểm đón của bạn"
+                    value={pickup?.name || ''}
+                    onChange={(name) => {
+                      setPickup(prev => ({ ...prev, name }))
+                    }}
+                    onLocationDetect={(locationData) => {
+                      if (locationData) {
+                        setPickup({
+                          name: locationData.name,
+                          lat: locationData.lat,
+                          lng: locationData.lng
+                        })
+                      } else {
+                        setPickup(null)
+                      }
+                    }}
+                  />
+              
+            
               </div>
             </div>
 
@@ -187,9 +224,22 @@ const BookingPage = () => {
               <div className="flex-1">
                 <p className="text-xs text-content-muted mb-1 ml-1">Điểm đến</p>
                 <LocationAutocomplete 
-                  placeholder="Nhập địa chỉ đến..." 
+                  placeholder="Điểm đến của bạn"
                   value={dropoff?.name || ''}
-                  onSelectLocation={setDropoff}
+                  onChange={(name) => {
+                    setDropoff(prev => ({ ...prev, name }))
+                  }}
+                  onLocationDetect={(locationData) => {
+                    if (locationData) {
+                      setDropoff({
+                        name: locationData.name,
+                        lat: locationData.lat,
+                        lng: locationData.lng
+                      })
+                    } else {
+                      setDropoff(null)
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -215,7 +265,10 @@ const BookingPage = () => {
       <div className="-m-6 h-[calc(100vh-64px)] relative flex flex-col bg-surface-dark">
         {/* Background Map */}
         <div className="absolute inset-0 z-0">
-          <InteractiveMap pickup={pickup} dropoff={dropoff} />
+        <InteractiveMap 
+          pickup={isValidLocation(pickup) ? pickup : { name: pickup?.name, ...DEFAULT_COORDINATES }} 
+          dropoff={isValidLocation(dropoff) ? dropoff : { name: dropoff?.name, ...DEFAULT_COORDINATES }} 
+        />
         </div>
 
         {/* Back button overlay - allow them to cancel searching or modify details */}
@@ -269,7 +322,10 @@ const BookingPage = () => {
     <div className="-m-6 h-[calc(100vh-64px)] relative flex flex-col bg-surface-dark">
       {/* Background Map */}
       <div className="absolute inset-0 z-0">
-         <InteractiveMap pickup={pickup} dropoff={dropoff} />
+        <InteractiveMap 
+          pickup={isValidLocation(pickup) ? pickup : { name: pickup?.name, ...DEFAULT_COORDINATES }} 
+          dropoff={isValidLocation(dropoff) ? dropoff : { name: dropoff?.name, ...DEFAULT_COORDINATES }} 
+        />
       </div>
 
       {/* Back button overlay */}

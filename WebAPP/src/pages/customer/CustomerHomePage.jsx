@@ -1,7 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RiMapPinLine, RiMapPin2Line, RiArrowRightLine, RiHistoryLine, RiUserStarLine } from 'react-icons/ri'
+import { 
+  RiMapPinLine, RiMapPin2Line, RiArrowRightLine, RiHistoryLine, 
+  RiCarLine, RiCouponLine, RiHeartLine, RiBankCardLine,
+  RiHomeLine, RiBuildingLine, RiGraduationCapLine, RiFlightTakeoffLine,
+  RiStoreLine, RiMap2Line, RiTimerLine, RiStarLine, RiUserStarLine,
+  RiBellLine, RiPercentLine, RiShieldCheckLine, RiHeadphoneLine,
+  RiFacebookLine, RiInstagramLine, RiYoutubeLine, RiMessageLine,
+  RiThumbUpLine, RiWalletLine, RiTrophyLine, RiRoadMapLine,
+  RiShoppingCartLine  // Thay thế cho RiBoxLine
+} from 'react-icons/ri'
 import { useAuthStore, useBookingStore } from '@/store/rootStore'
+import LocationInput  from '@/components/Map/AddressInput'
+import  AddressInput from '@/components/Map/AddressInput'
 import { masterDataApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { formatCurrency } from '@/utils/currency'
@@ -9,200 +20,560 @@ import Button from '@/components/Elements/Button'
 import Input from '@/components/Elements/Input'
 import { cn } from '@/utils/cn'
 
-const QUICK_DESTINATIONS = [
-  { label: 'Sân bay', icon: '✈️', address: 'Sân bay Tân Sơn Nhất' },
-  { label: 'Trung tâm', icon: '🏢', address: 'Trung tâm TP.HCM' },
-  { label: 'Bệnh viện', icon: '🏥', address: 'Bệnh viện Chợ Rẫy' },
-  { label: 'Trường học', icon: '🏫', address: 'ĐH Bách Khoa TP.HCM' },
+// Mock data for demonstration
+const MOCK_FAVORITES = [
+  { id: 1, name: 'Nhà', icon: <RiHomeLine size={24} />, address: '123 Đường số 1, Quận 1' },
+  { id: 2, name: 'Công ty', icon: <RiBuildingLine size={24} />, address: '456 Đường số 2, Quận 3' },
+  { id: 3, name: 'Trường học', icon: <RiGraduationCapLine size={24} />, address: 'ĐH Bách Khoa, Quận 10' },
+  { id: 4, name: 'Sân bay', icon: <RiFlightTakeoffLine size={24} />, address: 'Sân bay Tân Sơn Nhất' },
+  { id: 5, name: 'Trung tâm thương mại', icon: <RiStoreLine size={24} />, address: 'Vincom Đồng Khởi' },
+]
+
+const MOCK_PROMOTIONS = [
+  { id: 1, title: 'Giảm 50% chuyến đầu', subtitle: 'Ưu đãi đặc biệt cho thành viên mới', bg: 'from-pink-500 to-rose-500', expires: 'Còn 7 ngày' },
+  { id: 2, title: 'Ưu đãi sinh viên', subtitle: 'Giảm 30% cho tất cả các chuyến', bg: 'from-blue-500 to-cyan-500', expires: 'Còn 15 ngày' },
+  { id: 3, title: 'Đi sân bay giá rẻ', subtitle: 'Giá chỉ từ 50,000đ', bg: 'from-green-500 to-emerald-500', expires: 'Còn 3 ngày' },
+  { id: 4, title: 'Flash sale giờ vàng', subtitle: '18h-20h mỗi ngày giảm 40%', bg: 'from-orange-500 to-red-500', expires: 'Hàng ngày' },
+]
+
+const MOCK_NOTIFICATIONS = [
+  { id: 1, type: 'promotion', title: 'Khuyến mãi đặc biệt', message: 'Nhận ngay 50% cho chuyến đi đầu tiên', time: '2 giờ trước', icon: <RiPercentLine /> },
+  { id: 2, type: 'trip', title: 'Hoàn thành chuyến đi', message: 'Bạn đã hoàn thành chuyến đi đến Quận 1', time: 'Hôm qua', icon: <RiCarLine /> },
+  { id: 3, type: 'voucher', title: 'Voucher mới', message: 'Bạn có 1 voucher giảm 20,000đ', time: '2 ngày trước', icon: <RiCouponLine /> },
 ]
 
 const CustomerHomePage = () => {
-  const navigate  = useNavigate()
-  const { user }  = useAuthStore()
+  const navigate = useNavigate()
+  const { user } = useAuthStore()
   const { vehicleTypes, setVehicleTypes, currentBooking } = useBookingStore()
-
-  const [pickup,  setPickup]  = useState('')
+  
+  const [pickup, setPickup] = useState('')
   const [dropoff, setDropoff] = useState('')
   const [recentTrips, setRecentTrips] = useState([])
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [weather, setWeather] = useState({ temp: 28, condition: 'Nắng', icon: '☀️' })
+  const [currentTime, setCurrentTime] = useState(new Date())
 
+  const [pickupLocation, setPickupLocation] = useState(null) // Lưu tọa độ điểm đón
+  const [dropoffLocation, setDropoffLocation] = useState(null) // Lưu tọa độ điểm đến
+  
+  // Auto-rotate promotions
   useEffect(() => {
-    // Load vehicle types
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % MOCK_PROMOTIONS.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [])
+  
+  // Update time every minute
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+  
+  useEffect(() => {
     if (!vehicleTypes.length) {
       masterDataApi.getVehicleTypes()
         .then((types) => setVehicleTypes(types))
         .catch(() => {})
     }
-    // Load recent trips
     if (user?.id) {
       bookingApi.getCustomerHistory(user.id)
         .then((trips) => setRecentTrips(trips.slice(0, 3)))
         .catch(() => {})
     }
   }, [user, vehicleTypes.length, setVehicleTypes])
-
+  
   const handleBook = () => {
     if (currentBooking) {
       navigate('/customer/tracking')
       return
     }
     if (!pickup.trim() || !dropoff.trim()) return
-    navigate('/customer/booking', { state: { pickup: { name: pickup }, dropoff: { name: dropoff } } })
+    
+    // Chuyển đến trang booking với đầy đủ thông tin bao gồm tọa độ
+    navigate('/customer/booking', { 
+      state: { 
+        pickup: { 
+          name: pickup,
+          location: pickupLocation // Có tọa độ nếu đã định vị
+        }, 
+        dropoff: { 
+          name: dropoff,
+          location: dropoffLocation // Có tọa độ nếu đã định vị
+        } 
+      } 
+    })
   }
+  
+  // const handleLocationDetect = (location, type) => {
+  //   // Lưu tọa độ khi phát hiện vị trí
+  //   if (type === 'pickup') {
+  //     setPickupLocation(location)
+  //     console.log('Điểm đón:', location)
+  //   } else if (type === 'dropoff') {
+  //     setDropoffLocation(location)
+  //     console.log('Điểm đến:', location)
+  //   }
+  // }
 
-  const setQuickDest = (addr) => setDropoff(addr)
-
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  const formatDate = (date) => {
+    return date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' })
+  }
+  
   const hour = new Date().getHours()
-  const greeting =
-    hour < 12 ? 'Chào buổi sáng' :
-    hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
-
+  const greeting = hour < 12 ? 'Chào buổi sáng' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'
+  
   return (
-    <div className="space-y-8 max-w-2xl">
-      {/* Greeting */}
-      <div>
-        <p className="text-content-muted text-sm">{greeting} 👋</p>
-        <h1 className="font-display text-3xl font-bold text-content-main mt-1">
-          {user?.name || user?.userName || 'Bạn'}
-        </h1>
-        <p className="text-content-muted mt-1">Bạn muốn đi đâu hôm nay?</p>
-      </div>
-
-      {/* Booking card */}
-      <div className="card p-6 space-y-4">
-        <h2 className="font-semibold text-content-main">Đặt chuyến</h2>
-
-        {/* Pickup input */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-brand-500/15 border border-brand-500/30 flex items-center justify-center shrink-0">
-            <RiMapPinLine size={16} className="text-brand-400" />
+    <div className="space-y-8 max-w-7xl mx-auto px-4 pb-8">
+      {/* Welcome Section with Gradient Background */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-700 p-6 md:p-8 shadow-2xl">
+        {/* Animated background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl animate-pulse delay-1000"></div>
+        
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-700 p-6 md:p-8 shadow-2xl">
+          {/* Animated background elements */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl animate-pulse delay-1000"></div>
+          
+          {/* Mini map/illustration */}
+          <div className="absolute bottom-0 right-0 opacity-10">
+            <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M100 20 L180 60 L180 140 L100 180 L20 140 L20 60 L100 20Z" stroke="white" strokeWidth="2" fill="none"/>
+              <circle cx="100" cy="100" r="10" fill="white"/>
+            </svg>
           </div>
-          <Input
-            placeholder="Điểm đón của bạn"
-            value={pickup}
-            onChange={(e) => setPickup(e.target.value)}
-            className="flex-1"
-          />
+          
+          <div className="relative z-10">
+            <div className="flex justify-between items-start flex-wrap gap-4">
+              <div className="space-y-2">
+                <p className="text-white/90 text-lg flex items-center gap-2">
+                  {greeting} <span className="text-2xl inline-block animate-wave">👋</span>
+                </p>
+                <h1 className="font-display text-4xl md:text-5xl font-bold text-white">
+                  {user?.name || user?.userName || 'Bạn'}
+                </h1>
+                <p className="text-white/80 text-lg mt-2 flex items-center gap-2">
+                  {weather.icon} {weather.temp}°C • {weather.condition}
+                  <span className="w-1 h-1 bg-white/50 rounded-full"></span>
+                  🕐 {formatTime(currentTime)}
+                </p>
+                <p className="text-white/90 text-xl mt-1 font-medium">
+                  "Bạn muốn đi đâu hôm nay?" ✨
+                </p>
+              </div>
+              
+              {/* Quick stats */}
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+                <div className="text-white/80 text-sm">Thành viên</div>
+                <div className="text-white font-semibold text-lg">⭐ Hạng Bạch Kim</div>
+                <div className="text-white/70 text-xs mt-1">1,250 điểm thưởng</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Connector line */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 flex flex-col items-center gap-1">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-1 h-1 rounded-full bg-surface-muted" />
-            ))}
-          </div>
-          <div className="flex-1 h-px bg-surface-border" />
+        
         </div>
-
-        {/* Dropoff input */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
-            <RiMapPin2Line size={16} className="text-red-400" />
-          </div>
-          <Input
-            placeholder="Điểm đến"
-            value={dropoff}
-            onChange={(e) => setDropoff(e.target.value)}
-            className="flex-1"
-          />
-        </div>
-
-        <Button
-          fullWidth size="lg"
-          onClick={handleBook}
-          disabled={!pickup.trim() || !dropoff.trim() || !!currentBooking}
-          className="mt-2"
+      <div 
+          id="booking-card" 
+          onClick={() => navigate('/customer/booking')}
+          className="card p-6 md:p-8 space-y-4 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group"
         >
-          {currentBooking ? 'Xem chuyến đang đi' : 'Tìm xe ngay'} <RiArrowRightLine size={18} />
-        </Button>
-      </div>
-
-      {/* Quick destinations */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">Điểm đến phổ biến</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {QUICK_DESTINATIONS.map((d) => (
-            <button
-              key={d.label}
-              onClick={() => setQuickDest(d.address)}
-              className={cn(
-                'card-hover p-4 text-left space-y-1 group',
-                dropoff === d.address && 'border-brand-500/40 bg-brand-500/5'
-              )}
-            >
-              <span className="text-2xl">{d.icon}</span>
-              <p className="font-medium text-content-main text-sm group-hover:text-brand-400 transition-colors">{d.label}</p>
-              <p className="text-xs text-content-muted truncate">{d.address}</p>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Vehicle types */}
-      {vehicleTypes.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">Loại xe</h3>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {vehicleTypes.map((vt) => (
-              <div key={vt.id} className="card p-4 shrink-0 w-32 text-center space-y-2">
-                <img
-                  className="w-10 h-10 object-contain mx-auto mb-1"
-                  src={vt.icon || '🚗'}
-                  alt={vt.vehicleTypeName}
+          <h2 className="font-semibold text-content-main text-xl">🚗 Đặt chuyến ngay</h2>
+          
+          {/* Search input style - looks like a text field but redirects on click */}
+          <div className="relative">
+            
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-surface border border-surface-border group-hover:border-brand-500/50 transition-all duration-300">
+              <div className="w-10 h-10 rounded-full bg-brand-500/15 border border-brand-500/30 flex items-center justify-center shrink-0">
+                <RiMapPinLine size={20} className="text-brand-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-content-muted mb-1">Điểm đến</p>
+                <Input
+                  value={dropoff}
+                  onChange={(e) => setDropoff(e.target.value)}
+                  placeholder="Bạn muốn đi đâu?"
+                  className="bg-transparent border-none p-0 text-content-main focus:ring-0 focus:outline-none"
                 />
-                <p className="text-sm font-medium text-content-main">{vt.vehicleTypeName}</p>
-                {vt.baseFare && (
-                  <p className="text-xs text-content-muted">{formatCurrency(vt.baseFare)}</p>
-                )}
+              
+              </div>
+              <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center group-hover:bg-brand-500/20 transition-all duration-300">
+                <RiArrowRightLine size={18} className="text-brand-400" />
+              </div>
+            </div>
+          </div>
+          
+          <p className="text-xs text-content-muted text-center mt-2">
+            ✨ Nhấn để tìm kiếm điểm đến và đặt xe
+          </p>
+        </div>
+      
+      {/* Quick Action Cards Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { icon: <RiCarLine size={28} />, label: 'Đặt xe', color: 'from-blue-500 to-blue-600', onClick: () => navigate('/customer/booking') },
+          { icon: <RiShoppingCartLine size={28} />, label: 'Giao hàng', color: 'from-green-500 to-green-600', onClick: () => navigate('/customer/delivery') },
+          { icon: <RiHistoryLine size={28} />, label: 'Lịch sử', color: 'from-purple-500 to-purple-600', onClick: () => navigate('/customer/history') },
+          { icon: <RiCouponLine size={28} />, label: 'Voucher', color: 'from-pink-500 to-pink-600', onClick: () => navigate('/customer/vouchers') },
+          { icon: <RiHeartLine size={28} />, label: 'Yêu thích', color: 'from-red-500 to-red-600', onClick: () => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' }) },
+          { icon: <RiBankCardLine size={28} />, label: 'Thanh toán', color: 'from-cyan-500 to-cyan-600', onClick: () => navigate('/customer/payment') },
+        ].map((action) => (
+          <button
+            key={action.label}
+            onClick={action.onClick}
+            className="group relative overflow-hidden border border-surface-border rounded-xl bg-gradient-to-br p-4 text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+            style={{ backgroundImage: `linear-gradient(135deg, ${action.color})` }}
+          >
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            <div className="relative z-10 space-y-2 text-center">
+              <div className="flex justify-center">{action.icon}</div>
+              <p className="font-semibold text-sm">{action.label}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+      
+      
+      {/* Promotion Carousel */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">🎁 Khuyến mãi hấp dẫn</h3>
+        <div className="relative overflow-hidden rounded-2xl">
+          <div 
+            className="flex transition-transform duration-500 ease-out"
+            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          >
+            {MOCK_PROMOTIONS.map((promo) => (
+              <div key={promo.id} className="w-full flex-shrink-0 px-1">
+                <div className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-r p-6 md:p-8 text-white shadow-xl", promo.bg)}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+                  <div className="relative z-10">
+                    <h3 className="text-2xl md:text-3xl font-bold mb-2">{promo.title}</h3>
+                    <p className="text-white/90 mb-4">{promo.subtitle}</p>
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <span className="text-sm bg-white/20 px-3 py-1 rounded-full">⏰ {promo.expires}</span>
+                      <button 
+                        onClick={() => navigate('/customer/promotions')}
+                        className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold hover:scale-105 transition-transform"
+                      >
+                        Sử dụng ngay →
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Recent trips */}
-      {recentTrips.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">Chuyến gần đây</h3>
-            <button
-              onClick={() => navigate('/customer/history')}
-              className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1 transition-colors"
-            >
-              Xem tất cả <RiArrowRightLine size={12} />
-            </button>
+          
+          {/* Carousel dots */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {MOCK_PROMOTIONS.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all",
+                  currentSlide === idx ? "w-6 bg-white" : "bg-white/50"
+                )}
+              />
+            ))}
           </div>
-          <div className="space-y-2">
-            {recentTrips.map((trip) => (
-              <div key={trip.bookingId} className="card p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-surface-border flex items-center justify-center shrink-0">
-                  <RiHistoryLine size={18} className="text-content-muted" />
+        </div>
+      </div>
+      
+      {/* Two Column Layout for Recent Trips & Favorite Places */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Trips Section */}
+        {recentTrips.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">🕘 Chuyến gần đây</h3>
+              <button onClick={() => navigate('/customer/history')} className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+                Xem tất cả <RiArrowRightLine size={12} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {recentTrips.map((trip) => (
+                <div key={trip.bookingId} className="card p-4 hover:shadow-xl transition-all duration-300 group">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500/20 to-brand-500/5 flex items-center justify-center shrink-0">
+                      <RiHistoryLine size={20} className="text-brand-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-semibold text-content-main truncate">{trip.dropoffLocation}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">Hoàn thành</span>
+                      </div>
+                      <p className="text-xs text-content-muted truncate">Từ: {trip.pickupLocation}</p>
+                      <p className="text-xs text-content-muted mt-1">🕐 {new Date(trip.bookingTime).toLocaleDateString('vi-VN')}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-base font-bold text-brand-500">{formatCurrency(trip.totalPrice)}</p>
+                      <button
+                        onClick={() => navigate('/customer/booking', { state: { pickup: { name: trip.pickupLocation }, dropoff: { name: trip.dropoffLocation } } })}
+                        className="text-xs text-content-muted hover:text-brand-400 transition-colors mt-1"
+                        disabled={!!currentBooking}
+                      >
+                        Đặt lại →
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-content-main truncate">{trip.dropoffLocation}</p>
-                  <p className="text-xs text-content-muted truncate">Từ: {trip.pickupLocation}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-semibold text-brand-400">{formatCurrency(trip.totalPrice)}</p>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Favorite Places */}
+        <div id="favorites" className="space-y-3">
+          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Địa điểm yêu thích</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {MOCK_FAVORITES.map((place) => (
+              <div key={place.id} className="card p-4 hover:shadow-xl transition-all duration-300 group">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500">
+                    {place.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-content-main">{place.name}</p>
+                    <p className="text-xs text-content-muted truncate">{place.address}</p>
+                  </div>
                   <button
                     onClick={() => {
-                      if (currentBooking) {
-                        navigate('/customer/tracking')
-                      } else {
-                        navigate('/customer/booking', { state: { pickup: { name: trip.pickupLocation }, dropoff: { name: trip.dropoffLocation } } })
-                      }
+                      setPickup(place.address)
+                      document.getElementById('booking-card')?.scrollIntoView({ behavior: 'smooth' })
                     }}
-                    className="text-xs text-content-muted hover:text-brand-400 transition-colors"
-                    disabled={!!currentBooking}
+                    className="text-xs bg-brand-500/10 text-brand-500 px-3 py-1 rounded-lg hover:bg-brand-500 hover:text-white transition-colors"
                   >
-                    Đặt lại
+                    Đặt
                   </button>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      )}
+      </div>
+      
+      {/* Nearby Drivers & Statistics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Nearby Drivers Section */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">🚖 Tài xế quanh bạn</h3>
+          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 h-64">
+            {/* Mini Map Simulation */}
+            <div className="absolute inset-0 opacity-20">
+              <svg width="100%" height="100%" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0,150 L400,150" stroke="white" strokeWidth="1" fill="none"/>
+                <path d="M200,0 L200,300" stroke="white" strokeWidth="1" fill="none"/>
+                <rect x="50" y="100" width="30" height="30" fill="white" opacity="0.3"/>
+                <rect x="300" y="150" width="40" height="40" fill="white" opacity="0.3"/>
+              </svg>
+            </div>
+            
+            {/* Driver markers */}
+            {[
+              { x: 30, y: 40, delay: 0 },
+              { x: 60, y: 70, delay: 1 },
+              { x: 80, y: 45, delay: 2 },
+              { x: 150, y: 120, delay: 0.5 },
+              { x: 250, y: 80, delay: 1.5 },
+            ].map((driver, idx) => (
+              <div
+                key={idx}
+                className="absolute animate-bounce"
+                style={{ left: `${driver.x}%`, top: `${driver.y}%`, animationDelay: `${driver.delay}s` }}
+              >
+                <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-3 h-3 bg-white rounded-full"></div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Center marker (user) */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-xl ring-4 ring-blue-300">
+                <div className="w-4 h-4 bg-white rounded-full"></div>
+              </div>
+            </div>
+            
+            {/* Floating info card */}
+            <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-content-muted">Tài xế gần bạn</p>
+                  <p className="text-lg font-bold text-content-main">12 tài xế</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-content-muted">Thời gian chờ TB</p>
+                  <p className="text-lg font-bold text-green-600">3 phút</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* User Statistics Dashboard */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">📊 Thống kê của bạn</h3>
+          <div className="card p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-3 bg-gradient-to-br from-brand-50 to-brand-100 dark:from-brand-900/20 dark:to-brand-800/20 rounded-xl">
+                <RiCarLine className="mx-auto text-brand-500 mb-2" size={24} />
+                <p className="text-2xl font-bold text-content-main">24</p>
+                <p className="text-xs text-content-muted">Tổng chuyến</p>
+              </div>
+              <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl">
+                <RiRoadMapLine className="mx-auto text-green-600 mb-2" size={24} />
+                <p className="text-2xl font-bold text-content-main">342</p>
+                <p className="text-xs text-content-muted">Tổng km</p>
+              </div>
+              <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl">
+                <RiWalletLine className="mx-auto text-purple-600 mb-2" size={24} />
+                <p className="text-2xl font-bold text-content-main">2.4tr</p>
+                <p className="text-xs text-content-muted">Tổng chi</p>
+              </div>
+              <div className="text-center p-3 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl">
+                <RiTrophyLine className="mx-auto text-yellow-600 mb-2" size={24} />
+                <p className="text-2xl font-bold text-content-main">1,250</p>
+                <p className="text-xs text-content-muted">Điểm thưởng</p>
+              </div>
+            </div>
+            
+            {/* Membership progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-content-muted">Hạng Bạch Kim</span>
+                <span className="text-content-muted">750/1000 điểm</span>
+              </div>
+              <div className="h-2 bg-surface-border rounded-full overflow-hidden">
+                <div className="h-full w-3/4 bg-gradient-to-r from-brand-500 to-brand-600 rounded-full"></div>
+              </div>
+              <p className="text-xs text-content-muted text-center">Còn 250 điểm để lên hạng Kim Cương</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      
+      
+      {/* Reviews / Rating Section */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Đánh giá của bạn</h3>
+        <div className="card p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-content-main">4.8</div>
+              <div className="flex text-yellow-400 mt-1">
+                {[1,2,3,4,5].map((star) => (
+                  <RiStarLine key={star} className="fill-current" size={18} />
+                ))}
+              </div>
+              <p className="text-xs text-content-muted mt-1">Dựa trên 24 đánh giá</p>
+            </div>
+            <div className="flex-1 space-y-1">
+              {[5,4,3,2,1].map((star) => (
+                <div key={star} className="flex items-center gap-2 text-sm">
+                  <span className="w-8">{star}★</span>
+                  <div className="flex-1 h-1.5 bg-surface-border rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: star === 5 ? '70%' : star === 4 ? '20%' : '10%' }}></div>
+                  </div>
+                  <span className="w-8 text-content-muted text-xs">
+                    {star === 5 ? '17' : star === 4 ? '5' : '2'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate('/customer/reviews')}>
+              Viết đánh giá
+            </Button>
+          </div>
+          
+          {/* Recent comment */}
+          <div className="mt-4 pt-4 border-t border-surface-border">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-sm">
+                {user?.name?.[0] || 'U'}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-content-main">Bạn vừa đánh giá</p>
+                <p className="text-sm text-content-muted">"Dịch vụ tuyệt vời, tài xế thân thiện!"</p>
+                <p className="text-xs text-content-muted mt-1">2 ngày trước</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Footer */}
+      <footer className="bg-surface-card rounded-2xl p-6 md:p-8 shadow-lg mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div>
+            <h4 className="font-bold text-content-main mb-3">🚗 RIDE APP</h4>
+            <p className="text-sm text-content-muted">Đặt xe an toàn, nhanh chóng và tiện lợi</p>
+            <div className="flex gap-3 mt-3">
+              <RiFacebookLine className="text-content-muted hover:text-brand-500 cursor-pointer transition-colors" size={20} />
+              <RiInstagramLine className="text-content-muted hover:text-brand-500 cursor-pointer transition-colors" size={20} />
+              <RiYoutubeLine className="text-content-muted hover:text-brand-500 cursor-pointer transition-colors" size={20} />
+            </div>
+          </div>
+          <div>
+            <h4 className="font-semibold text-content-main mb-3">Về chúng tôi</h4>
+            <ul className="space-y-2 text-sm text-content-muted">
+              <li className="hover:text-brand-500 cursor-pointer">Giới thiệu</li>
+              <li className="hover:text-brand-500 cursor-pointer">Tuyển dụng</li>
+              <li className="hover:text-brand-500 cursor-pointer">Blog</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-content-main mb-3">Chính sách</h4>
+            <ul className="space-y-2 text-sm text-content-muted">
+              <li className="hover:text-brand-500 cursor-pointer">Điều khoản sử dụng</li>
+              <li className="hover:text-brand-500 cursor-pointer">Chính sách bảo mật</li>
+              <li className="hover:text-brand-500 cursor-pointer">Quy chế hoạt động</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-content-main mb-3">Hỗ trợ</h4>
+            <ul className="space-y-2 text-sm text-content-muted">
+              <li className="hover:text-brand-500 cursor-pointer flex items-center gap-2">
+                <RiHeadphoneLine size={16} /> Hotline: 1900 1234
+              </li>
+              <li className="hover:text-brand-500 cursor-pointer flex items-center gap-2">
+                <RiMessageLine size={16} /> Chat hỗ trợ
+              </li>
+              <li className="hover:text-brand-500 cursor-pointer">FAQ</li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-surface-border mt-6 pt-6 text-center text-sm text-content-muted">
+          © 2024 RIDE APP. All rights reserved.
+        </div>
+      </footer>
+      
+      <style jsx="true">{`
+        @keyframes wave {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(20deg); }
+          75% { transform: rotate(-20deg); }
+        }
+        .animate-wave {
+          animation: wave 1s ease-in-out infinite;
+          display: inline-block;
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        .animate-bounce {
+          animation: bounce 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }
