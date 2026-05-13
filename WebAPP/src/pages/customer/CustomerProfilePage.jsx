@@ -93,7 +93,7 @@ const CustomerProfilePage = () => {
             {avatarSrc
               ? <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" />
               : (profile?.name?.[0] || user?.userName?.[0] || 'U')
-            }
+            } 
           </div>
           {editing && (
             <>
