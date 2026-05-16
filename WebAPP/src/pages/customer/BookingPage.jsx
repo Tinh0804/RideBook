@@ -176,11 +176,13 @@ const BookingPage = () => {
           <h1 className="text-3xl font-display font-bold text-content-main">Bạn muốn đi đâu?</h1>
           <p className="text-content-muted">Nhập điểm đón và điểm đến để bắt đầu hành trình</p>
         </div>
-
+            
+      
         <div className="card p-6 space-y-6 relative">
+          
           {/* Vertical line connecting inputs */}
           <div className="absolute left-[41px] top-[50px] bottom-[50px] w-0.5 bg-surface-border border-dashed border-l-2" />
-          
+         
           <div className="space-y-6 relative z-10">
             <div className="flex items-center gap-4">
               <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0 shadow-glow-green">
@@ -188,11 +190,7 @@ const BookingPage = () => {
               </div>
               <div className="flex-1">
                 <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
-                {/* <LocationAutocomplete 
-                  placeholder="Nhập địa chỉ đón..." 
-                  value={pickup?.name || ''}
-                  onSelectLocation={setPickup}
-                /> */}
+            
 
                  <AddressInput
                     placeholder="Điểm đón của bạn"
