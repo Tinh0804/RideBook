@@ -17,6 +17,8 @@ export const ratingApi = {
 
   getByCustomer: (customerId) =>
     apiClient.get(`/ratings/customer/${customerId}`).then((r) => parseApiArrayResponse(RatingSchema, r.data)),
+
+  
 }
 
 export const notificationApi = {
@@ -39,4 +41,6 @@ export const masterDataApi = {
 
   createPromotion: (payload) =>
     apiClient.post('/promotions', payload).then((r) => parseApiResponse(PromotionSchema, r.data)),
+
+
 }

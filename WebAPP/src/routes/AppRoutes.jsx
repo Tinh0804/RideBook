@@ -21,6 +21,7 @@ const TripTrackingPage       = lazy(() => import('@/pages/customer/TripTrackingP
 const TripHistoryPage        = lazy(() => import('@/pages/customer/TripHistoryPage'))
 const RatingPage             = lazy(() => import('@/pages/customer/RatingPage'))
 const CustomerProfilePage    = lazy(() => import('@/pages/customer/CustomerProfilePage'))
+const CustomerPromotionsPage = lazy(() => import('@/pages/customer/PromotionsPage'))
 
 // Driver
 const DriverDashboardPage    = lazy(() => import('@/pages/driver/DriverDashboardPage'))
@@ -79,6 +80,7 @@ const AppRoutes = () => (
           <Route path="customer/history"  element={<TripHistoryPage />} />
           <Route path="customer/rating"   element={<RatingPage />} />
           <Route path="customer/profile"  element={<CustomerProfilePage />} />
+          <Route path="customer/promotions"  element={<CustomerPromotionsPage />} />
         </Route>
       </Route>
 

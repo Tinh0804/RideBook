@@ -20,4 +20,6 @@ export const customerApi = {
 
   getAll: () =>
     apiClient.get('/customers').then((r) => parseApiArrayResponse(CustomerProfileSchema, r.data)),
+
+  
 }

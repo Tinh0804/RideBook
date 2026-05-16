@@ -17,6 +17,7 @@ import { cn } from '@/utils/cn'
 const BASE_CUSTOMER_NAV = [
   { to: '/customer/home',     icon: RiHomeLine,     label: 'Trang chủ' },
   { to: '/customer/history',  icon: RiHistoryLine,  label: 'Lịch sử chuyến' },
+  { to: '/customer/promotions',  icon: RiMoneyDollarCircleLine,     label: 'Khuyến mãi' },
   { to: '/customer/profile',  icon: RiUserLine,     label: 'Hồ sơ cá nhân' },
 ]
 
@@ -51,10 +52,11 @@ const MainLayout = () => {
   const customerNav = [
     BASE_CUSTOMER_NAV[0], // Trang chủ
     currentBooking 
-      ? { to: '/customer/tracking', icon: RiMapPinLine, label: 'Đang di chuyển' }
+      ? { to: '/customer/tracking', icon: RiMapPinLine, label: 'Chuyến xe' }
       : { to: '/customer/booking',  icon: RiMapPinLine, label: 'Đặt xe' },
     BASE_CUSTOMER_NAV[1], // Lịch sử
-    BASE_CUSTOMER_NAV[2], // Hồ sơ
+    BASE_CUSTOMER_NAV[2], // Khuyến mãi
+    BASE_CUSTOMER_NAV[3], // Hồ sơ
   ]
 
   const navItems =

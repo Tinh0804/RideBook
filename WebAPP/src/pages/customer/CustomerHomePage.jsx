@@ -13,7 +13,7 @@ import {
 import { useAuthStore, useBookingStore } from '@/store/rootStore'
 import LocationInput  from '@/components/Map/AddressInput'
 import  AddressInput from '@/components/Map/AddressInput'
-import { masterDataApi } from '@/features/booking/api/masterDataApi'
+import { masterDataApi,ratingApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { formatCurrency } from '@/utils/currency'
 import Button from '@/components/Elements/Button'
@@ -44,18 +44,20 @@ const MOCK_NOTIFICATIONS = [
 
 const CustomerHomePage = () => {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, userProfile } = useAuthStore()
   const { vehicleTypes, setVehicleTypes, currentBooking } = useBookingStore()
   
   const [pickup, setPickup] = useState('')
   const [dropoff, setDropoff] = useState('')
   const [recentTrips, setRecentTrips] = useState([])
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [ratings, setRatings] = useState([])
   const [weather, setWeather] = useState({ temp: 28, condition: 'Nắng', icon: '☀️' })
   const [currentTime, setCurrentTime] = useState(new Date())
-
+const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
   const [pickupLocation, setPickupLocation] = useState(null) // Lưu tọa độ điểm đón
   const [dropoffLocation, setDropoffLocation] = useState(null) // Lưu tọa độ điểm đến
+  const [scoreDistribution, setScoreDistribution] = useState({1:0,2:0,3:0,4:0,5:0})
   
   // Auto-rotate promotions
   useEffect(() => {
@@ -81,7 +83,30 @@ const CustomerHomePage = () => {
       bookingApi.getCustomerHistory(user.id)
         .then((trips) => setRecentTrips(trips.slice(0, 3)))
         .catch(() => {})
+      
+      ratingApi.getByCustomer(user.id)
+          .then((ratingsList) => {
+            setRatings(ratingsList.slice(0, 3))
+            if (ratingsList.length > 0) {
+              const total = ratingsList.reduce((sum, r) => sum + r.score, 0)
+              setAvgScore(total / ratingsList.length)
+              
+              // Calculate distribution
+              const dist = {1:0,2:0,3:0,4:0,5:0}
+              ratingsList.forEach(r => {
+                const s = Math.floor(r.score)
+                if (s >= 1 && s <= 5) dist[s]++
+              })
+              setScoreDistribution(dist)
+            } else {
+              setAvgScore(0)
+              setScoreDistribution({1:0,2:0,3:0,4:0,5:0})
+            }
+          })
+          .catch(() => {})
     }
+
+   
   }, [user, vehicleTypes.length, setVehicleTypes])
   
   const handleBook = () => {
@@ -156,7 +181,7 @@ const CustomerHomePage = () => {
                   {greeting} <span className="text-2xl inline-block animate-wave">👋</span>
                 </p>
                 <h1 className="font-display text-4xl md:text-5xl font-bold text-white">
-                  {user?.name || user?.userName || 'Bạn'}
+                  {userProfile?.customerName || user?.userName || 'Bạn'}
                 </h1>
                 <p className="text-white/80 text-lg mt-2 flex items-center gap-2">
                   {weather.icon} {weather.temp}°C • {weather.condition}
@@ -221,7 +246,7 @@ const CustomerHomePage = () => {
           { icon: <RiCarLine size={28} />, label: 'Đặt xe', color: 'from-blue-500 to-blue-600', onClick: () => navigate('/customer/booking') },
           { icon: <RiShoppingCartLine size={28} />, label: 'Giao hàng', color: 'from-green-500 to-green-600', onClick: () => navigate('/customer/delivery') },
           { icon: <RiHistoryLine size={28} />, label: 'Lịch sử', color: 'from-purple-500 to-purple-600', onClick: () => navigate('/customer/history') },
-          { icon: <RiCouponLine size={28} />, label: 'Voucher', color: 'from-pink-500 to-pink-600', onClick: () => navigate('/customer/vouchers') },
+          { icon: <RiCouponLine size={28} />, label: 'Voucher', color: 'from-pink-500 to-pink-600', onClick: () => navigate('/customer/promotions') },
           { icon: <RiHeartLine size={28} />, label: 'Yêu thích', color: 'from-red-500 to-red-600', onClick: () => document.getElementById('favorites')?.scrollIntoView({ behavior: 'smooth' }) },
           { icon: <RiBankCardLine size={28} />, label: 'Thanh toán', color: 'from-cyan-500 to-cyan-600', onClick: () => navigate('/customer/payment') },
         ].map((action) => (
@@ -358,6 +383,33 @@ const CustomerHomePage = () => {
             ))}
           </div>
         </div>
+        <div id="favorites" className="space-y-3">
+          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Địa điểm yêu thích</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {MOCK_FAVORITES.map((place) => (
+              <div key={place.id} className="card p-4 hover:shadow-xl transition-all duration-300 group">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500">
+                    {place.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-content-main">{place.name}</p>
+                    <p className="text-xs text-content-muted truncate">{place.address}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPickup(place.address)
+                      document.getElementById('booking-card')?.scrollIntoView({ behavior: 'smooth' })
+                    }}
+                    className="text-xs bg-brand-500/10 text-brand-500 px-3 py-1 rounded-lg hover:bg-brand-500 hover:text-white transition-colors"
+                  >
+                    Đặt
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       
       {/* Nearby Drivers & Statistics Row */}
@@ -467,46 +519,81 @@ const CustomerHomePage = () => {
         <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Đánh giá của bạn</h3>
         <div className="card p-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
+            {/* Điểm trung bình */}
             <div className="text-center">
-              <div className="text-4xl font-bold text-content-main">4.8</div>
+              <div className="text-4xl font-bold text-content-main">
+                {avgScore > 0 ? avgScore.toFixed(1) : '—'}
+              </div>
               <div className="flex text-yellow-400 mt-1">
                 {[1,2,3,4,5].map((star) => (
-                  <RiStarLine key={star} className="fill-current" size={18} />
+                  <RiStarLine 
+                    key={star} 
+                    className={star <= Math.round(avgScore) ? "text-yellow-400 fill-current" : "text-gray-300"}
+                    size={18} 
+                  />
                 ))}
               </div>
-              <p className="text-xs text-content-muted mt-1">Dựa trên 24 đánh giá</p>
+              <p className="text-xs text-content-muted mt-1">
+                Dựa trên {ratings.length} đánh giá
+              </p>
             </div>
+
+            {/* Biểu đồ phân bố sao */}
             <div className="flex-1 space-y-1">
-              {[5,4,3,2,1].map((star) => (
-                <div key={star} className="flex items-center gap-2 text-sm">
-                  <span className="w-8">{star}★</span>
-                  <div className="flex-1 h-1.5 bg-surface-border rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: star === 5 ? '70%' : star === 4 ? '20%' : '10%' }}></div>
+              {[5,4,3,2,1].map((star) => {
+                const count = scoreDistribution[star] || 0
+                const total = ratings.length
+                const percent = total > 0 ? (count / total) * 100 : 0
+                return (
+                  <div key={star} className="flex items-center gap-2 text-sm">
+                    <span className="w-8">{star}★</span>
+                    <div className="flex-1 h-1.5 bg-surface-border rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-yellow-400 rounded-full" 
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-content-muted text-xs">{count}</span>
                   </div>
-                  <span className="w-8 text-content-muted text-xs">
-                    {star === 5 ? '17' : star === 4 ? '5' : '2'}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </div>
+
             <Button variant="outline" size="sm" onClick={() => navigate('/customer/reviews')}>
               Viết đánh giá
             </Button>
           </div>
-          
-          {/* Recent comment */}
-          <div className="mt-4 pt-4 border-t border-surface-border">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-sm">
-                {user?.name?.[0] || 'U'}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-content-main">Bạn vừa đánh giá</p>
-                <p className="text-sm text-content-muted">"Dịch vụ tuyệt vời, tài xế thân thiện!"</p>
-                <p className="text-xs text-content-muted mt-1">2 ngày trước</p>
-              </div>
+
+          {/* Danh sách đánh giá gần đây */}
+          {ratings.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-surface-border space-y-3">
+              {ratings.map((rating) => (
+                <div key={rating.ratingId} className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-sm">
+                    {user?.name?.[0] || user?.userName?.[0] || 'U'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-content-main">Bạn</p>
+                      <div className="flex text-yellow-400">
+                        {[1,2,3,4,5].map((star) => (
+                          <RiStarLine 
+                            key={star} 
+                            className={star <= rating.score ? "text-yellow-400 fill-current" : "text-gray-300"}
+                            size={12} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-content-muted mt-1">{rating.review || "Không có nội dung"}</p>
+                    <p className="text-xs text-content-muted mt-1">
+                      {new Date(rating.createdAt).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
       

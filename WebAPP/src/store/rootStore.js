@@ -6,7 +6,8 @@ import { TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '@/config'
 export const useAuthStore = create(
   persist(
     (set) => ({
-      user:         null,
+      user:         null,   // Thông tin account cơ bản (id, userName, role)
+      userProfile:  null,   // Thông tin profile đầy đủ từ API my-info (CustomerProfile | DriverProfile)
       accessToken:  null,
       refreshToken: null,
       isAuth:       false,
@@ -21,17 +22,27 @@ export const useAuthStore = create(
       logout: () => {
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(REFRESH_TOKEN_KEY)
-        set({ user: null, accessToken: null, refreshToken: null, isAuth: false, account: null })
+        set({ user: null, userProfile: null, accessToken: null, refreshToken: null, isAuth: false, account: null })
       },
 
       updateUser: (userData) =>
         set((state) => ({ user: { ...state.user, ...userData } })),
+
+      setUserProfile: (profile) =>
+        set({ userProfile: profile }),
+
+      updateUserProfile: (profileData) =>
+        set((state) => ({ userProfile: { ...state.userProfile, ...profileData } })),
+
+      clearUserProfile: () =>
+        set({ userProfile: null }),
     }),
     {
       name:    USER_KEY,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         user:         s.user,
+        userProfile:  s.userProfile,
         accessToken:  s.accessToken,
         refreshToken: s.refreshToken,
         isAuth:       s.isAuth,

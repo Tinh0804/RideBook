@@ -10,6 +10,7 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Mapper.RatingMapper;
 import com.project.BookCarOnline.Repository.RatingRepository;
 import com.project.BookCarOnline.Repository.RideBookRepository;
+import com.project.BookCarOnline.Utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -54,6 +55,18 @@ public class RatingService {
     public List<RatingResponse> getRatingsByDriverId(String driverId) {
         List<Booking> driverBookings = rideBookRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId);
         List<String> bookingIds = driverBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
+        List<Rating> ratings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
+        return ratings.stream().map(ratingMapper::toRatingResponse).collect(Collectors.toList());
+    }
+    public List<RatingResponse> getRatingsByCustomerId(String customerId) {
+        List<Booking> customerBookings = rideBookRepository.findByCustomerNo_CustomerIdOrderByBookingTimeDesc(customerId);
+        List<String> bookingIds = customerBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
+        List<Rating> ratings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
+        return ratings.stream().map(ratingMapper::toRatingResponse).collect(Collectors.toList());
+    }
+    public List<RatingResponse> getMyRatings() {
+        List<Booking> myBookings = rideBookRepository.findByCustomerNo_CustomerIdOrderByBookingTimeDesc(SecurityUtils.getCurrentAccountId().orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTACATED)));
+        List<String> bookingIds = myBookings.stream().map(Booking::getBookingId).collect(Collectors.toList());
         List<Rating> ratings = bookingIds.isEmpty() ? new java.util.ArrayList<>() : ratingRepository.findByBookingNo_BookingIdIn(bookingIds);
         return ratings.stream().map(ratingMapper::toRatingResponse).collect(Collectors.toList());
     }

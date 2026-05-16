@@ -43,4 +43,23 @@ public class RatingController {
                 .result(ratings)
                 .build();
     }
+    @GetMapping("/customer/{customerId}")
+    public APIResponse<List<RatingResponse>> getRatingsByCustomerId(@PathVariable String customerId) {
+        List<RatingResponse> ratings = ratingService.getRatingsByCustomerId(customerId);
+        return APIResponse.<List<RatingResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Danh sách đánh giá của khách hàng")
+                .result(ratings)
+                .build();
+    }
+
+    @GetMapping("/customer/my-ratings")
+    public APIResponse<List<RatingResponse>> getMyRatings() {
+        List<RatingResponse> ratings = ratingService.getMyRatings();
+        return APIResponse.<List<RatingResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Danh sách đánh giá của tôi")
+                .result(ratings)
+                .build();
+    }
 }
