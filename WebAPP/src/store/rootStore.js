@@ -109,13 +109,22 @@ export const useChatStore = create((set) => ({
 }))
 
 // ─── Driver Store ────────────────────────────────────────────────────────────
-export const useDriverStore = create((set) => ({
-  isOnline:         false,
-  currentTrip:      null,
-  availableBookings: [],
+export const useDriverStore = create(
+  persist(
+    (set) => ({
+      isOnline:         false,
+      currentTrip:      null,
+      availableBookings: [],
 
-  setOnline:             (v)        => set({ isOnline: v }),
-  setCurrentTrip:        (trip)     => set({ currentTrip: trip }),
-  clearCurrentTrip:      ()         => set({ currentTrip: null }),
-  setAvailableBookings:  (bookings) => set({ availableBookings: bookings }),
-}))
+      setOnline:             (v)        => set({ isOnline: v }),
+      setCurrentTrip:        (trip)     => set({ currentTrip: trip }),
+      clearCurrentTrip:      ()         => set({ currentTrip: null }),
+      setAvailableBookings:  (bookings) => set({ availableBookings: bookings }),
+    }),
+    {
+      name: 'bookcar_driver',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (s) => ({ isOnline: s.isOnline, currentTrip: s.currentTrip }),
+    }
+  )
+)

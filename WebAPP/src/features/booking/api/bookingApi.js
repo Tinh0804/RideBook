@@ -17,8 +17,11 @@ export const bookingApi = {
   getAvailable: () =>
     apiClient.get('/bookings/available').then((r) => parseApiArrayResponse(AvailableRideSchema, r.data)),
 
-  assignDriver: (bookingId) =>
-    apiClient.put(`/bookings/${bookingId}/assign-driver`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+  assignDriver: (bookingId, driverId) =>
+    apiClient.put(`/bookings/${bookingId}/assign-driver?driverId=${driverId}`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+
+  rejectBooking: (bookingId, driverId) =>
+    apiClient.post(`/bookings/${bookingId}/reject?driverId=${driverId}`).then((r) => r.data),
 
   updateStatus: (bookingId, status) =>
     apiClient.put(`/bookings/${bookingId}/status`, { status }).then((r) => parseApiResponse(BookingDetailSchema, r.data)),

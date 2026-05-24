@@ -14,7 +14,7 @@ import { cn } from '@/utils/cn'
 
 const DriverDashboardPage = () => {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, userProfile } = useAuthStore()
   const { isOnline, setOnline } = useDriverStore()
 
   const [dashboard, setDashboard] = useState(null)
@@ -22,11 +22,15 @@ const DriverDashboardPage = () => {
   const [toggling,  setToggling]  = useState(false)
 
   useEffect(() => {
+    // Sync online status from backend user profile on mount
+    if (userProfile?.activityStatus !== undefined && userProfile?.activityStatus !== null) {
+      setOnline(userProfile.activityStatus)
+    }
     driverApi.getDashboard()
       .then((dashboard) => setDashboard(dashboard))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [userProfile, setOnline])
 
   const handleToggleStatus = async () => {
     setToggling(true)

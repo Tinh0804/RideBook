@@ -6,7 +6,7 @@ import {
   RiUserLine, RiPhoneLine, RiCheckLine, RiCarLine, RiCloseLine
 } from 'react-icons/ri'
 import { bookingApi } from '@/features/booking/api/bookingApi'
-import { useDriverStore } from '@/store/rootStore'
+import { useDriverStore, useAuthStore } from '@/store/rootStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config'
 import { formatCurrency, formatDistance } from '@/utils/currency'
@@ -24,6 +24,7 @@ const STATUS_FLOW = [
 
 const DriverTripFlowPage = () => {
   const navigate = useNavigate()
+  const { user, userProfile } = useAuthStore()
   const { isOnline, currentTrip, setCurrentTrip, clearCurrentTrip } = useDriverStore()
 
   // State for Waiting phase
@@ -48,9 +49,21 @@ const DriverTripFlowPage = () => {
   }, [currentTrip?.bookingId, currentTrip?.customerName, setCurrentTrip])
 
   // 2. WebSocket for Incoming Trips (when waiting)
-  const onWsAvailableMessage = useCallback((_, payload) => {
+  const onWsAvailableMessage = useCallback((topic, payload) => {
     // Only process if we are online and don't have an active trip
     if (!isOnline || currentTrip) return
+
+    // Handle plain string payload from dispatcher (e.g. "NEW_RIDE:bookingId")
+    if (typeof payload === 'string') {
+      if (payload.startsWith('NEW_RIDE:')) {
+        const bookingId = payload.split(':')[1]
+        bookingApi.getById(bookingId)
+          .then(b => setIncomingTrip(b))
+          .catch(() => toast.error('Lỗi khi tải thông tin cuốc xe mới'))
+        return
+      }
+    }
+
     if (payload?.type === 'NEW_BOOKING' && payload?.booking) {
       setIncomingTrip(payload.booking)
       // Optional: play sound here
@@ -66,8 +79,13 @@ const DriverTripFlowPage = () => {
     }
   }, [isOnline, currentTrip, incomingTrip])
 
-  // Listen to global available bookings
-  useWebSocket(['/topic/available-bookings'], onWsAvailableMessage)
+  // Listen to global available bookings and personal driver topic
+  const driverId = userProfile?.driverId || user?.id
+  const topicsToListen = driverId 
+    ? ['/topic/available-bookings', `/topic/driver/${driverId}`]
+    : ['/topic/available-bookings']
+
+  useWebSocket(topicsToListen, onWsAvailableMessage)
 
   // 3. WebSocket for Active Trip (when processing)
   const onWsTripMessage = useCallback((_, payload) => {
@@ -81,10 +99,10 @@ const DriverTripFlowPage = () => {
 
   // --- Handlers for Waiting Phase ---
   const handleAccept = async () => {
-    if (!incomingTrip) return
+    if (!incomingTrip || !driverId) return
     setAccepting(true)
     try {
-      const updatedTrip = await bookingApi.assignDriver(incomingTrip.bookingId)
+      const updatedTrip = await bookingApi.assignDriver(incomingTrip.bookingId, driverId)
       toast.success('Nhận chuyến thành công!')
       setIncomingTrip(null)
       setCurrentTrip(updatedTrip)
@@ -96,7 +114,13 @@ const DriverTripFlowPage = () => {
     }
   }
 
-  const handleReject = () => {
+  const handleReject = async () => {
+    if (!incomingTrip || !driverId) return
+    try {
+      await bookingApi.rejectBooking(incomingTrip.bookingId, driverId)
+    } catch (err) {
+      console.error('Lỗi khi từ chối chuyến', err)
+    }
     setIncomingTrip(null)
   }
 

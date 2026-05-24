@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -7,6 +7,7 @@ import {
   RiArrowLeftLine
 } from 'react-icons/ri'
 import { useAuthStore, useBookingStore } from '@/store/rootStore'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { masterDataApi } from '@/features/booking/api/masterDataApi'
 import { paymentApi } from '@/features/payment/api/paymentApi'
@@ -25,8 +26,34 @@ const DUMMY_DISTANCE = 5.2  // km - in real app use Google Maps/OSRM Distance Ma
 const BookingPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user }  = useAuthStore()
-  const { vehicleTypes, setVehicleTypes, currentBooking, setCurrentBooking, setEstimatedPrice, estimatedPrice } = useBookingStore()
+  const { user, userProfile }  = useAuthStore()
+  const { vehicleTypes, setVehicleTypes, currentBooking, setCurrentBooking, setEstimatedPrice, estimatedPrice, clearCurrentBooking } = useBookingStore()
+
+  const customerId = userProfile?.customerId || userProfile?.id || user?.id
+
+  const onWsMessage = useCallback((topic, payload) => {
+    if (typeof payload === 'string') {
+      if (payload.startsWith('DRIVER_ASSIGNED:')) {
+        const bookingId = payload.split(':')[1]
+        if (currentBooking?.bookingId === bookingId) {
+          bookingApi.getById(bookingId).then((b) => {
+            setCurrentBooking(b)
+            toast.success('Đã tìm thấy tài xế!')
+            navigate('/customer/tracking')
+          })
+        }
+      } else if (payload.startsWith('NO_DRIVER_FOUND:')) {
+        const bookingId = payload.split(':')[1]
+        if (currentBooking?.bookingId === bookingId) {
+          toast.error('Không tìm thấy tài xế. Vui lòng thử lại sau.')
+          clearCurrentBooking()
+          setStep(2)
+        }
+      }
+    }
+  }, [currentBooking, setCurrentBooking, clearCurrentBooking, navigate])
+
+  useWebSocket(customerId ? [`/topic/customer/${customerId}`] : [], onWsMessage)
 
   // Prevent accessing booking page if there is an active booking that is NOT PENDING
   useEffect(() => {
@@ -53,6 +80,7 @@ const BookingPage = () => {
   const [estimating,      setEstimating]      = useState(false)
   const [estimatedPrices, setEstimatedPrices] = useState([])
   const [countdown,       setCountdown]       = useState(0)
+  const [isCanceling,     setCanceling]       = useState(false)
 
   useEffect(() => {
     if (!vehicleTypes.length) {
@@ -162,6 +190,24 @@ const BookingPage = () => {
       toast.error(err?.response?.data?.message || 'Đặt xe thất bại')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCancelSearch = async () => {
+    if (!currentBooking) {
+      setStep(2)
+      return
+    }
+    setCanceling(true)
+    try {
+      await bookingApi.cancelBooking(currentBooking.bookingId)
+      clearCurrentBooking()
+      setStep(2)
+      toast.success('Đã hủy tìm kiếm tài xế')
+    } catch (err) {
+      toast.error('Không thể hủy tìm kiếm. Vui lòng thử lại.')
+    } finally {
+      setCanceling(false)
     }
   }
 
@@ -361,7 +407,7 @@ const BookingPage = () => {
                     onChange={(name) => {
                       setDropoff({ name })
                     }}
-                    onLocationDetect={(locationData) => {
+                    onSelectLocation={(locationData) => {
                       if (locationData) {
                         setDropoff({
                           name: locationData.name,
@@ -418,14 +464,11 @@ const BookingPage = () => {
 
         {/* Back button overlay - allow them to cancel searching or modify details */}
         <button 
-          onClick={() => {
-            // Note: Currently we just go back to step 2 visually.
-            // Ideally we should call a cancel API here to stop broadcasting
-            setStep(2)
-          }}
+          onClick={handleCancelSearch}
+          disabled={isCanceling}
           className="absolute top-4 left-4 z-10 w-10 h-10 bg-surface-card/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-surface-border hover:bg-surface-muted transition-colors"
         >
-          <RiArrowLeftLine size={20} className="text-content-main" />
+          {isCanceling ? <Spinner size="sm" /> : <RiArrowLeftLine size={20} className="text-content-main" />}
         </button>
 
         {/* Spacer */}
@@ -450,10 +493,8 @@ const BookingPage = () => {
           <Button 
             variant="outline" 
             fullWidth 
-            onClick={() => {
-              // Add cancel logic
-              setStep(2)
-            }} 
+            onClick={handleCancelSearch} 
+            loading={isCanceling}
           >
             Hủy tìm kiếm
           </Button>
