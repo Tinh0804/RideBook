@@ -109,7 +109,7 @@ google:
 
 app:
     commission:
-        platform-rate: 20
+        platform-rate: 0.3
     time-to-live:
         otp: 300000
         password-reset-token: 3600000

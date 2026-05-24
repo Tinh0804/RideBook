@@ -59,11 +59,13 @@ const AdminDashboardPage = () => {
   ]
 
   const STATUS_BADGE_MAP = {
-    [BOOKING_STATUS.COMPLETED]:  'badge-green',
-    [BOOKING_STATUS.CANCELLED]:  'badge-red',
-    [BOOKING_STATUS.PENDING]:    'badge-yellow',
-    [BOOKING_STATUS.IN_TRANSIT]: 'badge-blue',
-    default:                     'badge-gray',
+    [BOOKING_STATUS.PENDING]: 'badge-gray',
+    [BOOKING_STATUS.ACCEPTED]: 'badge-blue',
+    [BOOKING_STATUS.ARRIVED]: 'badge-blue',
+    [BOOKING_STATUS.IN_PROGRESS]: 'badge-blue',
+    [BOOKING_STATUS.COMPLETED]: 'badge-green',
+    [BOOKING_STATUS.CANCELLED]: 'badge-red',
+    default: 'badge-gray',
   }
 
   if (loading) return <div className="flex justify-center py-16"><Spinner size="xl" /></div>

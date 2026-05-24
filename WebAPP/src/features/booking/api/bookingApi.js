@@ -24,7 +24,7 @@ export const bookingApi = {
     apiClient.post(`/bookings/${bookingId}/reject?driverId=${driverId}`).then((r) => r.data),
 
   updateStatus: (bookingId, status) =>
-    apiClient.put(`/bookings/${bookingId}/status`, { status }).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
+    apiClient.put(`/bookings/${bookingId}/status?status=${status}`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),
 
   completeBooking: (bookingId) =>
     apiClient.put(`/bookings/${bookingId}/complete`).then((r) => parseApiResponse(BookingDetailSchema, r.data)),

@@ -17,9 +17,9 @@ import Modal from '@/components/Elements/Modal'
 import { cn } from '@/utils/cn'
 
 const STATUS_FLOW = [
-  { status: BOOKING_STATUS.ACCEPTED,   label: 'Đến đón khách',    next: BOOKING_STATUS.PICKING_UP,  action: 'Bắt đầu đến đón' },
-  { status: BOOKING_STATUS.PICKING_UP, label: 'Đang đến đón',     next: BOOKING_STATUS.IN_TRANSIT,  action: 'Đã đón khách, bắt đầu chạy' },
-  { status: BOOKING_STATUS.IN_TRANSIT, label: 'Đang trên đường',  next: BOOKING_STATUS.COMPLETED,   action: 'Hoàn thành chuyến đi' },
+  { status: BOOKING_STATUS.ACCEPTED,    label: 'Đến đón khách',    next: BOOKING_STATUS.ARRIVED,     action: 'Tôi đã đến điểm đón' },
+  { status: BOOKING_STATUS.ARRIVED,     label: 'Đã đến điểm đón',  next: BOOKING_STATUS.IN_PROGRESS, action: 'Đã đón khách, bắt đầu chạy' },
+  { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường',  next: BOOKING_STATUS.COMPLETED,   action: 'Hoàn thành chuyến đi' },
 ]
 
 const DriverTripFlowPage = () => {
@@ -126,7 +126,7 @@ const DriverTripFlowPage = () => {
 
   // --- Handlers for Active Trip Phase ---
   const handleNextStatus = async () => {
-    const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip?.status)
+    const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip?.bookingStatus)
     if (!currentStep || !currentTrip) return
     setUpdating(true)
     try {
@@ -275,8 +275,8 @@ const DriverTripFlowPage = () => {
   // ==========================================
   if (loadingTrip) return <div className="flex justify-center py-16"><Spinner size="xl" /></div>
 
-  const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip.status)
-  const stepIndex = STATUS_FLOW.findIndex((s) => s.status === currentTrip.status)
+  const stepIndex = STATUS_FLOW.findIndex(s => s.status === currentTrip.bookingStatus)
+  const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip.bookingStatus)
 
   return (
     <div className="max-w-lg space-y-6 mx-auto animate-fade-in">
@@ -304,7 +304,7 @@ const DriverTripFlowPage = () => {
           ))}
         </div>
         <div className="text-center relative z-10">
-          <p className="font-display font-bold text-lg text-content-main">{BOOKING_STATUS_LABEL[currentTrip.status]}</p>
+          <p className="font-display font-bold text-lg text-content-main">{BOOKING_STATUS_LABEL[currentTrip.bookingStatus]}</p>
           {currentStep && (
             <p className="text-xs text-brand-400 mt-1 flex items-center justify-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" /> Bước tiếp: {currentStep.action}

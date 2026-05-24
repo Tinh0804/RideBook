@@ -20,16 +20,16 @@ import { cn } from '@/utils/cn'
 const STATUS_STEPS = [
   BOOKING_STATUS.PENDING,
   BOOKING_STATUS.ACCEPTED,
-  BOOKING_STATUS.PICKING_UP,
-  BOOKING_STATUS.IN_TRANSIT,
+  BOOKING_STATUS.ARRIVED,
+  BOOKING_STATUS.IN_PROGRESS,
   BOOKING_STATUS.COMPLETED,
 ]
 
 const STATUS_COLOR = {
   [BOOKING_STATUS.PENDING]:    'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
   [BOOKING_STATUS.ACCEPTED]:   'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  [BOOKING_STATUS.PICKING_UP]: 'text-brand-400 bg-brand-400/10 border-brand-400/20',
-  [BOOKING_STATUS.IN_TRANSIT]: 'text-brand-400 bg-brand-400/10 border-brand-400/20',
+  [BOOKING_STATUS.ARRIVED]:    'text-brand-400 bg-brand-400/10 border-brand-400/20',
+  [BOOKING_STATUS.IN_PROGRESS]:'text-brand-400 bg-brand-400/10 border-brand-400/20',
   [BOOKING_STATUS.COMPLETED]:  'text-brand-400 bg-brand-400/10 border-brand-400/20',
   [BOOKING_STATUS.CANCELLED]:  'text-red-400 bg-red-400/10 border-red-400/20',
 }
@@ -89,16 +89,16 @@ const TripTrackingPage = () => {
 
   // Update driver coordinates based on status (mocking movement)
   useEffect(() => {
-    if (booking?.status === BOOKING_STATUS.PICKING_UP && pickupCoord) {
+    if (booking?.status === BOOKING_STATUS.ARRIVED && pickupCoord) {
       setDriverCoord({ lat: pickupCoord.lat - 0.005, lng: pickupCoord.lng - 0.005 })
-    } else if (booking?.status === BOOKING_STATUS.IN_TRANSIT && dropoffCoord) {
+    } else if (booking?.status === BOOKING_STATUS.IN_PROGRESS && dropoffCoord) {
       setDriverCoord({ lat: dropoffCoord.lat - 0.005, lng: dropoffCoord.lng - 0.005 })
     }
   }, [booking?.status, pickupCoord, dropoffCoord])
 
   // Poll for status updates every 5s when pending/accepted
   useEffect(() => {
-    const shouldPoll = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.PICKING_UP, BOOKING_STATUS.IN_TRANSIT]
+    const shouldPoll = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS]
       .includes(booking?.status)
     if (!shouldPoll) return
     const interval = setInterval(() => {
@@ -162,21 +162,19 @@ const TripTrackingPage = () => {
   if (!booking) return null
 
   return (
-    <div className="-m-6 h-[calc(100vh-64px)] relative flex flex-col bg-surface-dark">
-      {/* Background Map */}
-      <div className="absolute inset-0 z-0">
-         <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
-      </div>
-
-      {/* Floating Header */}
-      <div className="relative z-10 p-4 w-full max-w-2xl mx-auto">
-        <div className="bg-surface-card/90 backdrop-blur-md rounded-2xl p-4 shadow-lg border border-surface-border">
-          <div className="flex items-center justify-between mb-3">
+    <div className="-m-6 h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-surface-dark overflow-hidden">
+      {/* Vùng 1: Thông tin chuyến đi */}
+      <div className="w-full lg:w-[450px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-surface-border z-10 shadow-2xl shrink-0">
+        
+        {/* Header & Status (Sticky) */}
+        <div className="p-5 border-b border-surface-border bg-surface-card/95 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="font-semibold text-content-main">Chuyến đi #{booking.bookingId?.slice(-8)}</h1>
+              <h1 className="font-display font-bold text-content-main text-xl">Chuyến đi #{booking.bookingId?.slice(-8)}</h1>
+              <p className="text-xs text-content-muted mt-1">Đang theo dõi hành trình</p>
             </div>
-            <span className={cn('badge border text-xs', STATUS_COLOR[booking.status] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+            <span className={cn('badge border text-xs px-3 py-1.5 shadow-sm', STATUS_COLOR[booking.status] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-2 inline-block" />
               {BOOKING_STATUS_LABEL[booking.status] || booking.status}
             </span>
           </div>
@@ -187,57 +185,48 @@ const TripTrackingPage = () => {
               {STATUS_STEPS.slice(0, -1).map((s, i) => (
                 <div key={s} className="flex items-center flex-1">
                   <div className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-all duration-500',
-                    i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-600',
+                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-500',
+                    i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-500',
                   )}>
-                    {i < stepIndex ? '✓' : i + 1}
+                    {i < stepIndex ? <RiCheckLine size={14} /> : i + 1}
                   </div>
                   {i < STATUS_STEPS.length - 2 && (
-                    <div className={cn('flex-1 h-0.5 mx-1 transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-surface-border')} />
+                    <div className={cn('flex-1 h-1 mx-1.5 rounded-full transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-surface-border')} />
                   )}
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Spacer to push Bottom Sheet down */}
-      <div className="flex-1 min-h-0 pointer-events-none" />
-
-      {/* Bottom Sheet Card */}
-      <div className="relative z-10 w-full max-w-2xl mx-auto bg-surface-card rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-x border-surface-border flex flex-col pointer-events-auto">
-        {/* Drag handle pill */}
-        <div className="w-full flex justify-center py-3 shrink-0">
-          <div className="w-12 h-1.5 bg-surface-border rounded-full" />
-        </div>
-
-        <div className="p-5 pt-0 overflow-y-auto no-scrollbar space-y-4 max-h-[60vh]">
+        {/* Scrollable Info Area */}
+        <div className="p-5 overflow-y-auto no-scrollbar space-y-6 flex-1">
           {/* Driver info */}
           {booking.driverId ? (
-            <div className="bg-surface rounded-2xl p-4 border border-surface-border space-y-4">
+            <div className="bg-surface rounded-2xl p-5 border border-surface-border shadow-sm space-y-4">
+              <h3 className="font-semibold text-content-main text-sm">Thông tin tài xế</h3>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-brand-500/20 border-2 border-brand-500/30 flex items-center justify-center text-xl font-bold text-brand-400 overflow-hidden shrink-0">
+                <div className="w-14 h-14 rounded-full bg-brand-500/20 border-2 border-brand-500/40 flex items-center justify-center text-2xl font-bold text-brand-400 overflow-hidden shrink-0 shadow-glow-green">
                   {booking.driverName?.[0] || <RiUserStarLine />}
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-content-main">{booking.driverName}</p>
-                  <div className="flex items-center gap-1 text-yellow-400">
-                    <RiStarLine size={14} />
-                    <span className="text-xs font-medium">4.8</span>
+                  <p className="font-bold text-content-main text-lg">{booking.driverName}</p>
+                  <div className="flex items-center gap-1 text-yellow-400 mt-0.5">
+                    <RiStarLine size={16} />
+                    <span className="text-sm font-medium">4.8</span>
                   </div>
-                  <div className="flex items-center gap-1 mt-1">
+                  <div className="flex items-center gap-1.5 mt-2 bg-surface-dark px-2 py-1 rounded-md inline-flex">
                     <RiCarLine size={14} className="text-content-muted" />
-                    <span className="text-xs text-content-muted">{booking.vehicleTypeName} · {booking.licensePlate}</span>
+                    <span className="text-xs text-content-muted font-medium">{booking.vehicleTypeName} · {booking.licensePlate}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors" title={booking.driverPhone}>
                     <RiPhoneLine size={18} />
                   </button>
                   <button
                     onClick={() => setChatOpen(true)}
-                    className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 hover:bg-brand-500/25 flex items-center justify-center text-brand-400 transition-colors"
+                    className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 hover:bg-brand-500/25 flex items-center justify-center text-brand-400 transition-colors shadow-sm"
                   >
                     <RiMessage2Line size={18} />
                   </button>
@@ -245,40 +234,49 @@ const TripTrackingPage = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-surface rounded-2xl p-4 border border-surface-border text-center flex flex-col items-center justify-center py-6">
-              <Spinner className="mb-3" />
-              <p className="text-sm text-content-muted">Đang tìm tài xế phù hợp cho bạn...</p>
+            <div className="bg-surface rounded-2xl p-6 border border-surface-border text-center flex flex-col items-center justify-center min-h-[140px] shadow-sm">
+              <Spinner className="mb-4" />
+              <p className="text-sm font-medium text-content-main">Đang tìm tài xế phù hợp cho bạn...</p>
+              <p className="text-xs text-content-muted mt-1">Vui lòng đợi trong giây lát</p>
             </div>
           )}
 
           {/* Route info */}
-          <div className="bg-surface rounded-2xl p-4 border border-surface-border space-y-3">
-            <div className="flex items-start gap-3">
-              <RiMapPinLine size={18} className="text-brand-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-content-muted">Điểm đón</p>
-                <p className="text-content-main text-sm font-medium line-clamp-1">{booking.pickupLocation}</p>
+          <div className="bg-surface rounded-2xl p-5 border border-surface-border space-y-4 shadow-sm">
+            <h3 className="font-semibold text-content-main text-sm">Hành trình & Cước phí</h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
+                  <RiMapPinLine size={18} className="text-brand-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đón</p>
+                  <p className="text-content-main text-sm font-medium mt-0.5">{booking.pickupLocation}</p>
+                </div>
+              </div>
+              <div className="w-0.5 h-6 bg-surface-border ml-4" />
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                  <RiMapPin2Line size={18} className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đến</p>
+                  <p className="text-content-main text-sm font-medium mt-0.5">{booking.dropoffLocation}</p>
+                </div>
               </div>
             </div>
-            <div className="w-px h-4 bg-surface-border ml-[8px]" />
-            <div className="flex items-start gap-3">
-              <RiMapPin2Line size={18} className="text-red-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-content-muted">Điểm đến</p>
-                <p className="text-content-main text-sm font-medium line-clamp-1">{booking.dropoffLocation}</p>
-              </div>
-            </div>
-            <div className="border-t border-surface-border pt-3 flex justify-between text-sm">
-              <span className="text-content-muted">Tổng cước phí</span>
-              <span className="font-display font-bold text-brand-400">{formatCurrency(booking.totalPrice)}</span>
+            
+            <div className="border-t border-surface-border pt-4 mt-2 flex justify-between items-center">
+              <span className="text-content-muted font-medium">Tổng thanh toán</span>
+              <span className="font-display font-bold text-brand-400 text-xl">{formatCurrency(booking.totalPrice)}</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3 pt-4">
             {booking.status === BOOKING_STATUS.COMPLETED && (
-              <Button fullWidth size="lg" onClick={handleRateDriver}>
-                <RiStarLine size={18} /> Đánh giá chuyến đi
+              <Button fullWidth size="lg" onClick={handleRateDriver} className="shadow-lg shadow-brand-500/20">
+                <RiStarLine size={18} className="mr-2" /> Đánh giá chuyến đi
               </Button>
             )}
             {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status) && (
@@ -290,6 +288,17 @@ const TripTrackingPage = () => {
               Về trang chủ
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Vùng 2: Bản đồ Realtime */}
+      <div className="flex-1 relative h-[45vh] lg:h-full bg-surface-dark z-0">
+        <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
+        
+        {/* Map Overlay Indicator */}
+        <div className="absolute top-4 right-4 z-10 bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full border border-surface-border shadow-lg flex items-center gap-2">
+          <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
+          <span className="text-xs font-semibold text-content-main">Bản đồ trực tiếp</span>
         </div>
       </div>
 
