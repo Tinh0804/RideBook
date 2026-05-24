@@ -2,6 +2,7 @@ package com.project.BookCarOnline.Service;
 
 import com.google.maps.model.GeocodingResult;
 import com.project.BookCarOnline.DTO.Request.CreateBookingRequest;
+import com.project.BookCarOnline.DTO.Request.EstimatePriceRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
@@ -14,6 +15,8 @@ import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
 import com.project.BookCarOnline.Entity.Payment;
+import com.project.BookCarOnline.DTO.Redis.FareQuote;
+import org.springframework.data.redis.core.RedisTemplate;
 import com.project.BookCarOnline.Utils.Constant;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -33,6 +36,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
 
 
 @Slf4j
@@ -56,41 +62,73 @@ public class BookingService {
     Constant                  constant;
     BookingRejectionRepository rejectionRepository;
     PromotionRepository       promotionRepository;
+    RedisTemplate<String, Object> redisTemplate;
 
     @NonFinal
     @Value("${app.commission.platform-rate}")
     protected double platformCommissionRate;
 
-    public EstimatePriceResponse estimatePrice(com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
-        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+    @NonFinal
+    @Value("${app.time-to-live.quote}")
+    protected long quoteTtlMillis;
 
-        double basePrice      = vehicleType.getPricePerKm() * request.getDistance();
-        double surcharge      = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
-        double surgeMultiplier = 1.0;
+    public List<EstimatePriceResponse> estimatePrice(EstimatePriceRequest request) {
         
-        double discount = 0.0;
-        if (request.getPromotionCode() != null && !request.getPromotionCode().isBlank()) {
-            Promotion promotion = promotionRepository.findByPromotionCode(request.getPromotionCode()).orElse(null);
-            if (promotion != null && promotion.getIsActive() 
-                && promotion.getQuantity() > 0 
-                && !promotion.getEndTime().before(Timestamp.from(Instant.now()))) {
-                discount = promotion.getDiscountLimit() != null ? promotion.getDiscountLimit() : 0.0;
+        double distance = calculateDistanceKm(request.getPickupLat(), request.getPickupLng(), request.getDropoffLat(), request.getDropoffLng());
+        
+        List<VehicleType> vehicleTypes = vehicleTypeRepository.findAll();
+        List<EstimatePriceResponse> responses = new ArrayList<>();
+        
+        long expiryTime = System.currentTimeMillis() + 120000; // 120 seconds
+        
+        for (VehicleType vehicleType : vehicleTypes) {
+            double basePrice      = vehicleType.getPricePerKm() * distance;
+            double surcharge      = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
+            double surgeMultiplier = 1.0;
+            
+            double discount = 0.0;
+            if (request.getPromotionCode() != null && !request.getPromotionCode().isBlank()) {
+                Promotion promotion = promotionRepository.findByPromotionCode(request.getPromotionCode()).orElse(null);
+                if (promotion != null && promotion.getIsActive() 
+                    && promotion.getQuantity() > 0 
+                    && !promotion.getEndTime().before(Timestamp.from(Instant.now()))) {
+                    discount = promotion.getDiscountLimit() != null ? promotion.getDiscountLimit() : 0.0;
+                }
             }
+
+            double finalPrice = roundToThousand(basePrice * surcharge * surgeMultiplier - discount);
+            if (finalPrice < 0) finalPrice = 0.0;
+
+            String quoteId = UUID.randomUUID().toString();
+            
+            FareQuote quote = FareQuote.builder()
+                    .quoteId(quoteId)
+                    .vehicleTypeId(vehicleType.getVehicleTypeId())
+                    .distance(distance)
+                    .basePrice(basePrice)
+                    .surcharge(surcharge)
+                    .surgeMultiplier(surgeMultiplier)
+                    .totalPrice(finalPrice)
+                    .discount(discount)
+                    .promotionId(request.getPromotionCode())
+                    .build();
+                    
+            redisTemplate.opsForValue().set("quote:" + quoteId, quote, 120, TimeUnit.SECONDS);
+
+            responses.add(EstimatePriceResponse.builder()
+                    .vehicleTypeId(vehicleType.getVehicleTypeId())
+                    .distance(distance)
+                    .basePrice(basePrice)
+                    .surcharge(surcharge)
+                    .surgeMultiplier(surgeMultiplier)
+                    .discount(discount)
+                    .totalPrice(finalPrice)
+                    .quoteId(quoteId)
+                    .expiryTime(expiryTime)
+                    .build());
         }
-
-        double finalPrice = roundToThousand(basePrice * surcharge * surgeMultiplier - discount);
-        if (finalPrice < 0) finalPrice = 0.0;
-
-        return EstimatePriceResponse.builder()
-                .vehicleTypeId(vehicleType.getVehicleTypeId())
-                .distance(request.getDistance())
-                .basePrice(basePrice)
-                .surcharge(surcharge)
-                .surgeMultiplier(surgeMultiplier)
-                .discount(discount)
-                .totalPrice(finalPrice)
-                .build();
+        
+        return responses;
     }
 
 
@@ -102,25 +140,26 @@ public class BookingService {
         double lat = geocoded.geometry.location.lat;
         double lng = geocoded.geometry.location.lng;
 
-        // 2. Kiểm tra có tài xế gần không (fallback = toàn bộ active)
+        // 2. Kiểm tra có tài xế gần không
         List<Driver> nearbyDrivers = driverRepository.findTrulyAvailableDriversNearby(
                 lat, lng, constant.getSEARCH_RADIUS_KM());
 
-        // 3. Surge pricing: ít tài xế → tăng giá
-        double surgeMultiplier = 1.0;
-        if (!nearbyDrivers.isEmpty() && nearbyDrivers.size() < 3) {
-            surgeMultiplier = 1.3; // +30% khi dưới 3 tài xế gần đây
-            log.info("[Booking] Surge pricing: chỉ có {} tài xế gần, surgeMultiplier={}",
-                     nearbyDrivers.size(), surgeMultiplier);
+        String quoteId = request.getQuoteId();
+        if (quoteId == null || quoteId.isBlank()) {
+            throw new AppException(ErrorCode.QUOTE_EXPIRED);
+        }
+        
+        FareQuote quote = (FareQuote) redisTemplate.opsForValue().get("quote:" + quoteId);
+        if (quote == null) {
+            throw new AppException(ErrorCode.QUOTE_EXPIRED);
         }
 
-        VehicleType vehicleType = vehicleTypeRepository.findById(request.getVehicleTypeId())
+        VehicleType vehicleType = vehicleTypeRepository.findById(quote.getVehicleTypeId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        double basePrice  = vehicleType.getPricePerKm() * request.getDistance();
-        double surcharge  = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
-        
-        double discount = 0.0;
+        double finalPrice = quote.getTotalPrice();
+        double distance = quote.getDistance();
+
         Promotion validPromotion = null;
         if (request.getPromotionId() != null && !request.getPromotionId().isBlank()) {
             validPromotion = promotionRepository.findById(request.getPromotionId()).orElse(null);
@@ -129,12 +168,8 @@ public class BookingService {
                     || validPromotion.getEndTime().before(Timestamp.from(Instant.now()))) {
                     throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE); // Hoặc báo lỗi khác cho khách
                 }
-                discount = validPromotion.getDiscountLimit() != null ? validPromotion.getDiscountLimit() : 0.0;
             }
         }
-        
-        double finalPrice = roundToThousand(basePrice * surcharge * surgeMultiplier - discount);
-        if (finalPrice < 0) finalPrice = 0.0;
 
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
@@ -158,7 +193,7 @@ public class BookingService {
                 .totalPrice(finalPrice)
                 .bookingTime(Timestamp.valueOf(LocalDateTime.now()))
                 .bookingStatus(BookingStatus.PENDING)
-                .distance(request.getDistance())
+                .distance(distance)
                 .paymentNo(savedPayment)
                 .promotionNo(validPromotion) // Gắn khuyến mãi vào chuyến
                 .build();

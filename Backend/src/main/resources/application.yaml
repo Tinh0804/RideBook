@@ -9,6 +9,9 @@ spring:
     data:
         mongodb:
             uri: mongodb://sa:%40Tinh0804@localhost:27017/RideBookDB?authSource=admin
+        redis:
+            host: localhost
+            port: 6379
     datasource:
         url: jdbc:sqlserver://localhost:1433;databaseName=RideBookDB;encrypt=true;trustServerCertificate=true;
         username: sa
@@ -107,3 +110,8 @@ google:
 app:
     commission:
         platform-rate: 20
+    time-to-live:
+        otp: 300000
+        password-reset-token: 3600000
+        quote: 120000
+    max-login-attempts: 5

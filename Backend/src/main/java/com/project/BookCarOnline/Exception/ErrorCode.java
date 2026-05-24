@@ -63,7 +63,8 @@ public enum ErrorCode {
     PROMOTION_ALREADY_EXISTS(400, "Mã khuyến mãi đã tồn tại", HttpStatus.BAD_REQUEST),
     PROMOTION_EXPIRED(400, "Mã khuyến mãi đã hết hạn", HttpStatus.BAD_REQUEST),
     PROMOTION_OUT_OF_STOCK(400, "Mã khuyến mãi đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
-    PROMOTION_NOT_ACTIVE(400, "Mã khuyến mãi hiện không khả dụng", HttpStatus.BAD_REQUEST);
+    PROMOTION_NOT_ACTIVE(400, "Mã khuyến mãi hiện không khả dụng", HttpStatus.BAD_REQUEST),
+    QUOTE_EXPIRED(400, "Báo giá đã hết hạn hoặc không tồn tại, vui lòng lấy giá mới", HttpStatus.BAD_REQUEST);
 
 
     private final int status;

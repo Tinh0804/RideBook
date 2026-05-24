@@ -272,19 +272,57 @@ VALUES
 	('KM003', N'Giảm 30%', 30000, '2025-04-05', '2025-04-20', N'Chỉ áp dụng cuối tuần', 30),
 	('KM004', N'Miễn phí 5KM đầu', 25000, '2025-04-01', '2025-05-01', N'Tất cả đơn', 80);
 
-INSERT INTO GIO (ID_GIO, THOIGIANBATDAU, THOIGIANKETTHUC) 
+INSERT INTO GIO (THOIGIANBATDAU, THOIGIANKETTHUC, ID_GIO, TEN)
 VALUES
-	('G1', '06:00', '12:00'),
-	('G2', '12:01', '17:00'),
-	('G3', '17:01', '22:00'),
-	('G4', '22:01', '5:59');
+-- G1: Giờ thấp điểm (khuya - sáng sớm)
+('22:00:00', '05:00:00', 'G1', N'Giờ thấp điểm (22h-5h)'),
+
+-- G2: Giờ bình thường buổi sáng
+('05:00:01', '08:00:00', 'G2', N'Giờ bình thường sáng'),
+
+-- G3: Giờ cao điểm sáng
+('08:00:01', '10:00:00', 'G3', N'Giờ cao điểm sáng'),
+
+-- G4: Giờ cao điểm chiều tối
+('16:30:00', '19:30:00', 'G4', N'Giờ cao điểm chiều tối'),
+
+-- Thêm vài khung giờ khác để phong phú
+('10:00:01', '12:00:00', 'G5', N'Giữa trưa'),
+('12:00:01', '16:29:00', 'G6', N'Giờ thấp điểm chiều'),
+('19:30:01', '21:59:00', 'G7', N'Giờ bình thường tối');
+
 
 INSERT INTO LOAIXE_GIO (ID_LOAIXENO, ID_GIONO, PHUTHU) 
 VALUES
-	('LX001', 'G1', 1.25),
+	('LX001', 'G1', 1.0),
 	('LX002', 'G4', 1.5),
-	('LX003', 'G3', 1.3),
-	('LX004', 'G2', 1.4);
+	('LX003', 'G3', 1.0),
+	('LX004', 'G2', 1.1),
+	('LX002', 'G1', 1.8),
+	('LX003', 'G1', 2.0),
+	('LX004', 'G1', 1.7),
+	('LX001', 'G3', 1.5),
+	('LX002', 'G3', 1.7),
+	('LX004', 'G3', 1.4),
+	('LX001', 'G4', 1.6),
+	('LX003', 'G4', 1.8),
+	('LX004', 'G4', 1.5),
+	('LX001', 'G2', 1.0),
+	('LX002', 'G2', 1.3),
+	('LX003', 'G2', 1.2),
+	('LX001', 'G5', 1.0),
+	('LX002', 'G5', 1.3),
+	('LX003', 'G5', 1.1),
+	('LX004', 'G5', 0.95),
+	('LX001', 'G7', 1.0),
+	('LX002', 'G7', 1.3),
+	('LX003', 'G7', 1.1),
+	('LX004', 'G7', 0.9),
+	('LX001', 'G6', 0.85),
+	('LX002', 'G6', 1.1),
+	('LX003', 'G6', 0.9),
+	('LX004', 'G6', 0.8);
+	
 
 INSERT INTO DATXE (ID_DATXE, ID_KHNO, ID_TXNO, ID_THANHTOANNO, ID_KHUYENMAINO, DIEMDON, DIEMTRA,GIATIEN, THOIGIANDAT, THOIGIANDON, THOIGIANDEN, TRANGTHAI, KHOANGCACH, DIEMSO, DANHGIA) 
 VALUES

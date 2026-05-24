@@ -20,6 +20,8 @@ public class CreateBookingRequest {
 
     String promotionId;
 
+    String quoteId;
+
     @NotBlank(message = "Điểm đón không được để trống")
     String pickupLocation;
 

@@ -1,4 +1,4 @@
-package com.project.BookCarOnline.DTO.Response;
+package com.project.BookCarOnline.DTO.Redis;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -8,7 +8,8 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class EstimatePriceResponse {
+public class FareQuote {
+    String quoteId;
     String vehicleTypeId;
     Double distance;
     Double basePrice;
@@ -16,6 +17,7 @@ public class EstimatePriceResponse {
     Double surgeMultiplier;
     Double totalPrice;
     Double discount;
-    String quoteId;
-    Long expiryTime;
+    String promotionId;
+    String pickupLocation;
+    String dropoffLocation;
 }

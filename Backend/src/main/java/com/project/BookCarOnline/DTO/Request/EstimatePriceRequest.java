@@ -12,13 +12,17 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class EstimatePriceRequest {
-    
-    @NotBlank(message = "Loại xe không được để trống")
-    String vehicleTypeId;
-    
-    @NotNull(message = "Khoảng cách không được để trống")
-    @Positive(message = "Khoảng cách phải lớn hơn 0")
-    Double distance;
+    @NotNull(message = "Vĩ độ điểm đón không được để trống")
+    Double pickupLat;
+
+    @NotNull(message = "Kinh độ điểm đón không được để trống")
+    Double pickupLng;
+
+    @NotNull(message = "Vĩ độ điểm đến không được để trống")
+    Double dropoffLat;
+
+    @NotNull(message = "Kinh độ điểm đến không được để trống")
+    Double dropoffLng;
 
     String promotionCode;
 }
