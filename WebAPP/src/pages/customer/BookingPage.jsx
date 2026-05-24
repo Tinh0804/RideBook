@@ -37,9 +37,10 @@ const BookingPage = () => {
 
   // Locations state: objects with { name, lat, lng }
   const [pickup,          setPickup]          = useState(null)
-  const [pickupDetail,    setPickupDetail]    = useState('')
   const [dropoff,         setDropoff]         = useState(null)
-  const [dropoffDetail,   setDropoffDetail]   = useState('')
+  const [selectingLocationFor, setSelectingLocationFor] = useState(null)
+  const [tempMapLocation, setTempMapLocation] = useState(null)
+  const [mapLoading, setMapLoading] = useState(false)
   
   const [step,            setStep]            = useState(1) // 1: Select loc, 2: Details, 3: Finding Driver
   const [selectedVType,   setSelectedVType]   = useState(null)
@@ -131,8 +132,8 @@ const BookingPage = () => {
       const payload = {
         customerId:      user?.id,
         paymentMethod,
-        pickupLocation:  pickupDetail ? `${pickupDetail.trim()}, ${pickup.name}` : pickup.name,
-        dropoffLocation: dropoffDetail ? `${dropoffDetail.trim()}, ${dropoff.name}` : dropoff.name,
+        pickupLocation:  pickup.name,
+        dropoffLocation: dropoff.name,
         distance:        selectedEstimate?.distance || DUMMY_DISTANCE,
         vehicleTypeId:   selectedVType.vehicleTypeId,
         promotionCode:   promoData?.promotionCode || null,
@@ -181,6 +182,40 @@ const BookingPage = () => {
   // Tọa độ mặc định (TP.HCM)
   const DEFAULT_COORDINATES = { lat: 10.8231, lng: 106.6297 }
 
+  const openMapSelection = (type) => {
+    const existingLoc = type === 'pickup' ? pickup : dropoff
+    if (existingLoc && isValidLocation(existingLoc)) {
+      setTempMapLocation(existingLoc)
+      setSelectingLocationFor(type)
+    } else {
+      setMapLoading(type) // show loading spinner on the button
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setTempMapLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              name: 'Vị trí hiện tại...'
+            })
+            setSelectingLocationFor(type)
+            setMapLoading(false)
+          },
+          (error) => {
+            setTempMapLocation({ ...DEFAULT_COORDINATES, name: 'Vị trí mặc định' })
+            setSelectingLocationFor(type)
+            setMapLoading(false)
+            toast.error('Không thể lấy vị trí, dùng vị trí mặc định')
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        )
+      } else {
+        setTempMapLocation({ ...DEFAULT_COORDINATES, name: 'Vị trí mặc định' })
+        setSelectingLocationFor(type)
+        setMapLoading(false)
+      }
+    }
+  }
+
   // Khi truyền vào InteractiveMap, đảm bảo tọa độ hợp lệ
   const safePickup = isValidLocation(pickup) ? pickup : { ...pickup, ...DEFAULT_COORDINATES }
   const safeDropoff = isValidLocation(dropoff) ? dropoff : { ...dropoff, ...DEFAULT_COORDINATES }
@@ -207,6 +242,57 @@ const BookingPage = () => {
   }, [currentBooking, step])
 
   if (step === 1) {
+    if (selectingLocationFor) {
+      return (
+        <div className="-m-6 h-[calc(100vh-64px)] relative flex flex-col bg-surface-dark">
+          <div className="absolute inset-0 z-0">
+            <InteractiveMap 
+              pickup={selectingLocationFor === 'pickup' ? null : pickup} 
+              dropoff={selectingLocationFor === 'dropoff' ? null : dropoff} 
+              selectingMode={true}
+              initialCenter={tempMapLocation ? [tempMapLocation.lat, tempMapLocation.lng] : null}
+              onLocationSelect={(data) => setTempMapLocation(data)}
+            />
+          </div>
+          <button 
+            onClick={() => setSelectingLocationFor(null)}
+            className="absolute top-4 left-4 z-10 w-10 h-10 bg-surface-card/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-surface-border hover:bg-surface-muted transition-colors"
+          >
+            <RiArrowLeftLine size={20} className="text-content-main" />
+          </button>
+          
+          <div className="flex-1 min-h-0 pointer-events-none" />
+          
+          <div className="relative z-10 bg-surface-card rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-surface-border p-6 pointer-events-auto pb-8">
+             <div className="flex items-start gap-4 mb-6">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${selectingLocationFor === 'pickup' ? 'bg-brand-500/20 text-brand-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {selectingLocationFor === 'pickup' ? <RiMapPinLine size={24} /> : <RiMapPin2Line size={24} />}
+                </div>
+                <div>
+                   <p className="text-sm text-content-muted font-medium mb-1">
+                     {selectingLocationFor === 'pickup' ? 'Chọn điểm đón trên bản đồ' : 'Chọn điểm đến trên bản đồ'}
+                   </p>
+                   <p className="text-content-main font-semibold line-clamp-2 leading-snug">
+                     {tempMapLocation?.name || 'Đang xác định vị trí...'}
+                   </p>
+                </div>
+             </div>
+             <Button 
+               fullWidth size="lg" 
+               disabled={!tempMapLocation}
+               onClick={() => {
+                 if (selectingLocationFor === 'pickup') setPickup(tempMapLocation)
+                 else setDropoff(tempMapLocation)
+                 setSelectingLocationFor(null)
+               }}
+             >
+               Xác nhận vị trí
+             </Button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="max-w-2xl mx-auto space-y-8 mt-10">
         <div className="text-center space-y-2">
@@ -225,10 +311,9 @@ const BookingPage = () => {
               <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0 shadow-glow-green">
                 <RiMapPinLine size={18} className="text-brand-400" />
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
-            
-
+              <div className="flex-1 flex gap-2 items-start">
+                <div className="flex-1">
+                  <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
                   <AddressInput
                     placeholder="Điểm đón của bạn"
                     value={pickup?.name || ''}
@@ -247,18 +332,19 @@ const BookingPage = () => {
                       }
                     }}
                   />
-                  {isValidLocation(pickup) && (
-                    <div className="mt-2 animate-slide-up">
-                      <Input
-                        placeholder="Số nhà, tòa nhà, ngõ... (tùy chọn)"
-                        value={pickupDetail}
-                        onChange={(e) => setPickupDetail(e.target.value)}
-                        className="bg-surface/50 border-surface-border text-sm"
-                      />
-                    </div>
+                </div>
+                <button 
+                  onClick={() => openMapSelection('pickup')}
+                  disabled={mapLoading === 'pickup'}
+                  className="w-[42px] h-[42px] mt-6 shrink-0 bg-surface border border-surface-border rounded-xl flex items-center justify-center hover:bg-surface-hover hover:border-brand-500/50 transition-all shadow-sm group"
+                  title="Chọn trên bản đồ"
+                >
+                  {mapLoading === 'pickup' ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <RiMapPinLine size={20} className="text-content-muted group-hover:text-brand-400 transition-colors" />
                   )}
-              
-            
+                </button>
               </div>
             </div>
 
@@ -266,36 +352,40 @@ const BookingPage = () => {
               <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                 <RiMapPin2Line size={18} className="text-red-400" />
               </div>
-              <div className="flex-1">
-                <p className="text-xs text-content-muted mb-1 ml-1">Điểm đến</p>
-                <LocationAutocomplete 
-                  placeholder="Điểm đến của bạn"
-                  value={dropoff?.name || ''}
-                  onChange={(name) => {
-                    setDropoff({ name })
-                  }}
-                  onLocationDetect={(locationData) => {
-                    if (locationData) {
-                      setDropoff({
-                        name: locationData.name,
-                        lat: locationData.lat,
-                        lng: locationData.lng
-                      })
-                    } else {
-                      setDropoff(null)
-                    }
-                  }}
-                />
-                {isValidLocation(dropoff) && (
-                  <div className="mt-2 animate-slide-up">
-                    <Input
-                      placeholder="Số nhà, tòa nhà, ngõ... (tùy chọn)"
-                      value={dropoffDetail}
-                      onChange={(e) => setDropoffDetail(e.target.value)}
-                      className="bg-surface/50 border-surface-border text-sm"
-                    />
-                  </div>
-                )}
+              <div className="flex-1 flex gap-2 items-start">
+                <div className="flex-1">
+                  <p className="text-xs text-content-muted mb-1 ml-1">Điểm đến</p>
+                  <LocationAutocomplete 
+                    placeholder="Điểm đến của bạn"
+                    value={dropoff?.name || ''}
+                    onChange={(name) => {
+                      setDropoff({ name })
+                    }}
+                    onLocationDetect={(locationData) => {
+                      if (locationData) {
+                        setDropoff({
+                          name: locationData.name,
+                          lat: locationData.lat,
+                          lng: locationData.lng
+                        })
+                      } else {
+                        setDropoff(null)
+                      }
+                    }}
+                  />
+                </div>
+                <button 
+                  onClick={() => openMapSelection('dropoff')}
+                  disabled={mapLoading === 'dropoff'}
+                  className="w-[42px] h-[42px] mt-6 shrink-0 bg-surface border border-surface-border rounded-xl flex items-center justify-center hover:bg-surface-hover hover:border-red-500/50 transition-all shadow-sm group"
+                  title="Chọn trên bản đồ"
+                >
+                  {mapLoading === 'dropoff' ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <RiMapPin2Line size={20} className="text-content-muted group-hover:text-red-400 transition-colors" />
+                  )}
+                </button>
               </div>
             </div>
           </div>

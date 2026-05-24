@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import axios from 'axios'
 import L from 'leaflet'
 
@@ -50,7 +50,36 @@ const MapBounds = ({ pickup, dropoff, driver }) => {
   return null
 }
 
-const InteractiveMap = ({ pickup, dropoff, driver, className }) => {
+const MapCenterObserver = ({ selectingMode, onLocationSelect }) => {
+  const map = useMapEvents({
+    moveend: async () => {
+      if (!selectingMode || !onLocationSelect) return
+      const center = map.getCenter()
+      const lat = center.lat
+      const lng = center.lng
+      
+      try {
+        const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+          params: {
+            format: 'json',
+            lat: lat,
+            lon: lng,
+            'accept-language': 'vi',
+            addressdetails: 1
+          }
+        })
+        const addressName = response.data?.name || response.data?.display_name?.split(',')[0] || response.data?.display_name || `Vị trí (${lat.toFixed(4)}, ${lng.toFixed(4)})`
+        onLocationSelect({ lat, lng, name: addressName, fullAddress: response.data?.display_name })
+      } catch (error) {
+        console.error('Error reverse geocoding map center:', error)
+        onLocationSelect({ lat, lng, name: `Vị trí (${lat.toFixed(4)}, ${lng.toFixed(4)})` })
+      }
+    }
+  })
+  return null
+}
+
+const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = false, onLocationSelect, initialCenter }) => {
   const [routeCoords, setRouteCoords] = useState([])
 
   // Default center (Hanoi)
@@ -80,8 +109,18 @@ const InteractiveMap = ({ pickup, dropoff, driver, className }) => {
 
   return (
     <div className={`w-full h-full relative z-0 ${className || ''}`}>
+      {selectingMode && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[1000] pointer-events-none drop-shadow-md">
+           <img 
+             src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png" 
+             alt="center pin" 
+             className="w-6 h-10 object-contain -mt-2" 
+           />
+           <div className="w-2 h-1 bg-black/30 rounded-[50%] absolute bottom-[-2px] left-1/2 -translate-x-1/2 blur-[1px]"></div>
+        </div>
+      )}
       <MapContainer
-        center={pickup ? [pickup.lat, pickup.lng] : defaultCenter}
+        center={initialCenter || (pickup ? [pickup.lat, pickup.lng] : defaultCenter)}
         zoom={pickup ? 15 : 13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
@@ -109,11 +148,12 @@ const InteractiveMap = ({ pickup, dropoff, driver, className }) => {
           </Marker>
         )}
         
-        {routeCoords.length > 0 && (
+        {routeCoords.length > 0 && !selectingMode && (
           <Polyline positions={routeCoords} color="#10b981" weight={5} opacity={0.8} />
         )}
 
-        <MapBounds pickup={pickup} dropoff={dropoff} driver={driver} />
+        {!selectingMode && <MapBounds pickup={pickup} dropoff={dropoff} driver={driver} />}
+        {selectingMode && <MapCenterObserver selectingMode={selectingMode} onLocationSelect={onLocationSelect} />}
       </MapContainer>
     </div>
   )
