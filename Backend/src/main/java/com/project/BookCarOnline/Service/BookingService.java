@@ -172,7 +172,8 @@ public class BookingService {
         }
 
         Customer customer = customerRepository.findById(request.getCustomerId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+                .orElseGet(() -> customerRepository.findByAccountId(request.getCustomerId())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED)));
 
         // 4. Tạo Payment
         boolean isCash = PaymentMethod.CASH.name().equalsIgnoreCase(
