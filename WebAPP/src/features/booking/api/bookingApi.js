@@ -9,7 +9,7 @@ import {
 
 export const bookingApi = {
   estimatePrice: (payload) =>
-    apiClient.post('/bookings/estimate-price', payload).then((r) => parseApiResponse(EstimatePriceSchema, r.data)),
+    apiClient.post('/bookings/estimate-price', payload).then((r) => parseApiArrayResponse(EstimatePriceSchema, r.data)),
 
   createBooking: (payload) =>
     apiClient.post('/bookings', payload).then((r) => parseApiResponse(BookingDetailSchema, r.data)),

@@ -137,6 +137,8 @@ export const EstimatePriceSchema = z.object({
   surgeMultiplier: z.number().catch(1),
   totalPrice: z.number().catch(0),
   discount: z.number().catch(0),
+  quoteId: z.string().nullable().catch(null),
+  expiryTime: z.number().nullable().catch(null),
 })
 
 export const PaymentResponseSchema = z.object({

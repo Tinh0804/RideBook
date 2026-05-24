@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
-import { WS_URL } from '@/config'
+import { WS_URL } from '@/config/index'
 import { useAuthStore } from '@/store/rootStore'
 
 /**

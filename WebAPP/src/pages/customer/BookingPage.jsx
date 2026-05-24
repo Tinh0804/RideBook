@@ -37,7 +37,9 @@ const BookingPage = () => {
 
   // Locations state: objects with { name, lat, lng }
   const [pickup,          setPickup]          = useState(null)
+  const [pickupDetail,    setPickupDetail]    = useState('')
   const [dropoff,         setDropoff]         = useState(null)
+  const [dropoffDetail,   setDropoffDetail]   = useState('')
   
   const [step,            setStep]            = useState(1) // 1: Select loc, 2: Details, 3: Finding Driver
   const [selectedVType,   setSelectedVType]   = useState(null)
@@ -48,6 +50,8 @@ const BookingPage = () => {
   const [promoLoading,    setPromoLoading]    = useState(false)
   const [loading,         setLoading]         = useState(false)
   const [estimating,      setEstimating]      = useState(false)
+  const [estimatedPrices, setEstimatedPrices] = useState([])
+  const [countdown,       setCountdown]       = useState(0)
 
   useEffect(() => {
     if (!vehicleTypes.length) {
@@ -62,15 +66,39 @@ const BookingPage = () => {
     }
   }, [vehicleTypes, selectedVType, setVehicleTypes])
 
-  // Estimate price when vehicle type changes in step 2
-  useEffect(() => {
-    if (step !== 2 || !selectedVType || !pickup || !dropoff) return
+  const handleEstimatePrice = () => {
+    if (!pickup || !dropoff) return
     setEstimating(true)
-    bookingApi.estimatePrice({ distance: DUMMY_DISTANCE, vehicleTypeId: selectedVType.vehicleTypeId })
-      .then((est) => setEstimatedPrice(est?.totalPrice || 0))
+    bookingApi.estimatePrice({ 
+      pickupLat: safePickup.lat,
+      pickupLng: safePickup.lng,
+      dropoffLat: safeDropoff.lat,
+      dropoffLng: safeDropoff.lng,
+      promotionCode: promoData?.promotionCode || null
+    })
+      .then((estimates) => {
+        if (Array.isArray(estimates)) {
+          setEstimatedPrices(estimates)
+          setCountdown(120) // 120s expiration
+        }
+      })
       .catch(() => {})
       .finally(() => setEstimating(false))
-  }, [selectedVType, pickup, dropoff, setEstimatedPrice, step])
+  }
+
+  // Estimate price when step 2 is active
+  useEffect(() => {
+    if (step !== 2) return
+    handleEstimatePrice()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickup, dropoff, step, promoData])
+
+  // Countdown timer
+  useEffect(() => {
+    if (countdown <= 0) return
+    const timer = setInterval(() => setCountdown(c => c - 1), 1000)
+    return () => clearInterval(timer)
+  }, [countdown])
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return
@@ -92,16 +120,23 @@ const BookingPage = () => {
       toast.error('Vui lòng điền đầy đủ thông tin')
       return
     }
+    if (countdown <= 0) {
+      toast.error('Báo giá đã hết hạn, vui lòng làm mới giá')
+      return
+    }
     setLoading(true)
+    const selectedEstimate = estimatedPrices.find(e => e.vehicleTypeId === selectedVType.vehicleTypeId)
+
     try {
       const payload = {
         customerId:      user?.id,
         paymentMethod,
-        pickupLocation:  pickup.name,
-        dropoffLocation: dropoff.name,
-        distance:        DUMMY_DISTANCE,
+        pickupLocation:  pickupDetail ? `${pickupDetail.trim()}, ${pickup.name}` : pickup.name,
+        dropoffLocation: dropoffDetail ? `${dropoffDetail.trim()}, ${dropoff.name}` : dropoff.name,
+        distance:        selectedEstimate?.distance || DUMMY_DISTANCE,
         vehicleTypeId:   selectedVType.vehicleTypeId,
         promotionCode:   promoData?.promotionCode || null,
+        quoteId:         selectedEstimate?.quoteId,
       }
       const booking = await bookingApi.createBooking(payload)
       setCurrentBooking(booking)
@@ -109,9 +144,9 @@ const BookingPage = () => {
       if (paymentMethod === PAYMENT_METHOD.ONLINE) {
         let pmData
         if (paymentProvider === 'VNPAY') {
-          pmData = await paymentApi.createVNPayUrl({ bookingId: booking.bookingId, amount: estimatedPrice })
+          pmData = await paymentApi.createVNPayUrl({ bookingId: booking.bookingId, amount: selectedEstimate?.totalPrice || 0 })
         } else {
-          pmData = await paymentApi.createMomoUrl({ bookingId: booking.bookingId, amount: estimatedPrice })
+          pmData = await paymentApi.createMomoUrl({ bookingId: booking.bookingId, amount: selectedEstimate?.totalPrice || 0 })
         }
         const url = pmData?.paymentUrl || pmData?.payUrl // Handle momo vs vnpay differences
         if (url) {
@@ -129,8 +164,10 @@ const BookingPage = () => {
     }
   }
 
-  const discount    = promoData ? (estimatedPrice * (promoData.discountLimit || 0)) : 0
-  const finalPrice  = Math.max(0, (estimatedPrice || 0) - discount)
+  const selectedEstimate = estimatedPrices.find(e => e.vehicleTypeId === selectedVType?.vehicleTypeId)
+  const finalPrice  = selectedEstimate?.totalPrice || 0
+  const originalPrice = (selectedEstimate?.basePrice || 0) * (selectedEstimate?.surgeMultiplier || 1) * (selectedEstimate?.surcharge || 1)
+  const isDiscounted = originalPrice > finalPrice
 
   const isValidLocation = (location) => {
     return location && 
@@ -148,8 +185,8 @@ const BookingPage = () => {
   const safePickup = isValidLocation(pickup) ? pickup : { ...pickup, ...DEFAULT_COORDINATES }
   const safeDropoff = isValidLocation(dropoff) ? dropoff : { ...dropoff, ...DEFAULT_COORDINATES }
   const handleNextStep = () => {
-    if (!pickup || !dropoff) {
-      toast.error('Vui lòng chọn cả điểm đi và điểm đến')
+    if (!isValidLocation(pickup) || !isValidLocation(dropoff)) {
+      toast.error('Vui lòng chọn địa điểm chính xác từ danh sách gợi ý')
       return
     }
     
@@ -192,11 +229,11 @@ const BookingPage = () => {
                 <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
             
 
-                 <AddressInput
+                  <AddressInput
                     placeholder="Điểm đón của bạn"
                     value={pickup?.name || ''}
                     onChange={(name) => {
-                      setPickup(prev => ({ ...prev, name }))
+                      setPickup({ name })
                     }}
                     onLocationDetect={(locationData) => {
                       if (locationData) {
@@ -210,6 +247,16 @@ const BookingPage = () => {
                       }
                     }}
                   />
+                  {isValidLocation(pickup) && (
+                    <div className="mt-2 animate-slide-up">
+                      <Input
+                        placeholder="Số nhà, tòa nhà, ngõ... (tùy chọn)"
+                        value={pickupDetail}
+                        onChange={(e) => setPickupDetail(e.target.value)}
+                        className="bg-surface/50 border-surface-border text-sm"
+                      />
+                    </div>
+                  )}
               
             
               </div>
@@ -225,7 +272,7 @@ const BookingPage = () => {
                   placeholder="Điểm đến của bạn"
                   value={dropoff?.name || ''}
                   onChange={(name) => {
-                    setDropoff(prev => ({ ...prev, name }))
+                    setDropoff({ name })
                   }}
                   onLocationDetect={(locationData) => {
                     if (locationData) {
@@ -239,6 +286,16 @@ const BookingPage = () => {
                     }
                   }}
                 />
+                {isValidLocation(dropoff) && (
+                  <div className="mt-2 animate-slide-up">
+                    <Input
+                      placeholder="Số nhà, tòa nhà, ngõ... (tùy chọn)"
+                      value={dropoffDetail}
+                      onChange={(e) => setDropoffDetail(e.target.value)}
+                      className="bg-surface/50 border-surface-border text-sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -352,7 +409,9 @@ const BookingPage = () => {
               <div className="flex justify-center py-4"><Spinner /></div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                {vehicleTypes.map((vt, idx) => (
+                {vehicleTypes.map((vt, idx) => {
+                  const est = estimatedPrices.find(e => e.vehicleTypeId === vt.vehicleTypeId)
+                  return (
                   <button
                     key={vt.vehicleTypeId || idx}
                     onClick={() => setSelectedVType(vt)}
@@ -376,18 +435,23 @@ const BookingPage = () => {
                     {/* Hiển thị số chỗ ngồi */}
                     {vt.maxPassengers && (
                       <p className="text-xs text-content-main/60 mt-0.5">
-                        {vt.maxPassengers} chỗ
+                        👤 {vt.maxPassengers}
                       </p>
                     )}
 
                     {/* Giá tiền */}
-                    {vt.pricePerKm && (
+                    {est ? (
+                      <p className="text-xs font-semibold text-brand-400 mt-2">
+                        {formatCurrency(est.totalPrice)}
+                      </p>
+                    ) : vt.pricePerKm ? (
                       <p className="text-xs font-semibold text-brand-400 mt-2">
                         {formatCurrency(vt.pricePerKm)}/km
                       </p>
-                    )}
+                    ) : null}
                   </button>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -412,7 +476,7 @@ const BookingPage = () => {
               {promoData && (
                 <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-2">
                   <RiCheckLine size={14} />
-                  Giảm {promoData.discountLimit}% — Tiết kiệm {formatCurrency(discount)}
+                  Giảm {promoData.discountLimit * 100}%
                 </div>
               )}
             </div>
@@ -475,22 +539,36 @@ const BookingPage = () => {
           <div className="bg-surface rounded-2xl p-5 border border-surface-border mt-4">
             <div className="flex items-center justify-between mb-4">
                <div>
-                  <p className="text-xs text-content-muted mb-1">Khoảng cách: ~{formatDistance(DUMMY_DISTANCE)}</p>
+                  <p className="text-xs text-content-muted mb-1">Khoảng cách: ~{formatDistance(selectedEstimate?.distance || DUMMY_DISTANCE)}</p>
                   <p className="text-lg font-display font-bold text-content-main">Tổng cộng</p>
                </div>
-               <div className="text-right">
+                <div className="text-right">
                   {estimating ? (
                      <Spinner size="sm" />
                   ) : (
                      <>
-                        {discount > 0 && <p className="text-xs text-content-muted line-through mb-1">{formatCurrency(estimatedPrice)}</p>}
+                        {isDiscounted && <p className="text-xs text-content-muted line-through mb-1">{formatCurrency(originalPrice)}</p>}
                         <p className="text-2xl font-display font-bold text-brand-400">{formatCurrency(finalPrice)}</p>
                      </>
                   )}
                </div>
             </div>
             
-            <Button fullWidth size="lg" onClick={handleBook} loading={loading}>
+            {/* Countdown and Refresh button */}
+            {!estimating && estimatedPrices.length > 0 && (
+              <div className="flex items-center justify-between mb-4 px-2">
+                <span className={cn("text-sm font-medium", countdown > 10 ? "text-brand-400" : "text-red-500 animate-pulse")}>
+                  {countdown > 0 ? `Giá được giữ trong: ${countdown}s` : 'Giá đã hết hạn'}
+                </span>
+                {countdown <= 0 && (
+                  <Button size="sm" variant="outline" onClick={handleEstimatePrice}>
+                    Làm mới giá
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            <Button fullWidth size="lg" onClick={handleBook} loading={loading} disabled={countdown <= 0}>
               Xác nhận đặt xe
             </Button>
           </div>

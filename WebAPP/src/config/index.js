@@ -1,6 +1,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/RideBook'
 export const APP_NAME     = import.meta.env.VITE_APP_NAME || 'RideBook'
-export const WS_URL       = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/RideBook/ws/websocket'
+export const WS_URL       = import.meta.env.VITE_WS_URL || 'http://localhost:8080/RideBook/ws'
 export const MAPS_KEY     = import.meta.env.VITE_GOOGLE_MAPS_KEY || ''
 
 export const TOKEN_KEY         = 'bookcar_access_token'
