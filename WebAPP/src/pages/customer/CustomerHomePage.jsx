@@ -16,6 +16,7 @@ import  AddressInput from '@/components/Map/AddressInput'
 import { masterDataApi,ratingApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { formatCurrency } from '@/utils/currency'
+import { formatDate } from '@/utils/formatDate'
 import Button from '@/components/Elements/Button'
 import Input from '@/components/Elements/Input'
 import { cn } from '@/utils/cn'
@@ -29,13 +30,13 @@ const MOCK_FAVORITES = [
   { id: 5, name: 'Trung tâm thương mại', icon: <RiStoreLine size={24} />, address: 'Vincom Đồng Khởi' },
 ]
 
-const MOCK_PROMOTIONS = [
-  { id: 1, title: 'Giảm 50% chuyến đầu', subtitle: 'Ưu đãi đặc biệt cho thành viên mới', bg: 'from-pink-500 to-rose-500', expires: 'Còn 7 ngày' },
-  { id: 2, title: 'Ưu đãi sinh viên', subtitle: 'Giảm 30% cho tất cả các chuyến', bg: 'from-blue-500 to-cyan-500', expires: 'Còn 15 ngày' },
-  { id: 3, title: 'Đi sân bay giá rẻ', subtitle: 'Giá chỉ từ 50,000đ', bg: 'from-green-500 to-emerald-500', expires: 'Còn 3 ngày' },
-  { id: 4, title: 'Flash sale giờ vàng', subtitle: '18h-20h mỗi ngày giảm 40%', bg: 'from-orange-500 to-red-500', expires: 'Hàng ngày' },
+const PROMO_COLORS = [
+  'from-pink-500 to-rose-500',
+  'from-blue-500 to-cyan-500',
+  'from-green-500 to-emerald-500',
+  'from-orange-500 to-red-500',
+  'from-purple-500 to-fuchsia-500'
 ]
-
 const MOCK_NOTIFICATIONS = [
   { id: 1, type: 'promotion', title: 'Khuyến mãi đặc biệt', message: 'Nhận ngay 50% cho chuyến đi đầu tiên', time: '2 giờ trước', icon: <RiPercentLine /> },
   { id: 2, type: 'trip', title: 'Hoàn thành chuyến đi', message: 'Bạn đã hoàn thành chuyến đi đến Quận 1', time: 'Hôm qua', icon: <RiCarLine /> },
@@ -58,14 +59,24 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
   const [pickupLocation, setPickupLocation] = useState(null) // Lưu tọa độ điểm đón
   const [dropoffLocation, setDropoffLocation] = useState(null) // Lưu tọa độ điểm đến
   const [scoreDistribution, setScoreDistribution] = useState({1:0,2:0,3:0,4:0,5:0})
+  const [promotions, setPromotions] = useState([])
+
   
+  // Fetch promotions
+  useEffect(() => {
+    masterDataApi.getActivePromotions()
+      .then((data) => setPromotions(data || []))
+      .catch(() => {})
+  }, [])
+
   // Auto-rotate promotions
   useEffect(() => {
+    if (promotions.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % MOCK_PROMOTIONS.length)
+      setCurrentSlide((prev) => (prev + 1) % promotions.length)
     }, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [promotions.length])
   
   // Update time every minute
   useEffect(() => {
@@ -267,50 +278,61 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
       
       
       {/* Promotion Carousel */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">🎁 Khuyến mãi hấp dẫn</h3>
-        <div className="relative overflow-hidden rounded-2xl">
-          <div 
-            className="flex transition-transform duration-500 ease-out"
-            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-          >
-            {MOCK_PROMOTIONS.map((promo) => (
-              <div key={promo.id} className="w-full flex-shrink-0 px-1">
-                <div className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-r p-6 md:p-8 text-white shadow-xl", promo.bg)}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
-                  <div className="relative z-10">
-                    <h3 className="text-2xl md:text-3xl font-bold mb-2">{promo.title}</h3>
-                    <p className="text-white/90 mb-4">{promo.subtitle}</p>
-                    <div className="flex items-center justify-between flex-wrap gap-3">
-                      <span className="text-sm bg-white/20 px-3 py-1 rounded-full">⏰ {promo.expires}</span>
-                      <button 
-                        onClick={() => navigate('/customer/promotions')}
-                        className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold hover:scale-105 transition-transform"
-                      >
-                        Sử dụng ngay →
-                      </button>
+      {promotions.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">🎁 Khuyến mãi hấp dẫn</h3>
+          <div className="relative overflow-hidden rounded-2xl">
+            <div 
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {promotions.map((promo, idx) => (
+                <div key={promo.promotionId || idx} className="w-full flex-shrink-0 px-1">
+                  <div className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-r p-6 md:p-8 text-white shadow-xl", PROMO_COLORS[idx % PROMO_COLORS.length])}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+                    <div className="relative z-10">
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2">
+                        {promo.promotionName || `Giảm giá đến ${formatCurrency(promo.discountLimit)}`}
+                      </h3>
+                      <p className="text-white/90 mb-4">Mã khuyến mãi: <strong>{promo.promotionCode}</strong></p>
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <span className="text-sm bg-white/20 px-3 py-1 rounded-full">
+                          {promo.endTime ? `⏰ HSD: ${formatDate(promo.endTime)}` : '⏰ Không giới hạn'}
+                        </span>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(promo.promotionCode)
+                            navigate('/customer/booking')
+                          }}
+                          className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold hover:scale-105 transition-transform"
+                        >
+                          Lưu & Đặt ngay →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+            
+            {/* Carousel dots */}
+            {promotions.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                {promotions.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentSlide(idx)}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-all duration-300",
+                      currentSlide === idx ? "bg-white w-6" : "bg-white/50 hover:bg-white/75"
+                    )}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
-          
-          {/* Carousel dots */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {MOCK_PROMOTIONS.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  currentSlide === idx ? "w-6 bg-white" : "bg-white/50"
-                )}
-              />
-            ))}
+            )}
           </div>
         </div>
-      </div>
+      )}
       
       {/* Two Column Layout for Recent Trips & Favorite Places */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -355,34 +377,7 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
           </div>
         )}
         
-        {/* Favorite Places */}
-        <div id="favorites" className="space-y-3">
-          <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Địa điểm yêu thích</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {MOCK_FAVORITES.map((place) => (
-              <div key={place.id} className="card p-4 hover:shadow-xl transition-all duration-300 group">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500">
-                    {place.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-content-main">{place.name}</p>
-                    <p className="text-xs text-content-muted truncate">{place.address}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setPickup(place.address)
-                      document.getElementById('booking-card')?.scrollIntoView({ behavior: 'smooth' })
-                    }}
-                    className="text-xs bg-brand-500/10 text-brand-500 px-3 py-1 rounded-lg hover:bg-brand-500 hover:text-white transition-colors"
-                  >
-                    Đặt
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        
         <div id="favorites" className="space-y-3">
           <h3 className="text-sm font-semibold text-content-muted uppercase tracking-wider">⭐ Địa điểm yêu thích</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

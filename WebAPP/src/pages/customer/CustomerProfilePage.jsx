@@ -120,37 +120,53 @@ const CustomerProfilePage = () => {
     switch(tier?.toLowerCase()) {
       case 'platinum':
         return { 
-          color: 'from-gray-300 to-gray-400', 
-          bgColor: 'bg-gradient-to-r from-gray-100 to-gray-200',
-          textColor: 'text-gray-700',
-          borderColor: 'border-gray-400',
+          color: 'from-gray-300 to-gray-400 dark:from-gray-400 dark:to-gray-500', 
+          bgColor: 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 border border-gray-200 dark:border-gray-600',
+          textColor: 'text-gray-800 dark:text-gray-100',
+          subTextColor: 'text-gray-500 dark:text-gray-400',
+          iconBg: 'bg-white/80 dark:bg-gray-900/50',
+          borderColor: 'border-gray-400 dark:border-gray-500',
+          circleBg: 'bg-black/5 dark:bg-white/10',
+          divider: 'border-gray-300 dark:border-gray-600',
           icon: <RiTrophyLine size={24} />,
           label: 'Kim Cương'
         }
       case 'gold':
         return { 
-          color: 'from-yellow-500 to-yellow-600', 
-          bgColor: 'bg-gradient-to-r from-yellow-50 to-yellow-100',
-          textColor: 'text-yellow-700',
-          borderColor: 'border-yellow-500',
+          color: 'from-yellow-500 to-yellow-600 dark:from-yellow-400 dark:to-yellow-500', 
+          bgColor: 'bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/40 dark:to-amber-800/40 border border-yellow-200 dark:border-yellow-700/50',
+          textColor: 'text-yellow-800 dark:text-yellow-400',
+          subTextColor: 'text-yellow-600 dark:text-yellow-500/80',
+          iconBg: 'bg-white/80 dark:bg-yellow-900/50',
+          borderColor: 'border-yellow-500 dark:border-yellow-600',
+          circleBg: 'bg-yellow-500/10 dark:bg-yellow-400/10',
+          divider: 'border-yellow-200 dark:border-yellow-700/50',
           icon: <RiVipCrownLine size={24} />,
           label: 'Vàng'
         }
       case 'silver':
         return { 
-          color: 'from-gray-400 to-gray-500', 
-          bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100',
-          textColor: 'text-gray-600',
-          borderColor: 'border-gray-400',
+          color: 'from-gray-400 to-gray-500 dark:from-gray-300 dark:to-gray-400', 
+          bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/80 dark:to-gray-700/80 border border-gray-200 dark:border-gray-600',
+          textColor: 'text-gray-700 dark:text-gray-200',
+          subTextColor: 'text-gray-500 dark:text-gray-400',
+          iconBg: 'bg-white/80 dark:bg-gray-900/50',
+          borderColor: 'border-gray-400 dark:border-gray-500',
+          circleBg: 'bg-black/5 dark:bg-white/10',
+          divider: 'border-gray-200 dark:border-gray-600',
           icon: <RiMedalLine size={24} />,
           label: 'Bạc'
         }
       default:
         return { 
-          color: 'from-amber-600 to-amber-700', 
-          bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100',
-          textColor: 'text-amber-700',
-          borderColor: 'border-amber-600',
+          color: 'from-amber-600 to-amber-700 dark:from-amber-500 dark:to-amber-600', 
+          bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40 border border-amber-200 dark:border-amber-700/50',
+          textColor: 'text-amber-800 dark:text-amber-400',
+          subTextColor: 'text-amber-600 dark:text-amber-500/80',
+          iconBg: 'bg-white/80 dark:bg-amber-900/50',
+          borderColor: 'border-amber-600 dark:border-amber-500',
+          circleBg: 'bg-amber-500/10 dark:bg-amber-400/10',
+          divider: 'border-amber-200 dark:border-amber-700/50',
           icon: <RiStarLine size={24} />,
           label: 'Đồng'
         }
@@ -211,21 +227,21 @@ const CustomerProfilePage = () => {
       {/* Membership Tier Card */}
       {loyalty && (
         <div className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-r p-6 shadow-xl", tierInfo.bgColor)}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -mr-16 -mt-16" />
+          <div className={cn("absolute top-0 right-0 w-32 h-32 backdrop-blur-sm rounded-full -mr-16 -mt-16", tierInfo.circleBg)} />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className={cn("w-12 h-12 rounded-full bg-white/80 flex items-center justify-center", tierInfo.textColor)}>
+                <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", tierInfo.iconBg, tierInfo.textColor)}>
                   {tierInfo.icon}
                 </div>
                 <div>
-                  <p className="text-sm text-content-muted">Hạng thành viên</p>
+                  <p className={cn("text-sm", tierInfo.subTextColor)}>Hạng thành viên</p>
                   <p className={cn("text-2xl font-bold", tierInfo.textColor)}>{tierInfo.label}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-sm text-content-muted">Điểm thưởng</p>
-                <p className="text-2xl font-bold text-content-main">{loyalty.currentPoints.toLocaleString()}</p>
+                <p className={cn("text-sm", tierInfo.subTextColor)}>Điểm thưởng</p>
+                <p className={cn("text-2xl font-bold", tierInfo.textColor)}>{loyalty.currentPoints.toLocaleString()}</p>
               </div>
             </div>
 
@@ -233,12 +249,12 @@ const CustomerProfilePage = () => {
             {loyalty.nextTierPoints && (
               <div className="space-y-2 mt-4">
                 <div className="flex justify-between text-xs">
-                  <span className="text-content-muted">Tiến trình lên hạng</span>
-                  <span className="text-content-muted">{loyalty.lifetimePoints.toLocaleString()} / {loyalty.nextTierPoints.toLocaleString()} điểm</span>
+                  <span className={tierInfo.subTextColor}>Tiến trình lên hạng</span>
+                  <span className={tierInfo.subTextColor}>{loyalty.lifetimePoints.toLocaleString()} / {loyalty.nextTierPoints.toLocaleString()} điểm</span>
                 </div>
-                <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+                <div className={cn("h-2 rounded-full overflow-hidden", tierInfo.circleBg)}>
                   <div 
-                    className="h-full bg-gradient-to-r from-brand-500 to-brand-600 rounded-full transition-all duration-500"
+                    className={cn("h-full bg-gradient-to-r rounded-full transition-all duration-500", tierInfo.color)}
                     style={{ width: `${Math.min(progressPercent, 100)}%` }}
                   />
                 </div>
@@ -246,18 +262,18 @@ const CustomerProfilePage = () => {
             )}
 
             {/* Quick stats */}
-            <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-white/20">
+            <div className={cn("grid grid-cols-3 gap-3 mt-6 pt-4 border-t", tierInfo.divider)}>
               <div className="text-center">
-                <p className="text-xs text-content-muted">Tổng chi tiêu</p>
-                <p className="text-sm font-semibold text-content-main">{formatCurrency(loyalty.totalSpent)}</p>
+                <p className={cn("text-xs", tierInfo.subTextColor)}>Tổng chi tiêu</p>
+                <p className={cn("text-sm font-semibold", tierInfo.textColor)}>{formatCurrency(loyalty.totalSpent)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-content-muted">Số chuyến</p>
-                <p className="text-sm font-semibold text-content-main">{loyalty.totalRides}</p>
+                <p className={cn("text-xs", tierInfo.subTextColor)}>Số chuyến</p>
+                <p className={cn("text-sm font-semibold", tierInfo.textColor)}>{loyalty.totalRides}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-content-muted">Giảm giá</p>
-                <p className="text-sm font-semibold text-green-600">-{loyalty.tierBenefits?.discountRate || 0}%</p>
+                <p className={cn("text-xs", tierInfo.subTextColor)}>Giảm giá</p>
+                <p className="text-sm font-semibold text-brand-500">-{loyalty.tierBenefits?.discountRate || 0}%</p>
               </div>
             </div>
           </div>
