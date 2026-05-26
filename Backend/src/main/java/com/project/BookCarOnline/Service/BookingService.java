@@ -421,6 +421,31 @@ public class BookingService {
         log.info("[Booking] Đã hủy booking {}", bookingId);
     }
 
+    @Transactional
+    public void cancelBookingByDriver(String bookingId, String driverId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getDriverNo() == null || !booking.getDriverNo().getDriverId().equals(driverId)) {
+            throw new IllegalStateException("Tài xế không có quyền huỷ chuyến này");
+        }
+
+        if (booking.getBookingStatus() != BookingStatus.ACCEPTED && booking.getBookingStatus() != BookingStatus.ARRIVED) {
+            throw new IllegalStateException("Không thể huỷ chuyến xe ở trạng thái hiện tại");
+        }
+
+        booking.setBookingStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+
+        if (booking.getCustomerNo() != null) {
+            messagingTemplate.convertAndSend(
+                    "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                    "DRIVER_CANCELLED:" + bookingId);
+        }
+
+        log.info("[Booking] Tài xế {} đã hủy booking {}", driverId, bookingId);
+    }
+ 
 
     public List<BookingDetailResponse> getAllBookings() {
         return bookingRepository.findAll()

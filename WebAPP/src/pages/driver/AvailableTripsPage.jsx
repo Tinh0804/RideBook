@@ -34,6 +34,7 @@ const DriverTripFlowPage = () => {
   // State for Active Trip phase
   const [loadingTrip, setLoadingTrip] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [cancelingTrip, setCancelingTrip] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
 
   // 1. Fetch current trip if any (on mount)
@@ -155,6 +156,21 @@ const DriverTripFlowPage = () => {
       toast.error(err?.response?.data?.message || 'Cập nhật trạng thái thất bại')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleCancelTrip = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn huỷ chuyến đi này không?')) return;
+    
+    setCancelingTrip(true);
+    try {
+      await bookingApi.cancelBookingByDriver(currentTrip.bookingId, driverId);
+      toast.success('Đã huỷ chuyến thành công');
+      clearCurrentTrip();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Lỗi khi huỷ chuyến');
+    } finally {
+      setCancelingTrip(false);
     }
   }
 
@@ -400,13 +416,24 @@ const DriverTripFlowPage = () => {
       </div>
 
       {/* Main action button */}
-      {currentStep && (
-        <Button fullWidth size="lg" onClick={handleNextStatus} loading={updating}
-          className={currentStep.next === BOOKING_STATUS.COMPLETED ? 'bg-blue-500 hover:bg-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : ''}
-        >
-          {currentStep.action}
-        </Button>
-      )}
+      <div className="space-y-3">
+        {currentStep && (
+          <Button fullWidth size="lg" onClick={handleNextStatus} loading={updating} disabled={cancelingTrip}
+            className={currentStep.next === BOOKING_STATUS.COMPLETED ? 'bg-blue-500 hover:bg-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : ''}
+          >
+            {currentStep.action}
+          </Button>
+        )}
+        
+        {/* Hủy chuyến Button */}
+        {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
+          <Button fullWidth variant="outline" onClick={handleCancelTrip} loading={cancelingTrip} disabled={updating}
+            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+          >
+            <RiCloseLine size={18} className="mr-1" /> Hủy chuyến
+          </Button>
+        )}
+      </div>
 
       {/* Chat Dialog */}
       {chatOpen && (

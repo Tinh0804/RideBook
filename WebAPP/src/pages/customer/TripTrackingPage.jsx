@@ -6,7 +6,7 @@ import {
   RiMapPinLine, RiMapPin2Line, RiUserStarLine,
   RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,RiCheckLine
 } from 'react-icons/ri'
-import { useBookingStore } from '@/store/rootStore'
+import { useBookingStore, useAuthStore } from '@/store/rootStore'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config'
@@ -42,8 +42,10 @@ const TripTrackingPage = () => {
   const location  = useLocation()
   const navigate  = useNavigate()
   const { currentBooking, setCurrentBooking, clearCurrentBooking } = useBookingStore()
+  const { user, userProfile } = useAuthStore()
 
   const bookingId = location.state?.bookingId || currentBooking?.bookingId
+  const customerId = userProfile?.customerId || userProfile?.id || user?.id
 
   const [booking,    setBooking]    = useState(currentBooking)
   const [loading,    setLoading]    = useState(!currentBooking)
@@ -121,14 +123,27 @@ const TripTrackingPage = () => {
 
   // WebSocket for realtime updates
   const onWsMessage = useCallback((topic, payload) => {
+    if (typeof payload === 'string' && payload.startsWith('DRIVER_CANCELLED:')) {
+      const canceledBookingId = payload.split(':')[1]
+      if (bookingId === canceledBookingId) {
+        toast.error('Tài xế đã huỷ chuyến đi. Vui lòng đặt lại!', { duration: 5000 })
+        clearCurrentBooking()
+        navigate('/customer/home')
+      }
+      return
+    }
+
     if (payload?.bookingId === bookingId) {
       setBooking((prev) => ({ ...prev, ...payload }))
       setCurrentBooking((prev) => ({ ...prev, ...payload }))
       toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.bookingStatus]}`)
     }
-  }, [bookingId, setCurrentBooking])
+  }, [bookingId, setCurrentBooking, clearCurrentBooking, navigate])
 
-  useWebSocket([`/topic/booking/${bookingId}`], onWsMessage)
+  useWebSocket([
+    `/topic/booking/${bookingId}`,
+    customerId ? `/topic/customer/${customerId}` : null
+  ].filter(Boolean), onWsMessage)
 
   const handleCancel = () => {
     if (!window.confirm('Bạn có chắc muốn hủy chuyến này?')) return

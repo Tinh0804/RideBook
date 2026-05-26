@@ -152,7 +152,17 @@ public class BookingController {
         bookingService.cancelBooking(bookingId);
         return APIResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
-                .message("Huỷ chuyến thành công")
+                .message("Đã hủy chuyến xe thành công")
+                .build();
+    }
+
+    @DeleteMapping("/{bookingId}/driver/{driverId}")
+    public APIResponse<Void> cancelBookingByDriver(@PathVariable String bookingId, @PathVariable String driverId) {
+        log.info("REST API: DELETE /bookings/{}/driver/{} - Driver cancelling booking", bookingId, driverId);
+        bookingService.cancelBookingByDriver(bookingId, driverId);
+        return APIResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Tài xế đã hủy chuyến xe thành công")
                 .build();
     }
 
