@@ -8,6 +8,12 @@ import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Mapper.PromotionMapper;
 import com.project.BookCarOnline.Repository.PromotionRepository;
+import com.project.BookCarOnline.Repository.CustomerPromotionRepository;
+import com.project.BookCarOnline.Repository.CustomerRepository;
+import com.project.BookCarOnline.Entity.CustomerPromotion;
+import com.project.BookCarOnline.Entity.Customer;
+import com.project.BookCarOnline.Entity.Enum.CustomerPromotionStatus;
+import com.project.BookCarOnline.Entity.Enum.DiscountType;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +34,8 @@ import java.util.stream.Collectors;
 public class PromotionService {
     PromotionRepository promotionRepository;
     PromotionMapper promotionMapper;
+    CustomerPromotionRepository customerPromotionRepository;
+    CustomerRepository customerRepository;
 
 
     public PromotionResponse createPromotion(CreatePromotionRequest request) {
@@ -86,6 +94,12 @@ public class PromotionService {
         promotion.setEndTime(request.getEndTime());
         promotion.setApplicationCondition(request.getApplicationCondition());
         promotion.setQuantity(request.getQuantity());
+        
+        if (request.getDiscountType() != null) promotion.setDiscountType(DiscountType.valueOf(request.getDiscountType()));
+        if (request.getDiscountValue() != null) promotion.setDiscountValue(request.getDiscountValue());
+        if (request.getMinTripValue() != null) promotion.setMinTripValue(request.getMinTripValue());
+        if (request.getUsageLimitPerUser() != null) promotion.setUsageLimitPerUser(request.getUsageLimitPerUser());
+
         if (request.getIsActive() != null) promotion.setIsActive(request.getIsActive());
 
         log.info("[Promotion] Admin cập nhật khuyến mãi id={}", promotionId);
@@ -109,5 +123,43 @@ public class PromotionService {
         }
         promotionRepository.deleteById(promotionId);
         log.info("[Promotion] Admin xóa khuyến mãi id={}", promotionId);
+    }
+
+    // ── Customer Voucher Actions ───────────────────────────────────────────────────
+
+    @Transactional
+    public void savePromotionForCustomer(String customerId, String promotionCode) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+
+        Promotion promotion = promotionRepository.findByPromotionCode(promotionCode)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
+
+        if (!promotion.getIsActive())
+            throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE);
+        if (promotion.getQuantity() <= 0)
+            throw new AppException(ErrorCode.PROMOTION_OUT_OF_STOCK);
+        if (promotion.getEndTime().before(Timestamp.from(Instant.now())))
+            throw new AppException(ErrorCode.PROMOTION_EXPIRED);
+
+        // Check if already saved
+        if (customerPromotionRepository.existsByCustomer_CustomerIdAndPromotion_PromotionId(customerId, promotion.getPromotionId())) {
+            throw new RuntimeException("Bạn đã lưu mã khuyến mãi này rồi");
+        }
+
+        CustomerPromotion cp = CustomerPromotion.builder()
+                .customer(customer)
+                .promotion(promotion)
+                .status(CustomerPromotionStatus.SAVED)
+                .savedAt(Timestamp.from(Instant.now()))
+                .build();
+        customerPromotionRepository.save(cp);
+    }
+
+    public List<PromotionResponse> getMyPromotions(String customerId) {
+        List<CustomerPromotion> list = customerPromotionRepository.findByCustomer_CustomerId(customerId);
+        return list.stream()
+                .map(cp -> promotionMapper.toPromotionResponse(cp.getPromotion()))
+                .collect(Collectors.toList());
     }
 }

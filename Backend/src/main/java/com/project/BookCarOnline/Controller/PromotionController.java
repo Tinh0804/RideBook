@@ -43,6 +43,24 @@ public class PromotionController {
                 .build();
     }
 
+    @PostMapping("/customer/{customerId}/save/{promoCode}")
+    public APIResponse<Void> savePromotionForCustomer(@PathVariable String customerId, @PathVariable String promoCode) {
+        promotionService.savePromotionForCustomer(customerId, promoCode);
+        return APIResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lưu khuyến mãi thành công")
+                .build();
+    }
+
+    @GetMapping("/customer/{customerId}")
+    public APIResponse<List<PromotionResponse>> getMyPromotions(@PathVariable String customerId) {
+        return APIResponse.<List<PromotionResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Khuyến mãi của tôi")
+                .result(promotionService.getMyPromotions(customerId))
+                .build();
+    }
+
     // ── Admin ────────────────────────────────────────────────────────
 
     /** GET /promotions – Lấy tất cả (Admin) */
