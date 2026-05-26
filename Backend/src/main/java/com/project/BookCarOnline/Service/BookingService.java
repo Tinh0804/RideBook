@@ -10,7 +10,11 @@ import com.project.BookCarOnline.DTO.Response.EstimatePriceResponse;
 import com.project.BookCarOnline.Entity.*;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Entity.Enum.PaymentMethod;
+import com.project.BookCarOnline.Entity.VehicleType;
+import com.project.BookCarOnline.Entity.Enum.DiscountType;
+import com.project.BookCarOnline.Entity.Enum.CustomerPromotionStatus;
 import com.project.BookCarOnline.Entity.Enum.RejectionType;
+import com.project.BookCarOnline.Entity.CustomerPromotion;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
@@ -62,6 +66,7 @@ public class BookingService {
     Constant                  constant;
     BookingRejectionRepository rejectionRepository;
     PromotionRepository       promotionRepository;
+    com.project.BookCarOnline.Repository.CustomerPromotionRepository customerPromotionRepository;
     RedisTemplate<String, Object> redisTemplate;
 
     @NonFinal
@@ -92,7 +97,22 @@ public class BookingService {
                 if (promotion != null && promotion.getIsActive() 
                     && promotion.getQuantity() > 0 
                     && !promotion.getEndTime().before(Timestamp.from(Instant.now()))) {
-                    discount = promotion.getDiscountLimit() != null ? promotion.getDiscountLimit() : 0.0;
+                    
+                    double rawPrice = basePrice * surcharge * surgeMultiplier;
+                    if (promotion.getMinTripValue() == null || rawPrice >= promotion.getMinTripValue()) {
+                        if (promotion.getDiscountType() == DiscountType.FIXED_AMOUNT) {
+                            discount = promotion.getDiscountValue() != null ? promotion.getDiscountValue() : 0.0;
+                        } else if (promotion.getDiscountType() == DiscountType.PERCENTAGE) {
+                            double percent = promotion.getDiscountValue() != null ? promotion.getDiscountValue() : 0.0;
+                            discount = (rawPrice * percent) / 100.0;
+                            if (promotion.getDiscountLimit() != null && discount > promotion.getDiscountLimit()) {
+                                discount = promotion.getDiscountLimit();
+                            }
+                        } else {
+                            // Fallback
+                            discount = promotion.getDiscountLimit() != null ? promotion.getDiscountLimit() : 0.0;
+                        }
+                    }
                 }
             }
 
@@ -160,20 +180,30 @@ public class BookingService {
         double finalPrice = quote.getTotalPrice();
         double distance = quote.getDistance();
 
-        Promotion validPromotion = null;
-        if (request.getPromotionId() != null && !request.getPromotionId().isBlank()) {
-            validPromotion = promotionRepository.findById(request.getPromotionId()).orElse(null);
-            if (validPromotion != null) {
-                if (!validPromotion.getIsActive() || validPromotion.getQuantity() <= 0 
-                    || validPromotion.getEndTime().before(Timestamp.from(Instant.now()))) {
-                    throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE); // Hoặc báo lỗi khác cho khách
-                }
-            }
-        }
-
         Customer customer = customerRepository.findById(request.getCustomerId())
                 .orElseGet(() -> customerRepository.findByAccountId(request.getCustomerId())
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED)));
+
+        Promotion validPromotion = null;
+        if (request.getPromotionId() != null && !request.getPromotionId().isBlank()) {
+            // request.getPromotionId() carries the promotionCode from EstimatePriceRequest
+            validPromotion = promotionRepository.findByPromotionCode(request.getPromotionId()).orElse(null);
+            if (validPromotion != null) {
+                if (!validPromotion.getIsActive() || validPromotion.getQuantity() <= 0 
+                    || validPromotion.getEndTime().before(Timestamp.from(Instant.now()))) {
+                    throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE);
+                }
+                
+                // Verify usage limit
+                if (validPromotion.getUsageLimitPerUser() != null && validPromotion.getUsageLimitPerUser() > 0) {
+                    int usageCount = customerPromotionRepository.countByCustomer_CustomerIdAndPromotion_PromotionIdAndStatus(
+                            customer.getCustomerId(), validPromotion.getPromotionId(), CustomerPromotionStatus.USED);
+                    if (usageCount >= validPromotion.getUsageLimitPerUser()) {
+                        throw new RuntimeException("Bạn đã hết lượt sử dụng mã khuyến mãi này");
+                    }
+                }
+            }
+        }
 
         // 4. Tạo Payment
         boolean isCash = PaymentMethod.CASH.name().equalsIgnoreCase(
@@ -203,6 +233,19 @@ public class BookingService {
         if (validPromotion != null) {
             validPromotion.setQuantity(validPromotion.getQuantity() - 1);
             promotionRepository.save(validPromotion);
+            
+            // Mark customer promotion as USED if it exists, or create a new USED record
+            CustomerPromotion cp = customerPromotionRepository.findByCustomer_CustomerIdAndPromotion_PromotionId(
+                    customer.getCustomerId(), validPromotion.getPromotionId()).orElse(
+                            CustomerPromotion.builder()
+                            .customer(customer)
+                            .promotion(validPromotion)
+                            .savedAt(Timestamp.from(Instant.now()))
+                            .build()
+                    );
+            cp.setStatus(CustomerPromotionStatus.USED);
+            cp.setUsedAt(Timestamp.from(Instant.now()));
+            customerPromotionRepository.save(cp);
         }
 
         // 6. Điều phối tài xế

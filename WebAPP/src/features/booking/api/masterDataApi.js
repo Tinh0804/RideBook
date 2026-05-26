@@ -39,6 +39,12 @@ export const masterDataApi = {
   getPromotionByCode: (code) =>
     apiClient.get(`/promotions/${code}`).then((r) => parseApiResponse(PromotionSchema, r.data)),
 
+  savePromotion: (customerId, code) =>
+    apiClient.post(`/promotions/customer/${customerId}/save/${code}`),
+
+  getMyPromotions: (customerId) =>
+    apiClient.get(`/promotions/customer/${customerId}`).then((r) => parseApiArrayResponse(PromotionSchema, r.data)),
+
   createPromotion: (payload) =>
     apiClient.post('/promotions', payload).then((r) => parseApiResponse(PromotionSchema, r.data)),
 

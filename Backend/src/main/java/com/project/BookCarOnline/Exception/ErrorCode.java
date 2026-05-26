@@ -57,6 +57,7 @@ public enum ErrorCode {
     NO_DRIVER_AVAILABLE(400,"Không có tài xế khả dụng",HttpStatus.BAD_REQUEST),
     INVALID_PAYMENT_METHOD(400,"Phương thức thanh toán không hợp lệ",HttpStatus.BAD_REQUEST),
     WALLET_NOT_FOUND(404,"Ví không tồn tại",HttpStatus.NOT_FOUND),
+    CUSTOMER_NOT_FOUND(404,"Khách hàng không tồn tại",HttpStatus.NOT_FOUND),
 
     // Promotion related errors
     PROMOTION_NOT_FOUND(404, "Không tìm thấy mã khuyến mãi", HttpStatus.NOT_FOUND),

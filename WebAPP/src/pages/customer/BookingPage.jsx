@@ -81,6 +81,15 @@ const BookingPage = () => {
   const [estimatedPrices, setEstimatedPrices] = useState([])
   const [countdown,       setCountdown]       = useState(0)
   const [isCanceling,     setCanceling]       = useState(false)
+  const [myPromotions,    setMyPromotions]    = useState([])
+
+  useEffect(() => {
+    if (step === 2 && customerId) {
+      masterDataApi.getMyPromotions(customerId)
+        .then(data => setMyPromotions(data || []))
+        .catch(() => {})
+    }
+  }, [step, customerId])
 
   useEffect(() => {
     if (!vehicleTypes.length) {
@@ -598,12 +607,32 @@ const BookingPage = () => {
                   placeholder="Nhập mã..."
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  className="flex-1 bg-surface border-surface-border"
+                  className="flex-1"
                 />
-                <Button variant="outline" onClick={applyPromo} loading={promoLoading}>
-                  Áp dụng
+                <Button 
+                  variant="outline" 
+                  onClick={applyPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                >
+                  {promoLoading ? <Spinner size="sm" /> : 'Áp dụng'}
                 </Button>
               </div>
+              {myPromotions.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {myPromotions.map(p => (
+                    <button 
+                      key={p.promotionCode} 
+                      onClick={() => {
+                        setPromoCode(p.promotionCode);
+                      }}
+                      className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 shadow-sm", promoCode === p.promotionCode ? "bg-brand-500 text-white border-brand-500 shadow-brand-500/20" : "bg-surface text-content-main border-surface-border hover:border-brand-500/50 hover:bg-white/5")}
+                      title={p.promotionName}
+                    >
+                      Mã: {p.promotionCode}
+                    </button>
+                  ))}
+                </div>
+              )}
               {promoData && (
                 <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-2">
                   <RiCheckLine size={14} />
