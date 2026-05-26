@@ -108,6 +108,7 @@ public class RideDispatcherService {
                 }
                 case CUSTOMER_CANCELLED -> {
                     log.info("[Dispatch] Khách hủy booking {} trong lúc tìm tài xế.", bookingId);
+                    messagingTemplate.convertAndSend("/topic/driver/" + driver.getDriverId(), "CUSTOMER_CANCELLED:" + bookingId);
                     return true;
                 }
                 case DRIVER_REJECTED -> {

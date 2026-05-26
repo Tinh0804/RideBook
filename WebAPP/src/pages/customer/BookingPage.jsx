@@ -86,7 +86,11 @@ const BookingPage = () => {
   useEffect(() => {
     if (step === 2 && customerId) {
       masterDataApi.getMyPromotions(customerId)
-        .then(data => setMyPromotions(data || []))
+        .then(data => {
+          // Deduplicate by promotionCode to avoid React key warning
+          const uniquePromos = Array.from(new Map((data || []).map(p => [p.promotionCode, p])).values());
+          setMyPromotions(uniquePromos);
+        })
         .catch(() => {})
     }
   }, [step, customerId])

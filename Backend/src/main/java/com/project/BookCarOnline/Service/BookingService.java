@@ -407,6 +407,13 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
         booking.setBookingStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+
+        if (booking.getDriverNo() != null) {
+            messagingTemplate.convertAndSend(
+                    "/topic/driver/" + booking.getDriverNo().getDriverId(),
+                    "CUSTOMER_CANCELLED:" + bookingId);
+        }
+
         log.info("[Booking] Đã hủy booking {}", bookingId);
     }
 

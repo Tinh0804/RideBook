@@ -48,13 +48,25 @@ const DriverTripFlowPage = () => {
     }
   }, [currentTrip?.bookingId, currentTrip?.customerName, setCurrentTrip])
 
-  // 2. WebSocket for Incoming Trips (when waiting)
+  // 2. WebSocket for Incoming Trips & Driver Specific Messages
   const onWsAvailableMessage = useCallback((topic, payload) => {
-    // Only process if we are online and don't have an active trip
-    if (!isOnline || currentTrip) return
-
-    // Handle plain string payload from dispatcher (e.g. "NEW_RIDE:bookingId")
+    // Handle plain string payload
     if (typeof payload === 'string') {
+      if (payload.startsWith('CUSTOMER_CANCELLED:')) {
+        const bookingId = payload.split(':')[1]
+        if (currentTrip?.bookingId === bookingId) {
+          toast.error('Khách hàng đã hủy chuyến đi này!', { duration: 5000 })
+          setCurrentTrip(null)
+        } else if (incomingTrip?.bookingId === bookingId) {
+          toast.error('Khách hàng đã hủy chuyến đi này!', { duration: 5000 })
+          setIncomingTrip(null)
+        }
+        return
+      }
+
+      // Only process new rides if we are online and don't have an active trip
+      if (!isOnline || currentTrip) return
+
       if (payload.startsWith('NEW_RIDE:')) {
         const bookingId = payload.split(':')[1]
         bookingApi.getById(bookingId)
