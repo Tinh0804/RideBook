@@ -1,6 +1,7 @@
 
 package com.project.BookCarOnline.Entity;
 
+import com.project.BookCarOnline.Entity.Enum.DiscountType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -46,6 +47,17 @@ public class Promotion {
     @Column(name = "HOATDONG")
      Boolean isActive;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "LOAIGIAMGIA", length = 20)
+     DiscountType discountType;
 
-    
+    @Column(name = "MUCGIAM")
+     Double discountValue;
+
+    @Column(name = "GIACHUYENTOITHIEU")
+     Double minTripValue;
+
+    @Column(name = "GIOIHANMOTKHACH")
+     Integer usageLimitPerUser;
+
 }
