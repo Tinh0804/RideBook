@@ -37,11 +37,9 @@ const RatingPage = () => {
     setLoading(true)
     try {
       await ratingApi.create({
-        bookingId:   booking.id,
-        ratingValue: stars,
-        review:      [review, ...tags].filter(Boolean).join('. '),
-        driverId:    booking.driver?.id,
-        customerId:  user?.id,
+        bookingId:   booking.bookingId || booking.id,
+        rating:      stars,
+        feedback:    [review, ...tags].filter(Boolean).join('. '),
       })
       toast.success('Cảm ơn bạn đã đánh giá!')
       navigate('/customer/history')

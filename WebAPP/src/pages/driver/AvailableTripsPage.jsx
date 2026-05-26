@@ -326,7 +326,10 @@ const DriverTripFlowPage = () => {
               <p className="text-xs text-content-muted">{currentTrip.customerPhone}</p>
             </div>
             <div className="flex gap-2">
-              <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors" title={currentTrip.customerPhone}>
+              <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors"
+               title={currentTrip.customerPhone}
+                onClick={() => window.open(`tel:${currentTrip.customerPhone}`)}
+               >
                 <RiPhoneLine size={18} />
               </button>
               <button
@@ -387,7 +390,8 @@ const DriverTripFlowPage = () => {
       {chatOpen && (
         <ChatDialog
           bookingId={currentTrip.bookingId}
-          driverName={currentTrip.customerName}
+          receiverId={currentTrip.customerId}
+          otherName={currentTrip.customerName}
           onClose={() => setChatOpen(false)}
         />
       )}

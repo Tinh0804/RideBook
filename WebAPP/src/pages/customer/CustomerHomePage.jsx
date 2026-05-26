@@ -79,12 +79,12 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
         .then((types) => setVehicleTypes(types))
         .catch(() => {})
     }
-    if (user?.id) {
-      bookingApi.getCustomerHistory(user.id)
+    if (userProfile?.customerId) {
+      bookingApi.getCustomerHistory(userProfile.customerId)
         .then((trips) => setRecentTrips(trips.slice(0, 3)))
         .catch(() => {})
       
-      ratingApi.getByCustomer(user.id)
+      ratingApi.getByCustomer(userProfile.customerId)
           .then((ratingsList) => {
             setRatings(ratingsList.slice(0, 3))
             if (ratingsList.length > 0) {
@@ -107,7 +107,7 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
     }
 
    
-  }, [user, vehicleTypes.length, setVehicleTypes])
+  }, [userProfile, vehicleTypes.length, setVehicleTypes])
   
   const handleBook = () => {
     if (currentBooking) {

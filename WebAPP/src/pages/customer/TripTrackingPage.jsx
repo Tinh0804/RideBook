@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import axios from 'axios'
 import {
   RiMapPinLine, RiMapPin2Line, RiUserStarLine,
-  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,
+  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,RiCheckLine
 } from 'react-icons/ri'
 import { useBookingStore } from '@/store/rootStore'
 import { bookingApi } from '@/features/booking/api/bookingApi'
@@ -89,27 +89,27 @@ const TripTrackingPage = () => {
 
   // Update driver coordinates based on status (mocking movement)
   useEffect(() => {
-    if (booking?.status === BOOKING_STATUS.ARRIVED && pickupCoord) {
+    if (booking?.bookingStatus === BOOKING_STATUS.ARRIVED && pickupCoord) {
       setDriverCoord({ lat: pickupCoord.lat - 0.005, lng: pickupCoord.lng - 0.005 })
-    } else if (booking?.status === BOOKING_STATUS.IN_PROGRESS && dropoffCoord) {
+    } else if (booking?.bookingStatus === BOOKING_STATUS.IN_PROGRESS && dropoffCoord) {
       setDriverCoord({ lat: dropoffCoord.lat - 0.005, lng: dropoffCoord.lng - 0.005 })
     }
-  }, [booking?.status, pickupCoord, dropoffCoord])
+  }, [booking?.bookingStatus, pickupCoord, dropoffCoord])
 
   // Poll for status updates every 5s when pending/accepted
   useEffect(() => {
     const shouldPoll = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS]
-      .includes(booking?.status)
+      .includes(booking?.bookingStatus)
     if (!shouldPoll) return
     const interval = setInterval(() => {
       bookingApi.getById(bookingId)
         .then((updated) => {
-          if (updated.status !== booking.status) {
-             toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[updated.status]}`)
+          if (updated.bookingStatus !== booking.bookingStatus) {
+             toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[updated.bookingStatus]}`)
           }
           setBooking(updated)
           setCurrentBooking(updated)
-          if (updated.status === BOOKING_STATUS.COMPLETED) {
+          if (updated.bookingStatus === BOOKING_STATUS.COMPLETED) {
             clearInterval(interval)
             toast.success('Chuyến đi hoàn thành!')
           }
@@ -117,38 +117,38 @@ const TripTrackingPage = () => {
         .catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
-  }, [booking?.status, bookingId, setCurrentBooking])
+  }, [booking?.bookingStatus, bookingId, setCurrentBooking])
 
   // WebSocket for realtime updates
   const onWsMessage = useCallback((topic, payload) => {
     if (payload?.bookingId === bookingId) {
       setBooking((prev) => ({ ...prev, ...payload }))
       setCurrentBooking((prev) => ({ ...prev, ...payload }))
-      toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.status]}`)
+      toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.bookingStatus]}`)
     }
   }, [bookingId, setCurrentBooking])
 
   useWebSocket([`/topic/booking/${bookingId}`], onWsMessage)
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     if (!window.confirm('Bạn có chắc muốn hủy chuyến này?')) return
     setCancelling(true)
-    try {
-      await bookingApi.cancelBooking(bookingId)
-      toast.success('Đã hủy chuyến đi')
-      clearCurrentBooking()
-      navigate('/customer/home')
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Không thể hủy chuyến')
-    } finally {
-      setCancelling(false)
-    }
+    bookingApi.cancelBooking(bookingId)
+      .then((res) => {
+        toast.success('Đã hủy chuyến')
+        setBooking(res)
+        clearCurrentBooking()
+      })
+      .catch(() => toast.error('Không thể hủy chuyến lúc này'))
+      .finally(() => setCancelling(false))
   }
 
-  const handleRateDriver = () =>
+  const handleRateDriver = () => {
+    clearCurrentBooking()
     navigate('/customer/rating', { state: { booking } })
+  }
 
-  const stepIndex = STATUS_STEPS.indexOf(booking?.status)
+  const stepIndex = STATUS_STEPS.indexOf(booking?.bookingStatus)
 
   if (loading) return (
     <div className="flex items-center justify-center h-full min-h-[60vh]">
@@ -173,14 +173,14 @@ const TripTrackingPage = () => {
               <h1 className="font-display font-bold text-content-main text-xl">Chuyến đi #{booking.bookingId?.slice(-8)}</h1>
               <p className="text-xs text-content-muted mt-1">Đang theo dõi hành trình</p>
             </div>
-            <span className={cn('badge border text-xs px-3 py-1.5 shadow-sm', STATUS_COLOR[booking.status] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
+            <span className={cn('badge border text-xs px-3 py-1.5 shadow-sm', STATUS_COLOR[booking.bookingStatus] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
               <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-2 inline-block" />
-              {BOOKING_STATUS_LABEL[booking.status] || booking.status}
+              {BOOKING_STATUS_LABEL[booking.bookingStatus] || booking.bookingStatus}
             </span>
           </div>
 
           {/* Progress steps */}
-          {booking.status !== BOOKING_STATUS.CANCELLED && (
+          {booking.bookingStatus !== BOOKING_STATUS.CANCELLED && (
             <div className="flex items-center justify-between mt-2">
               {STATUS_STEPS.slice(0, -1).map((s, i) => (
                 <div key={s} className="flex items-center flex-1">
@@ -213,7 +213,7 @@ const TripTrackingPage = () => {
                   <p className="font-bold text-content-main text-lg">{booking.driverName}</p>
                   <div className="flex items-center gap-1 text-yellow-400 mt-0.5">
                     <RiStarLine size={16} />
-                    <span className="text-sm font-medium">4.8</span>
+                    <span className="text-sm font-medium">5.0</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-2 bg-surface-dark px-2 py-1 rounded-md inline-flex">
                     <RiCarLine size={14} className="text-content-muted" />
@@ -221,7 +221,10 @@ const TripTrackingPage = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors" title={booking.driverPhone}>
+                  <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors" 
+                    title={booking.driverPhone}
+                    onClick={() => window.open(`tel:${booking.driverPhone}`)}
+                  >
                     <RiPhoneLine size={18} />
                   </button>
                   <button
@@ -274,17 +277,22 @@ const TripTrackingPage = () => {
 
           {/* Actions */}
           <div className="space-y-3 pt-4">
-            {booking.status === BOOKING_STATUS.COMPLETED && (
+            {booking.bookingStatus === BOOKING_STATUS.COMPLETED && (
               <Button fullWidth size="lg" onClick={handleRateDriver} className="shadow-lg shadow-brand-500/20">
                 <RiStarLine size={18} className="mr-2" /> Đánh giá chuyến đi
               </Button>
             )}
-            {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.status) && (
+            {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
               <Button variant="danger" fullWidth onClick={handleCancel} loading={cancelling}>
                 Hủy chuyến đi
               </Button>
             )}
-            <Button variant="ghost" fullWidth onClick={() => navigate('/customer/home')}>
+            <Button variant="ghost" fullWidth onClick={() => {
+              if (booking.bookingStatus === BOOKING_STATUS.COMPLETED || booking.bookingStatus === BOOKING_STATUS.CANCELLED) {
+                clearCurrentBooking()
+              }
+              navigate('/customer/home')
+            }}>
               Về trang chủ
             </Button>
           </div>
@@ -307,7 +315,8 @@ const TripTrackingPage = () => {
         <div className="absolute inset-0 z-50">
           <ChatDialog
             bookingId={booking.bookingId}
-            driverName={booking.driverName}
+            receiverId={booking.driverId}
+            otherName={booking.driverName}
             onClose={() => setChatOpen(false)}
           />
         </div>

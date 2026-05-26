@@ -6,7 +6,7 @@ import { useWebSocket } from '@/hooks/useWebSocket'
 import { formatTime } from '@/utils/formatDate'
 import { cn } from '@/utils/cn'
 
-const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
+const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
   const { user }                            = useAuthStore()
   const { messages, addMessage, setMessages } = useChatStore()
   const [input,   setInput]   = useState('')
@@ -41,12 +41,12 @@ const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
     setSending(true)
 
     const tempMsg = {
-      id:         Date.now(),
+      id:         Date.now().toString(),
       bookingId,
       senderId:   user?.id,
       senderRole: user?.role,
-      message:    text,
-      createdAt:  new Date().toISOString(),
+      content:    text,
+      timestamp:  new Date().toISOString(),
       _temp:      true,
     }
     addMessage(bookingId, tempMsg)
@@ -55,9 +55,8 @@ const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
     try {
       await chatApi.sendMessage({
         bookingId,
-        senderId:   user?.id,
-        message:    text,
-        senderRole: user?.role,
+        receiverId,
+        content:    text,
       })
     } catch {
       // Optimistic message stays in UI anyway
@@ -66,7 +65,7 @@ const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
     }
   }
 
-  const otherName = driverName || customerName || 'Người dùng'
+  const displayTitle = otherName || 'Người dùng'
 
   return (
     <div className="fixed bottom-6 right-6 w-80 z-50 card shadow-2xl flex flex-col animate-slide-up"
@@ -75,7 +74,7 @@ const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border shrink-0">
         <div>
-          <p className="font-semibold text-content-main text-sm">{otherName}</p>
+          <p className="font-semibold text-content-main text-sm">{displayTitle}</p>
           <p className="text-[10px] text-brand-400">● Đang hoạt động</p>
         </div>
         <button
@@ -104,9 +103,9 @@ const ChatDialog = ({ bookingId, driverName, customerName, onClose }) => {
                   ? 'bg-brand-500 text-content-main rounded-br-sm'
                   : 'bg-surface-border text-gray-200 rounded-bl-sm',
               )}>
-                <p>{msg.message}</p>
+                <p>{msg.content || msg.message}</p>
                 <p className={cn('text-[10px] mt-0.5', isMine ? 'text-brand-200/70 text-right' : 'text-content-muted')}>
-                  {formatTime(msg.createdAt)}
+                  {formatTime(msg.timestamp || msg.createdAt)}
                 </p>
               </div>
             </div>
