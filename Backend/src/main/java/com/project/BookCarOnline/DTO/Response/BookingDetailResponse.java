@@ -25,6 +25,7 @@ public class BookingDetailResponse {
     String licensePlate;
     String pickupLocation;
     String dropoffLocation;
+    Double originalPrice;
     Double totalPrice;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -116,7 +116,8 @@ public class BookingService {
                 }
             }
 
-            double finalPrice = roundToThousand(basePrice * surcharge * surgeMultiplier - discount);
+            double originalPrice = roundToThousand(basePrice * surcharge * surgeMultiplier);
+            double finalPrice = roundToThousand(originalPrice - discount);
             if (finalPrice < 0) finalPrice = 0.0;
 
             String quoteId = UUID.randomUUID().toString();
@@ -128,6 +129,7 @@ public class BookingService {
                     .basePrice(basePrice)
                     .surcharge(surcharge)
                     .surgeMultiplier(surgeMultiplier)
+                    .originalPrice(originalPrice)
                     .totalPrice(finalPrice)
                     .discount(discount)
                     .promotionId(request.getPromotionCode())
@@ -141,6 +143,7 @@ public class BookingService {
                     .basePrice(basePrice)
                     .surcharge(surcharge)
                     .surgeMultiplier(surgeMultiplier)
+                    .originalPrice(originalPrice)
                     .discount(discount)
                     .totalPrice(finalPrice)
                     .quoteId(quoteId)
@@ -221,6 +224,7 @@ public class BookingService {
                 .customerNo(customer)
                 .pickupLocation(request.getPickupLocation())
                 .dropoffLocation(request.getDropoffLocation())
+                .originalPrice(quote.getOriginalPrice() != null ? quote.getOriginalPrice() : finalPrice)
                 .totalPrice(finalPrice)
                 .bookingTime(Timestamp.valueOf(LocalDateTime.now()))
                 .bookingStatus(BookingStatus.PENDING)
@@ -549,6 +553,7 @@ public class BookingService {
                 .licensePlate(booking.getDriverNo() != null ? booking.getDriverNo().getLicensePlate() : null)
                 .pickupLocation(booking.getPickupLocation())
                 .dropoffLocation(booking.getDropoffLocation())
+                .originalPrice(booking.getOriginalPrice())
                 .totalPrice(booking.getTotalPrice())
                 .bookingTime(booking.getBookingTime())
                 .pickupTime(booking.getPickupTime())
