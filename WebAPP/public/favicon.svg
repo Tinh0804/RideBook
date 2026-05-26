@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <rect width="64" height="64" rx="14" fill="#16a34a" opacity="0.15"/>
+  <!-- Car body -->
+  <path d="M12 36 L16 24 Q18 20 24 20 L40 20 Q46 20 48 24 L52 36 L52 44 Q52 46 50 46 L14 46 Q12 46 12 44 Z" fill="#22c55e"/>
+  <!-- Windows -->
+  <path d="M22 28 L26 22 L38 22 L42 28 Z" fill="#0B1120" opacity="0.6"/>
+  <!-- Wheels -->
+  <circle cx="22" cy="46" r="6" fill="#0B1120"/>
+  <circle cx="22" cy="46" r="3" fill="#374151"/>
+  <circle cx="42" cy="46" r="6" fill="#0B1120"/>
+  <circle cx="42" cy="46" r="3" fill="#374151"/>
+  <!-- Headlights -->
+  <rect x="12" y="36" width="6" height="4" rx="2" fill="#A8FF3E" opacity="0.9"/>
+  <rect x="46" y="36" width="6" height="4" rx="2" fill="#A8FF3E" opacity="0.9"/>
+</svg>

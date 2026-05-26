@@ -1,0 +1,117 @@
+server:
+    servlet:
+        context-path: "/RideBook"
+spring:
+    main:
+        allow-bean-definition-overriding: true
+    application:
+        name: BookCarOnline
+    data:
+        mongodb:
+            uri: mongodb://sa:%40Tinh0804@localhost:27017/RideBookDB?authSource=admin
+        redis:
+            host: localhost
+            port: 6379
+    datasource:
+        url: jdbc:sqlserver://localhost:1433;databaseName=RideBookDB;encrypt=true;trustServerCertificate=true;
+        username: sa
+        password: "@Tinh0804"
+        driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    jpa:
+        hibernate:
+            naming:
+                physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+#            ddl-auto: create
+        show-sql: true
+        format-sql: true
+        database-platform: org.hibernate.dialect.SQLServerDialect
+    sql:
+        init:
+            enabled=true:
+    security:
+        user:
+            name: "admin"
+            password: "12345"
+
+        oauth2:
+            client:
+                registration:
+                    google:
+                        client-id: 302708839710-4t8374p6qbp4ut1jpcgo4t9396vqigvk.apps.googleusercontent.com
+                        client-secret: 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
+                        grant-type: authorization_code
+                        scope:
+                            - profile
+                            - email
+                        redirect-uri: com.googleusercontent.apps.302708839710-uqnlsf5el1b8t3vocto720e76iv6slad:/oauth2redirect/google
+                        token-uri: https://oauth2.googleapis.com/token
+                        user-info-uri: https://www.googleapis.com/oauth2/v2/userinfo
+                    facebook:
+                        client-id: 1914479109126836
+                        client-secret: 135f66ad30951094e01c6adb990afa15
+                        scope:
+                            - public_profile
+                            - email
+                        redirect-uri: https://fa78b0550c6f.ngrok-free.app/RideBook/auth/oauth2/facebook
+                        token-uri: https://graph.facebook.com/v17.0/oauth/access_token
+                        user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
+
+                provider:
+#                    do google đã có provider mặt định
+                    facebook:
+                        authorization-uri: https://www.facebook.com/v20.0/dialog/oauth
+                        token-uri: https://graph.facebook.com/v20.0/oauth/access_token
+                        user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
+                        user-name-attribute: id
+    servlet:
+        multipart:
+            max-file-size: 5MB
+            max-request-size: 5MB
+jwt:
+    signerKey: "5be00bd883e235f0aca7bdd710ec6abf06d87a3e5a8222662868ba3f6fbcac39"
+    valid-duration : 3600
+    refreshable-duration : 36000
+
+vnpay:
+    tmn-code: "963W7U7G"
+    hash-secret: "SW0WJCUP1KEASD4PJCNUOE01R52BD82A"
+    api-url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    return-url: "http://localhost:8080/RideBook/payments/vnpay/return"
+    version: "2.1.0"
+    command: "pay"
+    order-type: "other"
+    time-zone-id": "SE Asia Standard Time"
+
+momo:
+    partner-code: "MOMO"
+    access-key: "F8BBA842ECF85"
+    secret-key: "K951B6PE1waDMi640xX08PD3vg6EkVlz"
+    api-url: "https://test-payment.momo.vn/gw_payment/transactionProcessor"
+    return-url: "http://localhost:8080/RideBook/payments/momo/return"
+    notify-url: "http://localhost:8080/RideBook/payments/momo/callback"
+    request-type: "captureMoMoWallet"
+firebase:
+    bucket-name: "ridebook-dc1ad.firebasestorage.app"
+    config-path: "firebase/firebase-adminsdk.json"
+springdoc:
+    api-docs:
+        enabled: true
+        path: /v3/api-docs
+    swagger-ui:
+        enabled: true
+        path: /swagger-ui.html
+        operations-sorter: method
+        tags-sorter: alpha
+google:
+    maps:
+        api-key: "AIzaSyC3Qe2gdrLQ0-Q79IiOUym_hAibXewVfUA"
+
+app:
+    commission:
+        platform-rate: 0.3
+    time-to-live:
+        otp: 300000
+        password-reset-token: 3600000
+        quote: 120000
+    max-login-attempts: 5

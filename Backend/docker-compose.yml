@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sqlserver
+      - mongodb
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-lastest
+    container_name: sqlserver_ridebook
+    environment:
+        - ACCEPT_EULA=Y
+        - MSSQL_USER=sa
+        - MSSQL_PASS=@Tinh0804
+        - MSSQL_NAME=RideBookDB
+    volumes:
+      - mssql_data:/var/opt/mssql
+    ports:
+        - "1433:1433"
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_ridebook
+    environment:
+      - MONGO_ROOT_USERNAME=sa
+      - MONGO_ROOT_PASSWORD=@Tinh0804
+      - MONGO_DATABASE=RideBookDB
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
