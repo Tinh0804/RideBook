@@ -35,6 +35,11 @@ public class CreatePromotionRequest {
     @Min(value = 1, message = "Số lượng tối thiểu là 1")
     Integer quantity;
 
+    String discountType;
+    Double discountValue;
+    Double minTripValue;
+    Integer usageLimitPerUser;
+
     @Builder.Default
     Boolean isActive = true;
 }

@@ -5,6 +5,7 @@ import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/formatDate';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/utils/cn';
+import { useAuthStore } from '@/store/rootStore';
 
 const PROMO_IMAGES = [
   "https://images.unsplash.com/photo-1542751371-adc2131af163?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -16,6 +17,7 @@ const PROMO_IMAGES = [
 
 const CustomerPromotionsPage = () => {
   const navigate = useNavigate();
+  const { userProfile } = useAuthStore();
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,9 +28,22 @@ const CustomerPromotionsPage = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleSavePromotion = async (code) => {
+    if (!userProfile?.customerId) {
+        toast.error('Vui lòng đăng nhập để lưu khuyến mãi');
+        return;
+    }
+    try {
+        await masterDataApi.savePromotion(userProfile.customerId, code);
+        toast.success(`Đã lưu mã ${code} vào Ví Voucher!`);
+    } catch (error) {
+        toast.error(error.response?.data?.message || 'Không thể lưu mã khuyến mãi này');
+    }
+  };
+
   const handleUsePromotion = (code) => {
     navigator.clipboard.writeText(code);
-    toast.success(`Đã lưu mã ${code} vào bộ nhớ tạm!`);
+    toast.success(`Đã copy mã ${code} vào bộ nhớ tạm!`);
     navigate('/customer/booking');
   };
 
@@ -103,12 +118,20 @@ const CustomerPromotionsPage = () => {
                         {promo.endTime ? `HSD: ${formatDate(promo.endTime)}` : 'Không giới hạn'}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleUsePromotion(promo.promotionCode)}
-                      className="w-full bg-brand-500/90 hover:bg-brand-500 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-md shadow-brand-500/20"
-                    >
-                      Sử dụng ngay
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSavePromotion(promo.promotionCode)}
+                        className="flex-1 bg-surface-border hover:bg-white/10 text-content-main font-semibold py-2.5 rounded-xl transition-all duration-200 border border-white/10"
+                      >
+                        Lưu mã
+                      </button>
+                      <button
+                        onClick={() => handleUsePromotion(promo.promotionCode)}
+                        className="flex-1 bg-brand-500/90 hover:bg-brand-500 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-md shadow-brand-500/20"
+                      >
+                        Sử dụng
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

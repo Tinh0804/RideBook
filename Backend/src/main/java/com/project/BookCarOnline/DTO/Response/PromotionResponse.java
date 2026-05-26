@@ -20,4 +20,10 @@ public class PromotionResponse {
     String applicationCondition;
     Integer quantity;
     Boolean isActive;
+    
+    // New fields
+    String discountType;
+    Double discountValue;
+    Double minTripValue;
+    Integer usageLimitPerUser;
 }
