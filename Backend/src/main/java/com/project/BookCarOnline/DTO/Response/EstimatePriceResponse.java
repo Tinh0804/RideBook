@@ -14,6 +14,7 @@ public class EstimatePriceResponse {
     Double basePrice;
     Double surcharge;
     Double surgeMultiplier;
+    Double originalPrice;
     Double totalPrice;
     Double discount;
     String quoteId;

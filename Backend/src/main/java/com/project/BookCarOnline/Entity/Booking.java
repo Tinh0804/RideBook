@@ -53,6 +53,9 @@ public class Booking {
     @Column(name = "GIATIEN")
      Double totalPrice;
 
+    @Column(name = "GIA_GOC")
+     Double originalPrice;
+
     @Column(name = "THOIGIANDAT")
      Timestamp bookingTime;
 

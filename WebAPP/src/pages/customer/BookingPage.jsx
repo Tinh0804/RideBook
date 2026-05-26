@@ -17,6 +17,7 @@ import Button from '@/components/Elements/Button'
 import AddressInput from '@/components/Map/AddressInput'
 import Input from '@/components/Elements/Input'
 import Spinner from '@/components/Elements/Spinner'
+import Modal from '@/components/Elements/Modal'
 import LocationAutocomplete from '@/components/Elements/LocationAutocomplete'
 import InteractiveMap from '@/components/Map/InteractiveMap'
 import { cn } from '@/utils/cn'
@@ -82,6 +83,7 @@ const BookingPage = () => {
   const [countdown,       setCountdown]       = useState(0)
   const [isCanceling,     setCanceling]       = useState(false)
   const [myPromotions,    setMyPromotions]    = useState([])
+  const [isPromoModalOpen, setPromoModalOpen] = useState(false)
 
   useEffect(() => {
     if (step === 2 && customerId) {
@@ -585,9 +587,16 @@ const BookingPage = () => {
 
                     {/* Giá tiền */}
                     {est ? (
-                      <p className="text-xs font-semibold text-brand-400 mt-2">
-                        {formatCurrency(est.totalPrice)}
-                      </p>
+                      <div className="mt-2">
+                        {est.originalPrice && est.originalPrice > est.totalPrice && (
+                          <p className="text-[10px] text-content-muted line-through mb-0.5">
+                            {formatCurrency(est.originalPrice)}
+                          </p>
+                        )}
+                        <p className="text-xs font-semibold text-brand-400">
+                          {formatCurrency(est.totalPrice)}
+                        </p>
+                      </div>
                     ) : vt.pricePerKm ? (
                       <p className="text-xs font-semibold text-brand-400 mt-2">
                         {formatCurrency(vt.pricePerKm)}/km
@@ -606,43 +615,40 @@ const BookingPage = () => {
               <h3 className="font-semibold text-content-main text-sm flex items-center gap-2">
                 <RiTicketLine size={16} className="text-brand-400" /> Khuyến mãi
               </h3>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Nhập mã..."
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                  className="flex-1"
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={applyPromo}
-                  disabled={promoLoading || !promoCode.trim()}
-                >
-                  {promoLoading ? <Spinner size="sm" /> : 'Áp dụng'}
-                </Button>
-              </div>
-              {myPromotions.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {myPromotions.map(p => (
-                    <button 
-                      key={p.promotionCode} 
-                      onClick={() => {
-                        setPromoCode(p.promotionCode);
-                      }}
-                      className={cn("px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 shadow-sm", promoCode === p.promotionCode ? "bg-brand-500 text-white border-brand-500 shadow-brand-500/20" : "bg-surface text-content-main border-surface-border hover:border-brand-500/50 hover:bg-white/5")}
-                      title={p.promotionName}
-                    >
-                      Mã: {p.promotionCode}
-                    </button>
-                  ))}
+              
+              <button
+                onClick={() => setPromoModalOpen(true)}
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface hover:border-brand-500/50 hover:bg-surface-hover transition-all duration-200"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center">
+                    <RiTicketLine size={18} className="text-brand-400" />
+                  </div>
+                  <div className="text-left">
+                    {promoCode ? (
+                      <>
+                        <p className="text-sm font-semibold text-content-main">Mã: {promoCode}</p>
+                        {promoData && <p className="text-xs text-brand-400 font-medium">Đã áp dụng giảm giá</p>}
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-content-main">Chọn mã khuyến mãi</p>
+                        <p className="text-xs text-content-muted">Có {myPromotions.length} ưu đãi chờ bạn</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-              )}
-              {promoData && (
-                <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-500/10 border border-brand-500/20 rounded-lg px-3 py-2">
-                  <RiCheckLine size={14} />
-                  Giảm {promoData.discountLimit * 100}%
-                </div>
-              )}
+                {promoCode ? (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setPromoCode(''); setPromoData(null); }}
+                    className="text-xs text-red-400 hover:text-red-300 font-medium"
+                  >
+                    Bỏ chọn
+                  </button>
+                ) : (
+                  <span className="text-sm text-brand-400 font-medium">Chọn</span>
+                )}
+              </button>
             </div>
 
             {/* Payment method */}
@@ -738,9 +744,78 @@ const BookingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Promo Selection Modal */}
+      <Modal isOpen={isPromoModalOpen} onClose={() => setPromoModalOpen(false)} title="Ví Voucher" size="md">
+        <div className="space-y-4 pt-2">
+          {/* Direct Input */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nhập mã khuyến mãi..."
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="flex-1"
+            />
+            <Button 
+              onClick={() => {
+                applyPromo();
+                setPromoModalOpen(false);
+              }}
+              disabled={promoLoading || !promoCode.trim()}
+            >
+              {promoLoading ? <Spinner size="sm" /> : 'Áp dụng'}
+            </Button>
+          </div>
+          
+          <div className="border-t border-surface-border my-4" />
+          
+          {/* Saved Promos List */}
+          <div className="space-y-3 max-h-[350px] overflow-y-auto no-scrollbar pb-4">
+            <h4 className="text-sm font-semibold text-content-main mb-2">Mã của bạn ({myPromotions.length})</h4>
+            {myPromotions.length === 0 ? (
+              <div className="text-center py-6 text-content-muted text-sm">
+                Bạn chưa có mã khuyến mãi nào trong ví.
+              </div>
+            ) : (
+              myPromotions.map(p => (
+                <div 
+                  key={p.promotionCode}
+                  className={cn(
+                    "p-3 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between",
+                    promoCode === p.promotionCode 
+                      ? "border-brand-500 bg-brand-500/10" 
+                      : "border-surface-border bg-surface hover:border-brand-500/50"
+                  )}
+                  onClick={() => {
+                    setPromoCode(p.promotionCode);
+                    setTimeout(() => {
+                      applyPromo();
+                      setPromoModalOpen(false);
+                    }, 100);
+                  }}
+                >
+                  <div>
+                    <p className="font-semibold text-brand-400 text-sm">Mã: {p.promotionCode}</p>
+                    <p className="text-xs text-content-muted mt-0.5 max-w-[200px] truncate">{p.promotionName}</p>
+                  </div>
+                  <div className="shrink-0">
+                    {promoCode === p.promotionCode ? (
+                      <div className="w-6 h-6 rounded-full bg-brand-500 flex items-center justify-center text-white">
+                        <RiCheckLine size={14} />
+                      </div>
+                    ) : (
+                      <Button variant="outline" size="sm" className="text-xs py-1 h-auto">Dùng ngay</Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }
-
 
 export default BookingPage
