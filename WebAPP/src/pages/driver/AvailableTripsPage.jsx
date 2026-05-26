@@ -216,18 +216,23 @@ const DriverTripFlowPage = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-display text-2xl font-bold text-brand-400">
-                      {formatCurrency(incomingTrip.price || incomingTrip.totalPrice)}
+                      {formatCurrency(incomingTrip.totalPrice || incomingTrip.price)}
                     </span>
+                    {incomingTrip.originalPrice && incomingTrip.originalPrice > (incomingTrip.totalPrice || incomingTrip.price) && (
+                      <span className="text-sm text-content-muted line-through font-medium">
+                        {formatCurrency(incomingTrip.originalPrice)}
+                      </span>
+                    )}
                     {incomingTrip.paymentMethod && (
                       <span className={cn(
-                        'badge text-[10px]',
+                        'badge text-[10px] ml-1',
                         incomingTrip.paymentMethod === 'CASH' ? 'badge-gray' : 'badge-blue',
                       )}>
                         {incomingTrip.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Online'}
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-content-muted">
+                  <div className="text-xs text-content-muted mt-1">
                     Khoảng cách: <span className="font-semibold text-content-main">{formatDistance(incomingTrip.distance)}</span>
                   </div>
                 </div>
@@ -367,9 +372,14 @@ const DriverTripFlowPage = () => {
             </div>
           </div>
         </div>
-        <div className="border-t border-surface-border pt-3 mt-3 flex justify-between text-sm">
+        <div className="border-t border-surface-border pt-3 mt-3 flex justify-between items-center text-sm">
           <span className="text-content-muted">Cước phí</span>
-          <span className="font-display font-bold text-brand-400 text-lg">{formatCurrency(currentTrip.totalPrice)}</span>
+          <div className="text-right flex items-center gap-2">
+            {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
+              <span className="text-xs text-content-muted line-through">{formatCurrency(currentTrip.originalPrice)}</span>
+            )}
+            <span className="font-display font-bold text-brand-400 text-lg">{formatCurrency(currentTrip.totalPrice)}</span>
+          </div>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-content-muted">Thanh toán</span>
