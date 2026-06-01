@@ -25,6 +25,10 @@ public class BookingDetailResponse {
     String licensePlate;
     String pickupLocation;
     String dropoffLocation;
+    Double pickupLat;
+    Double pickupLng;
+    Double dropoffLat;
+    Double dropoffLng;
     Double originalPrice;
     Double totalPrice;
     

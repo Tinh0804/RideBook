@@ -34,9 +34,6 @@ const STATUS_COLOR = {
   [BOOKING_STATUS.CANCELLED]:  'text-red-400 bg-red-400/10 border-red-400/20',
 }
 
-// Fallback dummy coordinates for Hanoi if geocoding fails
-const DUMMY_PICKUP = { lat: 21.0285, lng: 105.8542 }
-const DUMMY_DROPOFF = { lat: 21.0029, lng: 105.8202 }
 
 const TripTrackingPage = () => {
   const location  = useLocation()
@@ -52,8 +49,20 @@ const TripTrackingPage = () => {
   const [chatOpen,   setChatOpen]   = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
-  const [pickupCoord, setPickupCoord] = useState(location.state?.pickup || null)
-  const [dropoffCoord, setDropoffCoord] = useState(location.state?.dropoff || null)
+  const [pickupCoord, setPickupCoord] = useState(() => {
+    if (location.state?.pickup) return location.state.pickup
+    const saved = localStorage.getItem(`booking_pickup_${bookingId}`)
+    if (saved) return JSON.parse(saved)
+    const tempSaved = localStorage.getItem('temp_pickup')
+    return tempSaved ? JSON.parse(tempSaved) : null
+  })
+  const [dropoffCoord, setDropoffCoord] = useState(() => {
+    if (location.state?.dropoff) return location.state.dropoff
+    const saved = localStorage.getItem(`booking_dropoff_${bookingId}`)
+    if (saved) return JSON.parse(saved)
+    const tempSaved = localStorage.getItem('temp_dropoff')
+    return tempSaved ? JSON.parse(tempSaved) : null
+  })
   const [driverCoord, setDriverCoord] = useState(null)
 
   // Fetch initial booking data
@@ -68,35 +77,50 @@ const TripTrackingPage = () => {
     }
   }, [bookingId, booking, navigate, setCurrentBooking])
 
-  // Geocode addresses if coords are missing
+  // Set coords directly from backend data (no Nominatim geocoding needed anymore)
   useEffect(() => {
-    if (booking && !pickupCoord) {
-      axios.get('https://nominatim.openstreetmap.org/search', {
-        params: { q: booking.pickupLocation, format: 'json', limit: 1 }
-      }).then(res => {
-        if (res.data[0]) setPickupCoord({ lat: parseFloat(res.data[0].lat), lng: parseFloat(res.data[0].lon), name: booking.pickupLocation })
-        else setPickupCoord({ ...DUMMY_PICKUP, name: booking.pickupLocation })
-      }).catch(() => setPickupCoord({ ...DUMMY_PICKUP, name: booking.pickupLocation }))
+    if (booking) {
+      if (booking.pickupLat && booking.pickupLng) {
+        setPickupCoord({
+          lat: booking.pickupLat,
+          lng: booking.pickupLng,
+          name: booking.pickupLocation
+        })
+      }
+      if (booking.dropoffLat && booking.dropoffLng) {
+        setDropoffCoord({
+          lat: booking.dropoffLat,
+          lng: booking.dropoffLng,
+          name: booking.dropoffLocation
+        })
+      }
     }
-    
-    if (booking && !dropoffCoord) {
-      axios.get('https://nominatim.openstreetmap.org/search', {
-        params: { q: booking.dropoffLocation, format: 'json', limit: 1 }
-      }).then(res => {
-        if (res.data[0]) setDropoffCoord({ lat: parseFloat(res.data[0].lat), lng: parseFloat(res.data[0].lon), name: booking.dropoffLocation })
-        else setDropoffCoord({ ...DUMMY_DROPOFF, name: booking.dropoffLocation })
-      }).catch(() => setDropoffCoord({ ...DUMMY_DROPOFF, name: booking.dropoffLocation }))
-    }
-  }, [booking, pickupCoord, dropoffCoord])
+  }, [booking])
 
-  // Update driver coordinates based on status (mocking movement)
+  // Driver location is received via WebSocket (see onWsMessage below)
+  // No API polling needed — driver pushes GPS updates through /app/driver/location -> /topic/booking/{bookingId}/driver-location
+
+  // Fetch initial driver location from Redis when mounting/reloading
   useEffect(() => {
-    if (booking?.bookingStatus === BOOKING_STATUS.ARRIVED && pickupCoord) {
-      setDriverCoord({ lat: pickupCoord.lat - 0.005, lng: pickupCoord.lng - 0.005 })
-    } else if (booking?.bookingStatus === BOOKING_STATUS.IN_PROGRESS && dropoffCoord) {
-      setDriverCoord({ lat: dropoffCoord.lat - 0.005, lng: dropoffCoord.lng - 0.005 })
+    if (!bookingId || driverCoord) return
+    
+    const status = booking?.bookingStatus
+    if (status && ![BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(status)) {
+      return
     }
-  }, [booking?.bookingStatus, pickupCoord, dropoffCoord])
+
+    bookingApi.getDriverLocation(bookingId)
+      .then((loc) => {
+        if (loc && loc.lat && loc.lng) {
+          setDriverCoord({
+            lat: loc.lat,
+            lng: loc.lng,
+            name: booking?.driverName || 'Tài xế'
+          })
+        }
+      })
+      .catch(() => {})
+  }, [bookingId, booking?.bookingStatus, booking?.driverName, driverCoord])
 
   // Poll for status updates every 5s when pending/accepted
   useEffect(() => {
@@ -123,6 +147,18 @@ const TripTrackingPage = () => {
 
   // WebSocket for realtime updates
   const onWsMessage = useCallback((topic, payload) => {
+    // Driver location push from /topic/booking/{bookingId}/driver-location
+    if (topic === `/topic/booking/${bookingId}/driver-location`) {
+      if (payload?.lat && payload?.lng) {
+        setDriverCoord({
+          lat: payload.lat,
+          lng: payload.lng,
+          name: booking?.driverName || 'Tài xế'
+        })
+      }
+      return
+    }
+
     if (typeof payload === 'string' && payload.startsWith('DRIVER_CANCELLED:')) {
       const canceledBookingId = payload.split(':')[1]
       if (bookingId === canceledBookingId) {
@@ -138,10 +174,11 @@ const TripTrackingPage = () => {
       setCurrentBooking((prev) => ({ ...prev, ...payload }))
       toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.bookingStatus]}`)
     }
-  }, [bookingId, setCurrentBooking, clearCurrentBooking, navigate])
+  }, [bookingId, booking?.driverName, setCurrentBooking, clearCurrentBooking, navigate])
 
   useWebSocket([
     `/topic/booking/${bookingId}`,
+    `/topic/booking/${bookingId}/driver-location`,
     customerId ? `/topic/customer/${customerId}` : null
   ].filter(Boolean), onWsMessage)
 

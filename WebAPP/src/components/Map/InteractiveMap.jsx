@@ -29,6 +29,37 @@ const customDropoffIcon = new L.Icon({
   shadowSize: [41, 41]
 })
 
+const customDriverIcon = L.divIcon({
+  html: `
+    <style>
+      @keyframes driverBounce {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-4px); }
+      }
+      .custom-driver-container {
+        animation: driverBounce 0.8s infinite alternate ease-in-out;
+      }
+    </style>
+    <div class="custom-driver-container" style="
+      width: 40px;
+      height: 40px;
+      background-color: #22c55e;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.8);
+    ">
+      <span style="font-size: 20px; line-height: 1; transform: translateY(-1px);">🚗</span>
+    </div>
+  `,
+  className: 'custom-driver-marker',
+  iconSize: [40, 40],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -20]
+})
+
 // Component to handle auto zooming to bounds
 const MapBounds = ({ pickup, dropoff, driver }) => {
   const map = useMap()
@@ -143,8 +174,8 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         )}
 
         {driver && (
-          <Marker position={[driver.lat, driver.lng]}>
-             <Popup>Vị trí tài xế</Popup>
+          <Marker position={[driver.lat, driver.lng]} icon={customDriverIcon}>
+             <Popup>Tài xế: {driver.name || 'Đang di chuyển...'}</Popup>
           </Marker>
         )}
         

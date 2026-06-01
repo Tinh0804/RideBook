@@ -32,40 +32,32 @@ const BookingPage = () => {
 
   const customerId = userProfile?.customerId || userProfile?.id || user?.id
 
-  const onWsMessage = useCallback((topic, payload) => {
-    if (typeof payload === 'string') {
-      if (payload.startsWith('DRIVER_ASSIGNED:')) {
-        const bookingId = payload.split(':')[1]
-        if (currentBooking?.bookingId === bookingId) {
-          bookingApi.getById(bookingId).then((b) => {
-            setCurrentBooking(b)
-            toast.success('Đã tìm thấy tài xế!')
-            navigate('/customer/tracking')
-          })
-        }
-      } else if (payload.startsWith('NO_DRIVER_FOUND:')) {
-        const bookingId = payload.split(':')[1]
-        if (currentBooking?.bookingId === bookingId) {
-          toast.error('Không tìm thấy tài xế. Vui lòng thử lại sau.')
-          clearCurrentBooking()
-          setStep(2)
-        }
-      }
-    }
-  }, [currentBooking, setCurrentBooking, clearCurrentBooking, navigate])
+  // ── Locations state: objects with { name, lat, lng } ───────────────────────
+  const [pickup,          setPickup]          = useState(() => {
+    const saved = localStorage.getItem('temp_pickup')
+    return saved ? JSON.parse(saved) : null
+  })
+  const [dropoff,         setDropoff]         = useState(() => {
+    const saved = localStorage.getItem('temp_dropoff')
+    return saved ? JSON.parse(saved) : null
+  })
 
-  useWebSocket(customerId ? [`/topic/customer/${customerId}`] : [], onWsMessage)
-
-  // Prevent accessing booking page if there is an active booking that is NOT PENDING
   useEffect(() => {
-    if (currentBooking && currentBooking.bookingStatus !== BOOKING_STATUS.PENDING) {
-      navigate('/customer/tracking', { replace: true })
+    if (pickup) {
+      localStorage.setItem('temp_pickup', JSON.stringify(pickup))
+    } else {
+      localStorage.removeItem('temp_pickup')
     }
-  }, [currentBooking, navigate])
+  }, [pickup])
 
-  // Locations state: objects with { name, lat, lng }
-  const [pickup,          setPickup]          = useState(null)
-  const [dropoff,         setDropoff]         = useState(null)
+  useEffect(() => {
+    if (dropoff) {
+      localStorage.setItem('temp_dropoff', JSON.stringify(dropoff))
+    } else {
+      localStorage.removeItem('temp_dropoff')
+    }
+  }, [dropoff])
+
   const [selectingLocationFor, setSelectingLocationFor] = useState(null)
   const [tempMapLocation, setTempMapLocation] = useState(null)
   const [mapLoading, setMapLoading] = useState(false)
@@ -84,6 +76,42 @@ const BookingPage = () => {
   const [isCanceling,     setCanceling]       = useState(false)
   const [myPromotions,    setMyPromotions]    = useState([])
   const [isPromoModalOpen, setPromoModalOpen] = useState(false)
+
+  // ── WebSocket ───────────────────────────────────────────────────────────────
+  const onWsMessage = useCallback((topic, payload) => {
+    if (typeof payload === 'string') {
+      if (payload.startsWith('DRIVER_ASSIGNED:')) {
+        const bookingId = payload.split(':')[1]
+        if (currentBooking?.bookingId === bookingId) {
+          bookingApi.getById(bookingId).then((b) => {
+            setCurrentBooking(b)
+            toast.success('Đã tìm thấy tài xế!')
+            navigate('/customer/tracking', { state: { pickup, dropoff } })
+          })
+        }
+      } else if (payload.startsWith('NO_DRIVER_FOUND:')) {
+        const bookingId = payload.split(':')[1]
+        if (currentBooking?.bookingId === bookingId) {
+          toast.error('Không tìm thấy tài xế. Vui lòng thử lại sau.')
+          clearCurrentBooking()
+          setStep(1)
+        }
+      }
+    }
+  }, [currentBooking, setCurrentBooking, clearCurrentBooking, navigate, pickup, dropoff])
+
+  useWebSocket(customerId ? [`/topic/customer/${customerId}`] : [], onWsMessage)
+
+  // Prevent accessing booking page if there is an active booking that is NOT PENDING and NOT CANCELLED
+  useEffect(() => {
+    if (
+      currentBooking &&
+      currentBooking.bookingStatus !== BOOKING_STATUS.PENDING &&
+      currentBooking.bookingStatus !== BOOKING_STATUS.CANCELLED
+    ) {
+      navigate('/customer/tracking', { replace: true, state: { pickup, dropoff } })
+    }
+  }, [currentBooking, navigate, pickup, dropoff])
 
   useEffect(() => {
     if (step === 2 && customerId) {
@@ -177,6 +205,10 @@ const BookingPage = () => {
         paymentMethod,
         pickupLocation:  pickup.name,
         dropoffLocation: dropoff.name,
+        pickupLat:       pickup.lat,
+        pickupLng:       pickup.lng,
+        dropoffLat:      dropoff.lat,
+        dropoffLng:      dropoff.lng,
         distance:        selectedEstimate?.distance || DUMMY_DISTANCE,
         vehicleTypeId:   selectedVType.vehicleTypeId,
         promotionCode:   promoData?.promotionCode || null,
@@ -184,6 +216,14 @@ const BookingPage = () => {
       }
       const booking = await bookingApi.createBooking(payload)
       setCurrentBooking(booking)
+
+      // Save pickup and dropoff coords to localStorage
+      if (pickup) {
+        localStorage.setItem(`booking_pickup_${booking.bookingId}`, JSON.stringify(pickup))
+      }
+      if (dropoff) {
+        localStorage.setItem(`booking_dropoff_${booking.bookingId}`, JSON.stringify(dropoff))
+      }
 
       if (paymentMethod === PAYMENT_METHOD.ONLINE) {
         let pmData
@@ -210,14 +250,14 @@ const BookingPage = () => {
 
   const handleCancelSearch = async () => {
     if (!currentBooking) {
-      setStep(2)
+      setStep(1)
       return
     }
     setCanceling(true)
     try {
       await bookingApi.cancelBooking(currentBooking.bookingId)
       clearCurrentBooking()
-      setStep(2)
+      setStep(1)
       toast.success('Đã hủy tìm kiếm tài xế')
     } catch (err) {
       toast.error('Không thể hủy tìm kiếm. Vui lòng thử lại.')

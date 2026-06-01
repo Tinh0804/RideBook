@@ -361,6 +361,16 @@ public class DriverService {
                 .map(mapper::toDriverDetailResponse)
                 .collect(Collectors.toList());
     }
+    public void updateDriverLocation(String driverId, Double lat, Double lng) {
+        log.info("Updating location for driver: {}", driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        driver.setCurrentLat(lat);
+        driver.setCurrentLng(lng);
+        driverRepository.save(driver);
+        log.info("Driver location updated successfully: {} is now at ({}, {})", driverId, lat, lng);
+    }
+
 
 
     private void validateDriverUniqueness(CreateDriverRequest request) {

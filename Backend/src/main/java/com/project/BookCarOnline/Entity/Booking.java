@@ -49,6 +49,18 @@ public class Booking {
     @Column(name = "DIEMTRA")
      String dropoffLocation;
 
+    @Column(name = "PICKUP_LAT")
+     Double pickupLat;
+
+    @Column(name = "PICKUP_LNG")
+     Double pickupLng;
+
+    @Column(name = "DROPOFF_LAT")
+     Double dropoffLat;
+
+    @Column(name = "DROPOFF_LNG")
+     Double dropoffLng;
+
     // Extra field not in original DB - keep for future use
     @Column(name = "GIATIEN")
      Double totalPrice;

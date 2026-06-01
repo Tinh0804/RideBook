@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -15,6 +15,9 @@ import Spinner from '@/components/Elements/Spinner'
 import ChatDialog from '@/features/chat/components/ChatDialog'
 import Modal from '@/components/Elements/Modal'
 import { cn } from '@/utils/cn'
+import axios from 'axios'
+import InteractiveMap from '@/components/Map/InteractiveMap'
+
 
 const STATUS_FLOW = [
   { status: BOOKING_STATUS.ACCEPTED,    label: 'Đến đón khách',    next: BOOKING_STATUS.ARRIVED,     action: 'Tôi đã đến điểm đón' },
@@ -36,6 +39,86 @@ const DriverTripFlowPage = () => {
   const [updating, setUpdating] = useState(false)
   const [cancelingTrip, setCancelingTrip] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
+
+  // Coords states for active trip — start null, always geocode from trip data
+  const [pickupCoord, setPickupCoord] = useState(null)
+  const [dropoffCoord, setDropoffCoord] = useState(null)
+  const [driverCoord, setDriverCoord] = useState(null)
+
+  // Ref to hold sendMessage from the active-trip WebSocket hook (avoids hook-ordering issues)
+  const sendTripMessageRef = useRef(null)
+
+  // Reset coords whenever the trip changes so geocoding always re-runs for new trip
+  useEffect(() => {
+    setPickupCoord(null)
+    setDropoffCoord(null)
+  }, [currentTrip?.bookingId])
+
+  // Set coords directly from backend data (no Nominatim geocoding needed anymore)
+  useEffect(() => {
+    if (currentTrip) {
+      if (currentTrip.pickupLat && currentTrip.pickupLng) {
+        setPickupCoord({
+          lat: currentTrip.pickupLat,
+          lng: currentTrip.pickupLng,
+          name: currentTrip.pickupLocation
+        })
+      }
+      if (currentTrip.dropoffLat && currentTrip.dropoffLng) {
+        setDropoffCoord({
+          lat: currentTrip.dropoffLat,
+          lng: currentTrip.dropoffLng,
+          name: currentTrip.dropoffLocation
+        })
+      }
+    }
+  }, [currentTrip])
+
+  // Live location tracking (No simulation, pure real-time GPS)
+  useEffect(() => {
+    if (!currentTrip) return
+    const status = currentTrip.bookingStatus
+
+    if (![BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(status)) {
+      setDriverCoord(null)
+      return
+    }
+
+    let watchId = null
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          
+          setDriverCoord({
+            lat,
+            lng,
+            name: 'Vị trí của bạn'
+          })
+
+          // Also keep localStorage as same-device fallback
+          localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
+
+          // Broadcast GPS via WebSocket to customer in real-time
+          sendTripMessageRef.current?.('/app/driver/location', {
+            bookingId: currentTrip.bookingId,
+            lat,
+            lng,
+          })
+        },
+        (error) => {
+          console.error('Lỗi lấy toạ độ GPS tài xế:', error)
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      )
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId)
+    }
+  }, [currentTrip?.bookingStatus, currentTrip?.bookingId])
 
   // 1. Fetch current trip if any (on mount)
   useEffect(() => {
@@ -107,8 +190,13 @@ const DriverTripFlowPage = () => {
     }
   }, [currentTrip, setCurrentTrip])
 
-  // Listen to specific booking updates
-  useWebSocket(currentTrip?.bookingId ? [`/topic/booking/${currentTrip.bookingId}`] : [], onWsTripMessage)
+  // Listen to specific booking updates — sync sendMessage into ref for GPS effect
+  const { sendMessage: sendTripMessage } = useWebSocket(
+    currentTrip?.bookingId ? [`/topic/booking/${currentTrip.bookingId}`] : [],
+    onWsTripMessage
+  )
+  // Keep ref up-to-date so GPS watchPosition callback can always call the latest sendMessage
+  sendTripMessageRef.current = sendTripMessage
 
   // --- Handlers for Waiting Phase ---
   const handleAccept = async () => {
@@ -312,137 +400,153 @@ const DriverTripFlowPage = () => {
   const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip.bookingStatus)
 
   return (
-    <div className="max-w-lg space-y-6 mx-auto animate-fade-in">
-      <div>
-        <h1 className="section-title">Chuyến đang xử lý</h1>
-        <p className="text-content-muted text-sm mt-1 font-mono">#{currentTrip.bookingId?.slice(-8)}</p>
-      </div>
+    <div className="-m-6 h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-surface-dark overflow-hidden animate-fade-in">
+      {/* Vùng 1: Thông tin chuyến đi */}
+      <div className="w-full lg:w-[450px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-surface-border z-10 shadow-2xl shrink-0 overflow-y-auto no-scrollbar">
+        <div className="p-5 border-b border-surface-border bg-surface-card/95 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="font-display font-bold text-content-main text-xl">Chuyến đi #{currentTrip.bookingId?.slice(-8)}</h1>
+              <p className="text-xs text-content-muted mt-1">Đang xử lý chuyến đi</p>
+            </div>
+            <span className="badge border text-xs px-3 py-1.5 shadow-sm text-brand-400 bg-brand-400/10 border-brand-400/20">
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-2 inline-block" />
+              {BOOKING_STATUS_LABEL[currentTrip.bookingStatus] || currentTrip.bookingStatus}
+            </span>
+          </div>
 
-      {/* Status progress */}
-      <div className="card p-5 space-y-4 shadow-card border-brand-500/20 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 blur-2xl rounded-full" />
-        <div className="flex items-center justify-between relative z-10">
-          {STATUS_FLOW.map((s, i) => (
-            <div key={s.status} className="flex items-center flex-1">
-              <div className={`
-                w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all duration-500
-                ${i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-600'}
-              `}>
-                {i < stepIndex ? <RiCheckLine size={16} /> : i + 1}
+          {/* Progress steps */}
+          <div className="flex items-center justify-between mt-2">
+            {STATUS_FLOW.map((s, i) => (
+              <div key={s.status} className="flex items-center flex-1">
+                <div className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-500',
+                  i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-500',
+                )}>
+                  {i < stepIndex ? <RiCheckLine size={14} /> : i + 1}
+                </div>
+                {i < STATUS_FLOW.length - 1 && (
+                  <div className={cn('flex-1 h-0.5 mx-1 transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-surface-border')} />
+                )}
               </div>
-              {i < STATUS_FLOW.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-1 transition-all duration-700 ${i < stepIndex ? 'bg-brand-500' : 'bg-surface-border'}`} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <div className="text-center relative z-10">
-          <p className="font-display font-bold text-lg text-content-main">{BOOKING_STATUS_LABEL[currentTrip.bookingStatus]}</p>
-          {currentStep && (
-            <p className="text-xs text-brand-400 mt-1 flex items-center justify-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" /> Bước tiếp: {currentStep.action}
-            </p>
+
+        {/* Scrollable Info Area */}
+        <div className="p-5 space-y-6 flex-1">
+          {/* Customer info */}
+          {currentTrip.customerId && (
+            <div className="bg-surface rounded-2xl p-5 border border-surface-border shadow-sm space-y-4">
+              <h3 className="font-semibold text-content-main text-sm">Thông tin khách hàng</h3>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl font-bold text-blue-400 overflow-hidden shrink-0">
+                  {currentTrip.customerName?.[0] || <RiUserLine size={24} />}
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-content-main text-base">{currentTrip.customerName}</p>
+                  <p className="text-xs text-content-muted mt-0.5">{currentTrip.customerPhone}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors"
+                    title={currentTrip.customerPhone}
+                    onClick={() => window.open(`tel:${currentTrip.customerPhone}`)}
+                  >
+                    <RiPhoneLine size={18} />
+                  </button>
+                  <button
+                    onClick={() => setChatOpen(true)}
+                    className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 hover:bg-brand-500/25 transition-colors shadow-glow-green"
+                  >
+                    <RiMessage2Line size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
-        </div>
-      </div>
 
-      {/* Customer info */}
-      {currentTrip.customerId && (
-        <div className="card p-5 space-y-3">
-          <h3 className="font-semibold text-content-main text-sm">Thông tin khách hàng</h3>
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl font-bold text-blue-400 overflow-hidden shrink-0">
-              {currentTrip.customerName?.[0] || <RiUserLine size={24} />}
+          {/* Route info */}
+          <div className="bg-surface rounded-2xl p-5 border border-surface-border space-y-4 shadow-sm">
+            <h3 className="font-semibold text-content-main text-sm">Hành trình & Cước phí</h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
+                  <RiMapPinLine size={14} className="text-brand-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đón</p>
+                  <p className="text-content-main text-sm font-medium mt-0.5">{currentTrip.pickupLocation}</p>
+                </div>
+              </div>
+              <div className="w-0.5 h-6 bg-surface-border ml-3.5" />
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                  <RiMapPin2Line size={14} className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đến</p>
+                  <p className="text-content-main text-sm font-medium mt-0.5">{currentTrip.dropoffLocation}</p>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-content-main">{currentTrip.customerName}</p>
-              <p className="text-xs text-content-muted">{currentTrip.customerPhone}</p>
+            
+            <div className="border-t border-surface-border pt-4 mt-2 flex justify-between items-center text-sm">
+              <span className="text-content-muted font-medium">Cước phí</span>
+              <div className="text-right flex items-center gap-2">
+                {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
+                  <span className="text-xs text-content-muted line-through">{formatCurrency(currentTrip.originalPrice)}</span>
+                )}
+                <span className="font-display font-bold text-brand-400 text-lg">{formatCurrency(currentTrip.totalPrice)}</span>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors"
-               title={currentTrip.customerPhone}
-                onClick={() => window.open(`tel:${currentTrip.customerPhone}`)}
-               >
-                <RiPhoneLine size={18} />
-              </button>
-              <button
-                onClick={() => setChatOpen(true)}
-                className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 hover:bg-brand-500/25 transition-colors shadow-glow-green"
+            <div className="flex justify-between text-sm pt-1">
+              <span className="text-content-muted font-medium">Thanh toán</span>
+              <span className="text-content-main font-medium">{currentTrip.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 Trực tuyến'}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="space-y-3 pt-4">
+            {currentStep && (
+              <Button fullWidth size="lg" onClick={handleNextStatus} loading={updating} disabled={cancelingTrip}
+                className={currentStep.next === BOOKING_STATUS.COMPLETED ? 'bg-blue-500 hover:bg-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)] shadow-lg' : 'shadow-lg shadow-brand-500/20'}
               >
-                <RiMessage2Line size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Route */}
-      <div className="card p-5 space-y-3">
-        <h3 className="font-semibold text-content-main text-sm">Hành trình</h3>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center shrink-0">
-              <RiMapPinLine size={14} className="text-brand-400" />
-            </div>
-            <div>
-              <p className="text-xs text-content-muted">Điểm đón</p>
-              <p className="text-content-main text-sm font-medium">{currentTrip.pickupLocation}</p>
-            </div>
-          </div>
-          <div className="w-px h-5 bg-surface-border ml-3" />
-          <div className="flex items-start gap-3">
-            <div className="w-7 h-7 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0">
-              <RiMapPin2Line size={14} className="text-red-400" />
-            </div>
-            <div>
-              <p className="text-xs text-content-muted">Điểm đến</p>
-              <p className="text-content-main text-sm font-medium">{currentTrip.dropoffLocation}</p>
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-surface-border pt-3 mt-3 flex justify-between items-center text-sm">
-          <span className="text-content-muted">Cước phí</span>
-          <div className="text-right flex items-center gap-2">
-            {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
-              <span className="text-xs text-content-muted line-through">{formatCurrency(currentTrip.originalPrice)}</span>
+                {currentStep.action}
+              </Button>
             )}
-            <span className="font-display font-bold text-brand-400 text-lg">{formatCurrency(currentTrip.totalPrice)}</span>
+            
+            {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
+              <Button fullWidth variant="outline" onClick={handleCancelTrip} loading={cancelingTrip} disabled={updating}
+                className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+              >
+                <RiCloseLine size={18} className="mr-1" /> Hủy chuyến
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-content-muted">Thanh toán</span>
-          <span className="text-content-main font-medium">{currentTrip.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 Online'}</span>
         </div>
       </div>
 
-      {/* Main action button */}
-      <div className="space-y-3">
-        {currentStep && (
-          <Button fullWidth size="lg" onClick={handleNextStatus} loading={updating} disabled={cancelingTrip}
-            className={currentStep.next === BOOKING_STATUS.COMPLETED ? 'bg-blue-500 hover:bg-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : ''}
-          >
-            {currentStep.action}
-          </Button>
-        )}
+      {/* Vùng 2: Bản đồ Realtime */}
+      <div className="flex-1 relative h-[45vh] lg:h-full bg-surface-dark z-0">
+        <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
         
-        {/* Hủy chuyến Button */}
-        {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
-          <Button fullWidth variant="outline" onClick={handleCancelTrip} loading={cancelingTrip} disabled={updating}
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500"
-          >
-            <RiCloseLine size={18} className="mr-1" /> Hủy chuyến
-          </Button>
-        )}
+        {/* Map Overlay Indicator */}
+        <div className="absolute top-4 right-4 z-10 bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full border border-surface-border shadow-lg flex items-center gap-2">
+          <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
+          <span className="text-xs font-semibold text-content-main">Đường đi trực tiếp</span>
+        </div>
       </div>
 
       {/* Chat Dialog */}
       {chatOpen && (
-        <ChatDialog
-          bookingId={currentTrip.bookingId}
-          receiverId={currentTrip.customerId}
-          otherName={currentTrip.customerName}
-          onClose={() => setChatOpen(false)}
-        />
+        <div className="absolute inset-0 z-50">
+          <ChatDialog
+            bookingId={currentTrip.bookingId}
+            receiverId={currentTrip.customerId}
+            otherName={currentTrip.customerName}
+            onClose={() => setChatOpen(false)}
+          />
+        </div>
       )}
     </div>
   )

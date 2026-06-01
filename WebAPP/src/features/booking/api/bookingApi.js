@@ -46,4 +46,7 @@ export const bookingApi = {
 
   cancelBookingByDriver: (bookingId, driverId) =>
     apiClient.delete(`/bookings/${bookingId}/driver/${driverId}`).then((r) => r.data),
+
+  getDriverLocation: (bookingId) =>
+    apiClient.get(`/drivers/location/${bookingId}`).then((r) => r.data.result),
 }

@@ -49,7 +49,4 @@ public class Account {
     @Column(name = "PROVIDER_ID", length = 255)
      String providerId;
 
-
-
-
 }

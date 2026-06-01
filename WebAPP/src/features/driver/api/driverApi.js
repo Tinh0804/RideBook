@@ -44,4 +44,7 @@ export const driverApi = {
 
   getByVehicleType: (vehicleTypeId) =>
     apiClient.get(`/drivers/vehicle-type/${vehicleTypeId}`).then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
+
+  updateLocation: (driverId, lat, lng) =>
+    apiClient.put(`/drivers/${driverId}`, { currentLat: lat, currentLng: lng }).then((r) => r.data),
 }

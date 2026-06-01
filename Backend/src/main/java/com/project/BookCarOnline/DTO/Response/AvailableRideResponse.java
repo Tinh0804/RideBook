@@ -15,6 +15,10 @@ public class AvailableRideResponse {
     String customerId;
     String pickupLocation;
     String dropoffLocation;
+    Double pickupLat;
+    Double pickupLng;
+    Double dropoffLat;
+    Double dropoffLng;
     Double distance;
     Double price;
     BookingStatus bookingStatus;

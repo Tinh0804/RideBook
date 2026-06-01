@@ -22,7 +22,7 @@ spring:
         hibernate:
             naming:
                 physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-#            ddl-auto: create
+#            ddl-auto: update
         show-sql: true
         format-sql: true
         database-platform: org.hibernate.dialect.SQLServerDialect

@@ -28,6 +28,11 @@ public class CreateBookingRequest {
     @NotBlank(message = "Điểm trả không được để trống")
     String dropoffLocation;
 
+    Double pickupLat;
+    Double pickupLng;
+    Double dropoffLat;
+    Double dropoffLng;
+
     @NotNull(message = "Khoảng cách không được để trống")
     @Positive(message = "Khoảng cách phải lớn hơn 0")
     Double distance;

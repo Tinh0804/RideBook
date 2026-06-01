@@ -68,6 +68,7 @@ public class BookingService {
     PromotionRepository       promotionRepository;
     com.project.BookCarOnline.Repository.CustomerPromotionRepository customerPromotionRepository;
     RedisTemplate<String, Object> redisTemplate;
+    DriverLocationService     driverLocationService;
 
     @NonFinal
     @Value("${app.commission.platform-rate}")
@@ -224,6 +225,10 @@ public class BookingService {
                 .customerNo(customer)
                 .pickupLocation(request.getPickupLocation())
                 .dropoffLocation(request.getDropoffLocation())
+                .pickupLat(request.getPickupLat() != null ? request.getPickupLat() : lat)
+                .pickupLng(request.getPickupLng() != null ? request.getPickupLng() : lng)
+                .dropoffLat(request.getDropoffLat())
+                .dropoffLng(request.getDropoffLng())
                 .originalPrice(quote.getOriginalPrice() != null ? quote.getOriginalPrice() : finalPrice)
                 .totalPrice(finalPrice)
                 .bookingTime(Timestamp.valueOf(LocalDateTime.now()))
@@ -387,6 +392,10 @@ public class BookingService {
                     }
                     driverRepository.updateLastTripTime(drv.getDriverId(), LocalDateTime.now());
                 }
+                driverLocationService.clearLocation(bookingId);
+            }
+            case CANCELLED -> {
+                driverLocationService.clearLocation(bookingId);
             }
             default -> { /* không cần xử lý thêm */ }
         }
@@ -418,6 +427,7 @@ public class BookingService {
                     "CUSTOMER_CANCELLED:" + bookingId);
         }
 
+        driverLocationService.clearLocation(bookingId);
         log.info("[Booking] Đã hủy booking {}", bookingId);
     }
 
@@ -443,6 +453,7 @@ public class BookingService {
                     "DRIVER_CANCELLED:" + bookingId);
         }
 
+        driverLocationService.clearLocation(bookingId);
         log.info("[Booking] Tài xế {} đã hủy booking {}", driverId, bookingId);
     }
  
@@ -585,6 +596,10 @@ public class BookingService {
                 .licensePlate(booking.getDriverNo() != null ? booking.getDriverNo().getLicensePlate() : null)
                 .pickupLocation(booking.getPickupLocation())
                 .dropoffLocation(booking.getDropoffLocation())
+                .pickupLat(booking.getPickupLat())
+                .pickupLng(booking.getPickupLng())
+                .dropoffLat(booking.getDropoffLat())
+                .dropoffLng(booking.getDropoffLng())
                 .originalPrice(booking.getOriginalPrice())
                 .totalPrice(booking.getTotalPrice())
                 .bookingTime(booking.getBookingTime())
@@ -604,6 +619,10 @@ public class BookingService {
                 .customerId(booking.getCustomerNo() != null ? booking.getCustomerNo().getCustomerId() : null)
                 .pickupLocation(booking.getPickupLocation())
                 .dropoffLocation(booking.getDropoffLocation())
+                .pickupLat(booking.getPickupLat())
+                .pickupLng(booking.getPickupLng())
+                .dropoffLat(booking.getDropoffLat())
+                .dropoffLng(booking.getDropoffLng())
                 .distance(booking.getDistance())
                 .price(booking.getTotalPrice())
                 .bookingStatus(booking.getBookingStatus())
