@@ -22,17 +22,6 @@ import java.util.Set;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-/**
-  Luồng:
-   1. Nhận danh sách tài xế đã được sắp xếp theo điểm ưu tiên.
-   2. Lần lượt gửi cuốc đến từng tài xế:
-      - Loại trừ tài xế đã từ chối / bỏ qua booking này trước đó.
-      - Chờ DISPATCH_TIMEOUT_SECONDS giây.
-          + Nếu tài xế nhận → broadcast cho khách, kết thúc.
-          + Nếu timeout → ghi IGNORED, chuyển sang tài xế tiếp theo.
-   3. Nếu tất cả tài xế trong danh sách ưu tiên ko nhân, thì gán lại lần nữa cho những tài xế đã từ chối/ignore trước đó (bỏ qua blacklist)
-  4. Nếu vẫn không có ai → tự động hủy booking, thông báo khách.
- */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -69,7 +58,6 @@ public class RideDispatcherService {
                  return;
         }
 
-
         log.info("[Dispatch] Không có tài xế nào nhận chuyến {}. Tiến hành hủy tự động.", bookingId);
         cancelBookingAutomatically(bookingId);
     }
@@ -83,22 +71,21 @@ public class RideDispatcherService {
 
     private boolean dispatchToList(String bookingId, List<Driver> drivers, Set<String> blacklist) {
         for (Driver driver : drivers) {
-            // 1. Bỏ qua nếu tài xế trong blacklist
+            //  Bỏ qua nếu tài xế trong blacklist
             if (!blacklist.isEmpty() && blacklist.contains(driver.getDriverId())) {
                 log.info("[Dispatch] Bỏ qua tài xế {} (đã từ chối/ignore trước đó)", driver.getDriverId());
                 continue;
             }
 
-            // 2. Kiểm tra booking còn PENDING không
+            // Kiểm tra booking còn PENDING không
             if (isBookingTakenOrCancelled(bookingId)) {
                 log.info("[Dispatch] Booking {} không còn PENDING, dừng dispatch.", bookingId);
                 return true; // Đã được xử lý (nhận hoặc khách hủy)
             }
 
-            // 3. Gửi cuốc xe đến tài xế qua WebSocket
             sendRideRequestToDriver(bookingId, driver.getDriverId());
 
-            // 4. Chờ phản hồi
+            //  Chờ phản hồi
             WaitResult result = waitForResponse(bookingId, driver.getDriverId(),
                                                 constant.getDISPATCH_TIMEOUT_SECONDS());
             switch (result) {
@@ -112,12 +99,10 @@ public class RideDispatcherService {
                     return true;
                 }
                 case DRIVER_REJECTED -> {
-                    // Đã được ghi bởi recordRejection(), cập nhật blacklist local
                     blacklist.add(driver.getDriverId());
                     log.info("[Dispatch] Tài xế {} từ chối. Chuyển sang tài xế tiếp theo.", driver.getDriverId());
                 }
                 case TIMEOUT -> {
-                    // Tài xế bỏ qua (không phản hồi) → ghi IGNORED
                     saveRejection(bookingId, driver.getDriverId(), RejectionType.IGNORED);
                     blacklist.add(driver.getDriverId());
                     log.info("[Dispatch] Tài xế {} hết thời gian phản hồi (IGNORED).", driver.getDriverId());
@@ -127,10 +112,7 @@ public class RideDispatcherService {
         return false;
     }
 
-    /**
-     * Polling trạng thái booking cho đến khi hết timeout.
-     * Trả về kết quả tương ứng để dispatcher quyết định hành động tiếp theo.
-     */
+
     private WaitResult waitForResponse(String bookingId, String driverId, int timeoutSeconds) {
         for (int i = 0; i < timeoutSeconds; i++) {
             try {
@@ -151,7 +133,7 @@ public class RideDispatcherService {
             }
 
             // Tài xế chủ động từ chối sẽ gọi recordRejection() → ghi vào DB
-            // Ta kiểm tra xem rejection đã được ghi chưa
+
             if (rejectionRepository.existsByBooking_BookingIdAndDriver_DriverId(bookingId, driverId)) {
                 return WaitResult.DRIVER_REJECTED;
             }

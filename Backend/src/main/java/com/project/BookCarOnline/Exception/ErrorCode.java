@@ -40,12 +40,13 @@ public enum ErrorCode {
     DRIVER_LICENSE_PLATE_EXISTED(400,"Biển số xe đã tồn tại",HttpStatus.BAD_REQUEST),
     DRIVER_NOT_FOUND(404,"Tài xế không tồn tại",HttpStatus.NOT_FOUND),
     DRIVER_ON_RIDE(400,"Tài xế đang thực hiện chuyến khác",HttpStatus.BAD_REQUEST),
-    
+
     // Booking related errors
     BOOKING_NOT_FOUND(404,"Chuyến xe không tồn tại",HttpStatus.NOT_FOUND),
     BOOKING_NOT_AVAILABLE(400,"Chuyến xe không còn khả dụng",HttpStatus.BAD_REQUEST),
     BOOKING_NOT_STARTED(400,"Chuyến xe chưa được bắt đầu",HttpStatus.BAD_REQUEST),
     BOOKING_ALREADY_CANCELLED(400,"Chuyến xe đã bị huỷ",HttpStatus.BAD_REQUEST),
+    BOOKING_ALREADY_TAKEN(400,"Chuyến xe đã được nhận bởi tài xế khác",HttpStatus.BAD_REQUEST),
     
     // Vehicle type related errors
     VEHICLE_TYPE_NOT_FOUND(404,"Loại xe không tồn tại",HttpStatus.NOT_FOUND),

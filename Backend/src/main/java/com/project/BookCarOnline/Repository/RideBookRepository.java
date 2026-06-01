@@ -83,4 +83,6 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
     List<Booking> findByBookingStatusAndDriverNoIsNullAndPickupLocationContainingOrderByBookingTimeAsc(BookingStatus bookingStatus, String area);
     Booking findByDriverNo_DriverIdAndBookingStatus(String driverId, BookingStatus bookingStatus);
     List<Booking> findByCustomerNo_CustomerIdAndBookingStatusOrderByBookingTimeDesc(String customerId, BookingStatus status);
+    boolean existsByDriverNo_DriverIdAndBookingStatusIn(String driverId, List<BookingStatus> statuses);
+
 }
