@@ -34,3 +34,8 @@ services:
     ports:
       - "27017:27017"
 
+  redis:
+    image: redis:lastest
+    container_name: redis_ridebook
+    ports:
+      - "6379:6379"

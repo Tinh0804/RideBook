@@ -22,6 +22,7 @@ const DriverWalletPage = () => {
   const [depositOpen,  setDepositOpen]  = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
   const [amount,       setAmount]       = useState('')
+  const [paymentProvider, setPaymentProvider] = useState('VNPAY')
   const [actionLoading,setActionLoading]= useState(false)
 
   useEffect(() => {
@@ -44,15 +45,16 @@ const DriverWalletPage = () => {
     setActionLoading(true)
     try {
       const data = await walletApi.deposit({ 
-        amount: num, walletId: wallet?.id 
+        amount: num, 
+        walletId: wallet?.id,
+        method: paymentProvider,
+        returnUrl: `${window.location.origin}/driver/wallet/deposit-return`
       })
-      const url = data?.paymentUrl
+      const url = data?.result?.paymentUrl || data?.result?.payUrl || data?.paymentUrl || data?.payUrl
       if (url) window.open(url, '_blank')
-      toast.success('Đang chuyển đến cổng thanh toán...')
-      setDepositOpen(false)
+      else toast.success('Đang xử lý...')
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Nạp tiền thất bại')
-    } finally {
       setActionLoading(false)
     }
   }
@@ -167,7 +169,30 @@ const DriverWalletPage = () => {
             ))}
           </div>
           <Input placeholder="Hoặc nhập số tiền..." value={amount} onChange={(e) => setAmount(e.target.value)} />
-          <Button fullWidth onClick={handleDeposit} loading={actionLoading}>Nạp tiền qua VNPay</Button>
+
+          <div className="space-y-2 pt-2">
+            <p className="text-sm font-semibold text-content-main">Phương thức nạp</p>
+            <div className="grid grid-cols-2 gap-3">
+              {['VNPAY', 'MOMO'].map((provider) => (
+                <button
+                  key={provider}
+                  onClick={() => setPaymentProvider(provider)}
+                  className={cn(
+                    'p-3 rounded-xl border flex items-center justify-center gap-2 transition-all duration-200',
+                    paymentProvider === provider
+                      ? 'border-brand-500 bg-brand-500/10 text-brand-400 font-bold'
+                      : 'border-surface-border bg-surface/50 text-content-muted hover:border-brand-500/30'
+                  )}
+                >
+                  {provider}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Button fullWidth onClick={handleDeposit} loading={actionLoading} className="mt-4">
+            Nạp {amount ? formatCurrency(parseInt(amount.replace(/\D/g, '')) || 0) : ''}
+          </Button>
         </div>
       </Modal>
 
