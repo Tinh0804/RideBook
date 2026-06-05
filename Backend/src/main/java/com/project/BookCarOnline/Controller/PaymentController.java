@@ -16,18 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/**
- * Payment Controller
- * Handles VNPay and MoMo payment integration
- * 
- * Endpoints:
- * - POST /payments/vnpay/create         -> Create VNPay payment
- * - GET  /payments/vnpay/callback       -> VNPay IPN callback
- * - GET  /payments/vnpay/return         -> VNPay return URL
- * - POST /payments/momo/create          -> Create MoMo payment
- * - POST /payments/momo/callback        -> MoMo IPN callback
- * - GET  /payments/momo/return          -> MoMo return URL
- */
 @Slf4j
 @RestController
 @RequestMapping("/payments")
@@ -39,13 +27,6 @@ public class PaymentController {
     MoMoService moMoService;
 
     // ==================== VNPay Endpoints ====================
-
-    /**
-     * Create VNPay payment
-     * 
-     * @param request VNPay payment request
-     * @return Payment URL to redirect customer
-     */
     @PostMapping("/vnpay/create")
     @ResponseStatus(HttpStatus.CREATED)
     public APIResponse<PaymentResponse> createVNPayPayment(@Valid @RequestBody PaymentRequest request) {
@@ -61,13 +42,6 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * VNPay IPN (Instant Payment Notification) callback
-     * This endpoint is called by VNPay server to notify payment status
-     * 
-     * @param params Payment callback parameters from VNPay
-     * @return Callback response
-     */
     @GetMapping("/vnpay/callback")
     public APIResponse<PaymentCallbackResponse> vnpayCallback(@RequestParam Map<String, String> params) {
         log.info("REST API: GET /payments/vnpay/callback - Handling VNPay callback");
@@ -81,21 +55,22 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * VNPay return URL
-     * This endpoint is called when customer returns from VNPay payment page
-     * 
-     * @param params Return parameters from VNPay
-     * @return Payment result
-     */
     @GetMapping("/vnpay/return")
-    public APIResponse<PaymentCallbackResponse> vnpayReturn(@RequestParam Map<String, String> params) {
+    public APIResponse<PaymentCallbackResponse> vnpayReturn(@RequestParam Map<String, String> params, jakarta.servlet.http.HttpServletResponse httpResponse) throws java.io.IOException {
         log.info("REST API: GET /payments/vnpay/return - Handling VNPay return");
         
         PaymentCallbackResponse response = vnPayService.handleCallback(params);
         
-        // In real application, you would redirect to frontend with payment status
-        // For API, we return the result
+        String vnpTxnRef = params.get("vnp_TxnRef");
+        if (vnpTxnRef != null && vnpTxnRef.startsWith("TOPUP_")) {
+            String returnUrl = params.get("vnp_OrderInfo");
+            if (returnUrl != null && returnUrl.startsWith("http")) {
+                String redirectUrl = returnUrl + "?vnp_ResponseCode=" + params.get("vnp_ResponseCode") 
+                        + "&vnp_Amount=" + params.get("vnp_Amount");
+                httpResponse.sendRedirect(redirectUrl);
+                return null;
+            }
+        }
         
         return APIResponse.<PaymentCallbackResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -104,13 +79,6 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * Query VNPay transaction status
-     * 
-     * @param orderId Order ID
-     * @param transactionDate Transaction date (format: yyyyMMddHHmmss)
-     * @return Transaction status
-     */
     @GetMapping("/vnpay/query/{orderId}")
     public APIResponse<Map<String, String>> queryVNPayTransaction(
             @PathVariable String orderId,
@@ -127,13 +95,6 @@ public class PaymentController {
     }
 
     // ==================== MoMo Endpoints ====================
-
-    /**
-     * Create MoMo payment
-     * 
-     * @param request MoMo payment request
-     * @return Payment URL to redirect customer
-     */
     @PostMapping("/momo/create")
     @ResponseStatus(HttpStatus.CREATED)
     public APIResponse<PaymentResponse> createMoMoPayment(@Valid @RequestBody PaymentRequest request) {
@@ -149,13 +110,6 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * MoMo IPN (Instant Payment Notification) callback
-     * This endpoint is called by MoMo server to notify payment status
-     * 
-     * @param params Payment callback parameters from MoMo
-     * @return Callback response
-     */
     @PostMapping("/momo/callback")
     public APIResponse<PaymentCallbackResponse> momoCallback(@RequestBody Map<String, String> params) {
         log.info("REST API: POST /payments/momo/callback - Handling MoMo callback");
@@ -169,18 +123,26 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * MoMo return URL
-     * This endpoint is called when customer returns from MoMo payment page
-     * 
-     * @param params Return parameters from MoMo
-     * @return Payment result
-     */
     @GetMapping("/momo/return")
-    public APIResponse<PaymentCallbackResponse> momoReturn(@RequestParam Map<String, String> params) {
+    public APIResponse<PaymentCallbackResponse> momoReturn(@RequestParam Map<String, String> params, jakarta.servlet.http.HttpServletResponse httpResponse) throws java.io.IOException {
         log.info("REST API: GET /payments/momo/return - Handling MoMo return");
         
         PaymentCallbackResponse response = moMoService.handleCallback(params);
+        
+        String orderId = params.get("orderId");
+        if (orderId != null && orderId.startsWith("TOPUP_")) {
+            String returnUrl = params.get("extraData");
+            if (returnUrl != null && returnUrl.startsWith("http")) {
+                String resultCode = params.get("resultCode");
+                if (resultCode == null) {
+                    resultCode = params.get("errorCode");
+                }
+                String redirectUrl = returnUrl + "?resultCode=" + resultCode 
+                        + "&amount=" + params.get("amount");
+                httpResponse.sendRedirect(redirectUrl);
+                return null;
+            }
+        }
         
         return APIResponse.<PaymentCallbackResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -189,13 +151,6 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * Query MoMo transaction status
-     * 
-     * @param orderId Order ID
-     * @param requestId Request ID
-     * @return Transaction status
-     */
     @GetMapping("/momo/query/{orderId}")
     public APIResponse<Map<String, Object>> queryMoMoTransaction(
             @PathVariable String orderId,
@@ -211,15 +166,6 @@ public class PaymentController {
                 .build();
     }
 
-    /**
-     * Refund MoMo transaction
-     * 
-     * @param orderId Order ID
-     * @param requestId Request ID
-     * @param amount Refund amount
-     * @param description Refund description
-     * @return Refund result
-     */
     @PostMapping("/momo/refund/{orderId}")
     public APIResponse<Map<String, Object>> refundMoMoTransaction(
             @PathVariable String orderId,

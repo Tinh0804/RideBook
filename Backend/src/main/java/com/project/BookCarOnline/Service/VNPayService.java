@@ -106,12 +106,13 @@ public class VNPayService {
                 .build();
     }
     @Transactional
-    public PaymentResponse createTopUpPayment(String driverId, double amount, String returnUrl,String walletTransactionId) {
+    public PaymentResponse createTopUpPayment(String driverId, double amount, String returnUrlFrontend,String walletTransactionId) {
         log.info("Creating VNPay top-up for driver: {}", driverId);
 
         // Gắn tiền tố TOPUP_ để dễ dàng phân biệt khi nhận callback
         String vnpCreateDate = PaymentUtils.getVNPayTimestamp();
         String orderId = "TOPUP_" + driverId + "_" + walletTransactionId;
+        String orderInfo = returnUrlFrontend;
 
         Map<String, String> vnpParams = new java.util.TreeMap<>();
         long amountInVND = (long) Math.round(amount * 100);
@@ -124,9 +125,9 @@ public class VNPayService {
         vnpParams.put("vnp_CurrCode", "VND");
         vnpParams.put("vnp_IpAddr", "127.0.0.1");
         vnpParams.put("vnp_Locale", "vn");
-        vnpParams.put("vnp_OrderInfo", "Nạp tiền vào ví tài xế " + driverId);
+        vnpParams.put("vnp_OrderInfo",orderInfo);
         vnpParams.put("vnp_OrderType", "topup"); // Có thể đổi type theo cấu hình của bạn
-        vnpParams.put("vnp_ReturnUrl", returnUrl != null ? returnUrl : vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_ReturnUrl",   vnPayConfig.getReturnUrl());
         vnpParams.put("vnp_TxnRef", orderId);
 
         StringBuilder hashData = new StringBuilder();
@@ -258,7 +259,7 @@ public class VNPayService {
                 long topUpAmount = Long.parseLong(vnpAmount) / 100;
                 String walletTransactionId =  vnpTxnRef.split("_")[2];
                 driverRepository.findById(driverId).ifPresent(driver -> {
-                    boolean isProcessed =  walletService.processPaymentCallback(vnpTransactionNo, true, vnpTransactionNo);
+                    boolean isProcessed =  walletService.processPaymentCallback(walletTransactionId, true, vnpTransactionNo);
                     if (isProcessed) {
                         messagingTemplate.convertAndSend(
                                 "/topic/driver/" + driverId,

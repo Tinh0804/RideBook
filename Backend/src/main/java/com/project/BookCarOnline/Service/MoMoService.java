@@ -133,7 +133,7 @@ public class MoMoService {
         }
     }
 
-    public PaymentResponse createTopUpPayment(String driverId, double amountValue, String returnUrl,String walletTransactionId) {
+    public PaymentResponse createTopUpPayment(String driverId, double amountValue, String returnUrlFrontend,String walletTransactionId) {
         log.info("Creating MoMo top-up for driver: {}", driverId);
 
         try {
@@ -142,9 +142,9 @@ public class MoMoService {
             String requestId = orderId;
 
             // Nếu không truyền returnUrl riêng thì dùng mặc định
-            String finalReturnUrl = (returnUrl != null && !returnUrl.isEmpty()) ? returnUrl : moMoConfig.getReturnUrl();
+            String finalReturnUrl = moMoConfig.getReturnUrl();
             String notifyUrl = moMoConfig.getNotifyUrl();
-            String extraData = "";
+            String extraData = returnUrlFrontend ;
             long amount = Math.round(amountValue);
             String orderInfo = "Nạp tiền vào ví tài xế " + driverId;
 
@@ -190,7 +190,7 @@ public class MoMoService {
                         .paymentUrl(payUrl)
                         .orderId(orderId)
                         .amount(amountValue)
-                        .paymentMethod("MOMO")
+                        .paymentMethod(PaymentMethod.MOMO.getMethod())
                         .build();
             } else {
                 String errorMessage = responseBody != null ? String.valueOf(responseBody.get("message")) : "Unknown error";

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   RiWalletLine, RiArrowUpLine, RiArrowDownLine,
@@ -24,8 +25,31 @@ const DriverWalletPage = () => {
   const [amount,       setAmount]       = useState('')
   const [paymentProvider, setPaymentProvider] = useState('VNPAY')
   const [actionLoading,setActionLoading]= useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
+      // Check payment status from query parameters (Return URL)
+      const vnpCode = searchParams.get('vnp_ResponseCode')
+      const momoCode = searchParams.get('resultCode')
+
+      if (vnpCode) {
+        if (vnpCode === '00') {
+          const amt = parseInt(searchParams.get('vnp_Amount') || '0') / 100
+          toast.success(`Nạp thành công ${formatCurrency(amt)} vào ví`)
+        } else {
+          toast.error('Giao dịch VNPay thất bại hoặc đã bị huỷ')
+        }
+        setSearchParams({})
+      } else if (momoCode) {
+        if (momoCode === '0') {
+          const amt = parseInt(searchParams.get('amount') || '0')
+          toast.success(`Nạp thành công ${formatCurrency(amt)} vào ví`)
+        } else {
+          toast.error('Giao dịch MoMo thất bại hoặc đã bị huỷ')
+        }
+        setSearchParams({})
+      }
+
       walletApi.getMyWallet()
       .then((w) => {
         setWallet(w)
@@ -48,10 +72,11 @@ const DriverWalletPage = () => {
         amount: num, 
         walletId: wallet?.id,
         method: paymentProvider,
-        returnUrl: `${window.location.origin}/driver/wallet/deposit-return`
+        returnUrl: `${window.location.origin}/driver/wallet`
       })
       const url = data?.result?.paymentUrl || data?.result?.payUrl || data?.paymentUrl || data?.payUrl
-      if (url) window.open(url, '_blank')
+      if (url) 
+        window.open(url, '_blank')
       else toast.success('Đang xử lý...')
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Nạp tiền thất bại')
