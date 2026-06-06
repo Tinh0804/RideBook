@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   RiMapPinLine, RiMapPin2Line, RiTicketLine,
@@ -27,6 +27,7 @@ const DUMMY_DISTANCE = 5.2  // km - in real app use Google Maps/OSRM Distance Ma
 const BookingPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, userProfile }  = useAuthStore()
   const { vehicleTypes, setVehicleTypes, currentBooking, setCurrentBooking, setEstimatedPrice, estimatedPrice, clearCurrentBooking } = useBookingStore()
 
@@ -213,6 +214,7 @@ const BookingPage = () => {
         vehicleTypeId:   selectedVType.vehicleTypeId,
         promotionCode:   promoData?.promotionCode || null,
         quoteId:         selectedEstimate?.quoteId,
+        returnUrl: `${window.location.origin}/customer/booking`
       }
       const booking = await bookingApi.createBooking(payload)
       setCurrentBooking(booking)
@@ -231,8 +233,7 @@ const BookingPage = () => {
           referenceId: booking.bookingId,
           amount: selectedEstimate?.totalPrice || 0,
           orderInfo: `Thanh toan chuyen xe ${booking.bookingId}`,
-          method: paymentProvider,
-          returnUrl: `${window.location.origin}/payment/callback?bookingId=${booking.bookingId}`
+          method: paymentProvider
         }
         if (paymentProvider === 'VNPAY') {
           pmData = await paymentApi.createVNPayUrl(paymentPayload)
@@ -344,16 +345,40 @@ const BookingPage = () => {
 
   // Effect to automatically switch to step 3 if there's an active pending booking on mount
   useEffect(() => {
+    // 1. Check if returning from payment gateway (VNPay/MoMo) directly via URL params
+    const urlBookingId = searchParams.get('bookingId')
+    const vnpStatus = searchParams.get('vnp_ResponseCode')
+    const momoCode = searchParams.get('resultCode')
+
+    if (urlBookingId && (vnpStatus || momoCode) && !currentBooking) {
+      bookingApi.getById(urlBookingId).then(result => {
+        setCurrentBooking(result)
+        const isPaid = result?.paymentStatus === true || result?.paymentStatus === 'PAID' || vnpStatus === '00' || momoCode === '0'
+        if (isPaid) {
+          toast.success('Thanh toán thành công! Đang tìm tài xế...')
+          setStep(3)
+          // Clean up the URL to remove the payment query parameters via React Router
+          setSearchParams({}, { replace: true })
+        } else {
+          toast.error('Thanh toán thất bại hoặc bị huỷ.')
+        }
+      }).catch(err => {
+        console.error('Failed to fetch booking after payment', err)
+      })
+      return // Wait for API
+    }
+
+    // 2. Normal flow (already have currentBooking in store)
     if (currentBooking && currentBooking.bookingStatus === BOOKING_STATUS.PENDING && step !== 3) {
       const isOnline = currentBooking.paymentMethod === 'ONLINE'
-      const isPaid = currentBooking.paymentStatus === true || location.state?.paymentSuccess
+      const isPaid = currentBooking.paymentStatus === true || location.state?.paymentSuccess || vnpStatus === '00' || momoCode === '0'
       
       // Nếu thanh toán tiền mặt, hoặc thanh toán online nhưng đã trả tiền -> hiện UI tìm tài xế
       if (!isOnline || isPaid) {
         setStep(3)
       }
     }
-  }, [currentBooking, step, location.state])
+  }, [currentBooking, step, location.state, searchParams, setCurrentBooking])
 
   if (step === 1) {
     if (selectingLocationFor) {

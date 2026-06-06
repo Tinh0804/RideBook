@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { RiCheckboxCircleLine, RiCloseCircleLine, RiLoader4Line } from 'react-icons/ri'
 import { paymentApi } from '@/features/payment/api/paymentApi'
+import { bookingApi } from '@/features/booking/api/bookingApi'
 import { useBookingStore } from '@/store/rootStore'
 import Button from '@/components/Elements/Button'
 import { formatCurrency } from '@/utils/currency'
@@ -13,7 +14,7 @@ import { formatCurrency } from '@/utils/currency'
 const PaymentCallbackPage = () => {
   const [searchParams] = useSearchParams()
   const navigate       = useNavigate()
-  const { currentBooking, clearCurrentBooking } = useBookingStore()
+  const { currentBooking, setCurrentBooking, clearCurrentBooking } = useBookingStore()
 
   const [status,  setStatus]  = useState('loading')  // loading | success | failed
   const [booking, setBooking] = useState(null)
@@ -25,11 +26,12 @@ const PaymentCallbackPage = () => {
   useEffect(() => {
     if (!bookingId) { navigate('/customer/home'); return }
 
-    // Check payment status from backend
-    paymentApi.getStatus(bookingId)
+    // Check payment status and fetch booking details from backend
+    bookingApi.getById(bookingId)
       .then((result) => {
         setBooking(result)
-        const paid = result?.paymentStatus === 'PAID' ||
+        setCurrentBooking(result) // Update global store so BookingPage can use it
+        const paid = result?.paymentStatus === true || result?.paymentStatus === 'PAID' ||
                      vnpStatus === '00' ||
                      momoCode  === '0'
         if (paid) {
@@ -49,7 +51,7 @@ const PaymentCallbackPage = () => {
           setStatus('failed')
         }
       })
-  }, [bookingId, vnpStatus, momoCode, navigate])
+  }, [bookingId, vnpStatus, momoCode, navigate, setCurrentBooking])
 
   const handleContinue = () => {
     if (status === 'success') {

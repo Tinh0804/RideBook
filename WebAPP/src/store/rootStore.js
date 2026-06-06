@@ -20,8 +20,16 @@ export const useAuthStore = create(
       },
 
       logout: () => {
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(REFRESH_TOKEN_KEY)
+        localStorage.clear()
+        sessionStorage.clear()
+        
+        // Xóa tất cả cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+
         set({ user: null, userProfile: null, accessToken: null, refreshToken: null, isAuth: false, account: null })
       },
 

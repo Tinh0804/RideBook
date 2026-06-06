@@ -10,7 +10,9 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +27,10 @@ public class PaymentController {
 
     VNPayService vnPayService;
     MoMoService moMoService;
+
+    @NonFinal
+    @Value("${frontend.url}")
+    protected String frontendUrl;
 
     // ==================== VNPay Endpoints ====================
     @PostMapping("/vnpay/create")
@@ -72,7 +78,9 @@ public class PaymentController {
             }
         }
         else{
-            String redirectUrl = "http://localhost:3000/payment-result?vnp_ResponseCode=" + params.get("vnp_ResponseCode")
+            String bookingId = vnpTxnRef.split("_")[0];
+            String redirectUrl = frontendUrl + "/customer/booking?bookingId=" + bookingId 
+                    + "&vnp_ResponseCode=" + params.get("vnp_ResponseCode")
                     + "&vnp_Amount=" + params.get("vnp_Amount");
             httpResponse.sendRedirect(redirectUrl);
             return null;
@@ -151,7 +159,9 @@ public class PaymentController {
         }
         else
         {
-            String redirectUrl = "http://localhost:3000/payment-result?resultCode=" + params.get("resultCode")
+            String bookingId = orderId.split("_")[0];
+            String redirectUrl = frontendUrl + "/customer/booking?bookingId=" + bookingId 
+                    + "&resultCode=" + params.get("resultCode")
                     + "&amount=" + params.get("amount");
             httpResponse.sendRedirect(redirectUrl);
             return null;

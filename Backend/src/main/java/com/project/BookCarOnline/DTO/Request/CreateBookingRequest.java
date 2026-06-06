@@ -42,4 +42,7 @@ public class CreateBookingRequest {
 
     // ONLINE | CASH
     String paymentMethod;
+
+    String returnUrl;
+
 }
