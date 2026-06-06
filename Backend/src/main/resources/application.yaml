@@ -115,3 +115,6 @@ app:
         password-reset-token: 3600000
         quote: 120000
     max-login-attempts: 5
+
+frontend:
+    url: "http://localhost:3000"

@@ -34,7 +34,7 @@ const PaymentCallbackPage = () => {
                      momoCode  === '0'
         if (paid) {
           toast.success('Thanh toán thành công! Đang tìm tài xế...')
-          navigate('/customer/booking', { replace: true })
+          navigate('/customer/booking', { state: { paymentSuccess: true }, replace: true })
         } else {
           setStatus('failed')
         }
@@ -44,7 +44,7 @@ const PaymentCallbackPage = () => {
         const paid = vnpStatus === '00' || momoCode === '0'
         if (paid) {
           toast.success('Thanh toán thành công! Đang tìm tài xế...')
-          navigate('/customer/booking', { replace: true })
+          navigate('/customer/booking', { state: { paymentSuccess: true }, replace: true })
         } else {
           setStatus('failed')
         }

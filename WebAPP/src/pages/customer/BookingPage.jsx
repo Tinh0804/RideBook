@@ -227,12 +227,19 @@ const BookingPage = () => {
 
       if (paymentMethod === PAYMENT_METHOD.ONLINE) {
         let pmData
-        if (paymentProvider === 'VNPAY') {
-          pmData = await paymentApi.createVNPayUrl({ bookingId: booking.bookingId, amount: selectedEstimate?.totalPrice || 0 })
-        } else {
-          pmData = await paymentApi.createMomoUrl({ bookingId: booking.bookingId, amount: selectedEstimate?.totalPrice || 0 })
+        const paymentPayload = {
+          referenceId: booking.bookingId,
+          amount: selectedEstimate?.totalPrice || 0,
+          orderInfo: `Thanh toan chuyen xe ${booking.bookingId}`,
+          method: paymentProvider,
+          returnUrl: `${window.location.origin}/payment/callback?bookingId=${booking.bookingId}`
         }
-        const url = pmData?.paymentUrl || pmData?.payUrl // Handle momo vs vnpay differences
+        if (paymentProvider === 'VNPAY') {
+          pmData = await paymentApi.createVNPayUrl(paymentPayload)
+        } else {
+          pmData = await paymentApi.createMomoUrl(paymentPayload)
+        }
+        const url = pmData?.paymentUrl || pmData?.payUrl || pmData?.result?.paymentUrl || pmData?.result?.payUrl // Handle momo vs vnpay differences
         if (url) {
           window.location.href = url
           return // Stop execution, let the page redirect
@@ -338,9 +345,15 @@ const BookingPage = () => {
   // Effect to automatically switch to step 3 if there's an active pending booking on mount
   useEffect(() => {
     if (currentBooking && currentBooking.bookingStatus === BOOKING_STATUS.PENDING && step !== 3) {
-      setStep(3)
+      const isOnline = currentBooking.paymentMethod === 'ONLINE'
+      const isPaid = currentBooking.paymentStatus === true || location.state?.paymentSuccess
+      
+      // Nếu thanh toán tiền mặt, hoặc thanh toán online nhưng đã trả tiền -> hiện UI tìm tài xế
+      if (!isOnline || isPaid) {
+        setStep(3)
+      }
     }
-  }, [currentBooking, step])
+  }, [currentBooking, step, location.state])
 
   if (step === 1) {
     if (selectingLocationFor) {

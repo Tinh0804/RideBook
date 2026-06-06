@@ -71,6 +71,12 @@ public class PaymentController {
                 return null;
             }
         }
+        else{
+            String redirectUrl = "http://localhost:3000/payment-result?vnp_ResponseCode=" + params.get("vnp_ResponseCode")
+                    + "&vnp_Amount=" + params.get("vnp_Amount");
+            httpResponse.sendRedirect(redirectUrl);
+            return null;
+        }
         
         return APIResponse.<PaymentCallbackResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -142,6 +148,13 @@ public class PaymentController {
                 httpResponse.sendRedirect(redirectUrl);
                 return null;
             }
+        }
+        else
+        {
+            String redirectUrl = "http://localhost:3000/payment-result?resultCode=" + params.get("resultCode")
+                    + "&amount=" + params.get("amount");
+            httpResponse.sendRedirect(redirectUrl);
+            return null;
         }
         
         return APIResponse.<PaymentCallbackResponse>builder()
