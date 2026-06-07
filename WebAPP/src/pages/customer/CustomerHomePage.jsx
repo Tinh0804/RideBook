@@ -90,12 +90,12 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
         .then((types) => setVehicleTypes(types))
         .catch(() => {})
     }
-    if (userProfile?.customerId) {
-      bookingApi.getCustomerHistory(userProfile.customerId)
+    if (userProfile?.id) {
+      bookingApi.getCustomerHistory(userProfile.id)
         .then((trips) => setRecentTrips(trips.slice(0, 3)))
         .catch(() => {})
       
-      ratingApi.getByCustomer(userProfile.customerId)
+      ratingApi.getByCustomer(userProfile.id)
           .then((ratingsList) => {
             setRatings(ratingsList.slice(0, 3))
             if (ratingsList.length > 0) {
@@ -192,7 +192,7 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
                   {greeting} <span className="text-2xl inline-block animate-wave">👋</span>
                 </p>
                 <h1 className="font-display text-4xl md:text-5xl font-bold text-white">
-                  {userProfile?.customerName || user?.userName || 'Bạn'}
+                  {userProfile?.name || user?.userName || 'Bạn'}
                 </h1>
                 <p className="text-white/80 text-lg mt-2 flex items-center gap-2">
                   {weather.icon} {weather.temp}°C • {weather.condition}

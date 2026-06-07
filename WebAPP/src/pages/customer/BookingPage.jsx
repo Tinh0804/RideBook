@@ -31,7 +31,7 @@ const BookingPage = () => {
   const { user, userProfile }  = useAuthStore()
   const { vehicleTypes, setVehicleTypes, currentBooking, setCurrentBooking, setEstimatedPrice, estimatedPrice, clearCurrentBooking } = useBookingStore()
 
-  const customerId = userProfile?.customerId || userProfile?.id || user?.id
+  const customerId = userProfile?.id || user?.id
 
   // ── Locations state: objects with { name, lat, lng } ───────────────────────
   const [pickup,          setPickup]          = useState(() => {

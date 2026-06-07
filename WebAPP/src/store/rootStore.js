@@ -47,7 +47,9 @@ export const useAuthStore = create(
     }),
     {
       name:    USER_KEY,
-      storage: createJSONStorage(() => localStorage),
+      // Dùng sessionStorage thay localStorage → mỗi tab trình duyệt có phiên làm việc độc lập
+      // Tránh xung đột khi mở 2 tab Customer và Driver trên cùng một trình duyệt
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (s) => ({
         user:         s.user,
         userProfile:  s.userProfile,
@@ -55,6 +57,19 @@ export const useAuthStore = create(
         refreshToken: s.refreshToken,
         isAuth:       s.isAuth,
       }),
+      // Migration: normalize userProfile cũ chưa có các trường id/name chuẩn hóa
+      migrate: (persistedState) => {
+        const state = persistedState
+        if (state?.userProfile && !state.userProfile.id) {
+          const p = state.userProfile
+          state.userProfile = {
+            ...p,
+            id:   p.customerId || p.driverId || '',
+            name: p.customerName || p.driverName || '',
+          }
+        }
+        return state
+      },
     }
   )
 )
@@ -132,7 +147,7 @@ export const useDriverStore = create(
     {
       name: 'bookcar_driver',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ isOnline: s.isOnline, currentTrip: s.currentTrip }),
+      partialize: (s) => ({ isOnline: s.isOnline }),
     }
   )
 )

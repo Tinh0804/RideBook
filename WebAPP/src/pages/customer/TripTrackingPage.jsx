@@ -42,27 +42,19 @@ const TripTrackingPage = () => {
   const { user, userProfile } = useAuthStore()
 
   const bookingId = location.state?.bookingId || currentBooking?.bookingId
-  const customerId = userProfile?.customerId || userProfile?.id || user?.id
+  const customerId = userProfile?.id || user?.id
 
   const [booking,    setBooking]    = useState(currentBooking)
   const [loading,    setLoading]    = useState(!currentBooking)
   const [chatOpen,   setChatOpen]   = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
-  const [pickupCoord, setPickupCoord] = useState(() => {
-    if (location.state?.pickup) return location.state.pickup
-    const saved = localStorage.getItem(`booking_pickup_${bookingId}`)
-    if (saved) return JSON.parse(saved)
-    const tempSaved = localStorage.getItem('temp_pickup')
-    return tempSaved ? JSON.parse(tempSaved) : null
-  })
-  const [dropoffCoord, setDropoffCoord] = useState(() => {
-    if (location.state?.dropoff) return location.state.dropoff
-    const saved = localStorage.getItem(`booking_dropoff_${bookingId}`)
-    if (saved) return JSON.parse(saved)
-    const tempSaved = localStorage.getItem('temp_dropoff')
-    return tempSaved ? JSON.parse(tempSaved) : null
-  })
+  const [pickupCoord, setPickupCoord] = useState(
+    location.state?.pickup || null
+  )
+  const [dropoffCoord, setDropoffCoord] = useState(
+    location.state?.dropoff || null
+  )
   const [driverCoord, setDriverCoord] = useState(null)
 
   // Fetch initial booking data

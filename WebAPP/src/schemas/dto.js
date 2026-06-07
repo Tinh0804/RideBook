@@ -43,7 +43,11 @@ export const CustomerProfileSchema = z.object({
   avatar: z.string().nullable().catch(''),
   birthDate: z.string().nullable().catch(''),
   account: AccountSchema.optional().catch({}),
-})
+}).transform(data => ({
+  ...data,
+  id:   data.customerId,
+  name: data.customerName,
+}))
 
 export const DriverProfileSchema = z.object({
   driverId: z.string().catch(''),
@@ -68,7 +72,11 @@ export const DriverProfileSchema = z.object({
   vehicleTypeName: z.string().nullable().catch(''),
   pricePerKm: z.number().nullable().catch(0),
   account: AccountSchema.optional().catch({}),
-})
+}).transform(data => ({
+  ...data,
+  id:   data.driverId,
+  name: data.driverName,
+}))
 
 export const BookingDetailSchema = z.object({
   bookingId: z.string().catch(''),
@@ -82,6 +90,10 @@ export const BookingDetailSchema = z.object({
   licensePlate: z.string().nullable().catch(''),
   pickupLocation: z.string().catch(''),
   dropoffLocation: z.string().catch(''),
+  pickupLat: z.number().nullable().catch(null),
+  pickupLng: z.number().nullable().catch(null),
+  dropoffLat: z.number().nullable().catch(null),
+  dropoffLng: z.number().nullable().catch(null),
   totalPrice: z.number().catch(0),
   bookingTime: z.string().nullable().catch(''),
   pickupTime: z.string().nullable().catch(''),
@@ -101,6 +113,10 @@ export const AvailableRideSchema = z.object({
   customerId: z.string().catch(''),
   pickupLocation: z.string().catch(''),
   dropoffLocation: z.string().catch(''),
+  pickupLat: z.number().nullable().catch(null),
+  pickupLng: z.number().nullable().catch(null),
+  dropoffLat: z.number().nullable().catch(null),
+  dropoffLng: z.number().nullable().catch(null),
   distance: z.number().catch(0),
   price: z.number().catch(0),
   bookingStatus: z.string().catch('PENDING'),

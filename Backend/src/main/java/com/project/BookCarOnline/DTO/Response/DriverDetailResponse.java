@@ -34,7 +34,7 @@ public class DriverDetailResponse {
     String gender;
     String address;
     String area;
-    Double rating;
+    Double score;
     
     // Location
     Double currentLat;

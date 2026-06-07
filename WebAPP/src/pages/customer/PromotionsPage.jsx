@@ -29,12 +29,12 @@ const CustomerPromotionsPage = () => {
   }, []);
 
   const handleSavePromotion = async (code) => {
-    if (!userProfile?.customerId) {
+    if (!userProfile?.id) {
         toast.error('Vui lòng đăng nhập để lưu khuyến mãi');
         return;
     }
     try {
-        await masterDataApi.savePromotion(userProfile.customerId, code);
+        await masterDataApi.savePromotion(userProfile.id, code);
         toast.success(`Đã lưu mã ${code} vào Ví Voucher!`);
     } catch (error) {
         toast.error(error.response?.data?.message || 'Không thể lưu mã khuyến mãi này');

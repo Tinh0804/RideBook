@@ -8,10 +8,11 @@ import {
   RiCloseLine, RiMoneyDollarCircleLine,
   RiSunLine, RiMoonLine
 } from 'react-icons/ri'
-import { useAuthStore, useUIStore, useBookingStore } from '@/store/rootStore'
+import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/store/rootStore'
 import { useAuth } from '@/hooks/useAuth'
 import { notificationApi } from '@/features/booking/api/masterDataApi'
-import { ROLES } from '@/config'
+import { bookingApi } from '@/features/booking/api/bookingApi'
+import { ROLES, BOOKING_STATUS } from '@/config'
 import { cn } from '@/utils/cn'
 
 const BASE_CUSTOMER_NAV = [
@@ -40,14 +41,15 @@ const ADMIN_NAV = [
 
 const MainLayout = () => {
   const { user, handleLogout } = useAuth()
+  const { userProfile, handleLogoutProfile} = useAuth ()
   const { sidebarOpen, toggleSidebar, notifCount, setNotifCount, theme, toggleTheme } = useUIStore()
-  const { currentBooking } = useBookingStore()
+  const { currentBooking, setCurrentBooking, clearCurrentBooking } = useBookingStore()
+  const { setCurrentTrip, clearCurrentTrip } = useDriverStore()
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const [tripLoading, setTripLoading] = useState(true)
 
   const role = user?.role?.toUpperCase()
-
-  console.log("role: ", role) 
   
   const customerNav = [
     BASE_CUSTOMER_NAV[0], // Trang chủ
@@ -72,6 +74,37 @@ const MainLayout = () => {
       })
       .catch(() => {})
   }, [setNotifCount])
+
+  // Lấy dữ liệu chuyến đi hiện tại từ Backend khi load ứng dụng, thay vì lưu ở Frontend
+  useEffect(() => {
+    if (!user?.customerId) {
+      setTripLoading(false)
+      return
+    }
+
+    setTripLoading(true)
+    if (role === ROLES.CUSTOMER) {
+      bookingApi.getCustomerHistory(user.customerId)
+        .then(history => {
+          const active = history.find(b => [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.ARRIVED].includes(b.bookingStatus))
+          if (active) setCurrentBooking(active)
+          else clearCurrentBooking()
+        })
+        .catch(clearCurrentBooking)
+        .finally(() => setTripLoading(false))
+    } else if (role === ROLES.DRIVER) {
+      bookingApi.getDriverHistory(user?.driverId)
+        .then(history => {
+          const active = history.find(b => [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.ARRIVED].includes(b.bookingStatus))
+          if (active) setCurrentTrip(active)
+          else clearCurrentTrip()
+        })
+        .catch(clearCurrentTrip)
+        .finally(() => setTripLoading(false))
+    } else {
+      setTripLoading(false)
+    }
+  }, [user?.customerId, role, setCurrentBooking, clearCurrentBooking, setCurrentTrip, clearCurrentTrip])
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-dark">
@@ -124,16 +157,16 @@ const MainLayout = () => {
           {sidebarOpen ? (
             <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-border/40 cursor-pointer transition-colors">
               <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 text-sm font-bold shrink-0">
-                {user?.name?.[0] || user?.userName?.[0] || 'U'}
+                {userProfile?.name?.[0] || user?.userName?.[0] || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-content-main truncate">{user?.name || user?.userName}</p>
+                <p className="text-sm font-medium text-content-main truncate">{userProfile?.name || user?.userName}</p>
                 <p className="text-xs text-content-muted capitalize">{role?.toLowerCase()}</p>
               </div>
             </div>
           ) : (
             <div className="w-8 h-8 rounded-full bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400 text-sm font-bold">
-              {user?.name?.[0] || user?.userName?.[0] || 'U'}
+              {userProfile?.name?.[0] || user?.userName?.[0] || 'U'}
             </div>
           )}
         </div>
@@ -224,7 +257,16 @@ const MainLayout = () => {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <Outlet />
+          {tripLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+                <p className="text-sm text-content-muted animate-pulse">Đang tải dữ liệu...</p>
+              </div>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>

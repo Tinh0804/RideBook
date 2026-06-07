@@ -32,9 +32,9 @@ const TripHistoryPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userProfile?.customerId) return;
+    if (!userProfile?.id) return;
     bookingApi
-      .getCustomerHistory(userProfile.customerId)
+      .getCustomerHistory(userProfile.id)
       .then((res) => setTrips(res || []))
       .catch(() => {})
       .finally(() => setLoading(false));
