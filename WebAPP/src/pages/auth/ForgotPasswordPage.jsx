@@ -107,16 +107,21 @@ const ForgotPasswordPage = () => {
       )}
 
       {step === 'done' && (
-        <Link to="/login">
-          <Button fullWidth size="lg">Về trang đăng nhập</Button>
+        <Link to="/welcome">
+          <Button fullWidth size="lg">Về trang chào mừng</Button>
         </Link>
       )}
 
-      <p className="text-center text-sm">
-        <Link to="/login" className="text-brand-400 hover:text-brand-300 transition-colors">
-          ← Quay lại đăng nhập
+      <div className="flex justify-between items-center text-sm font-semibold text-content-muted">
+        <Link to="/welcome">
+          <Button variant="ghost" type="button" className="gap-2">
+            <RiArrowLeftLine /> Quay lại
+          </Button>
         </Link>
-      </p>
+        <Link to="/welcome" className="text-brand-400 hover:text-brand-300 transition-colors">
+          Đăng nhập ngay
+        </Link>
+      </div>
     </div>
   )
 }

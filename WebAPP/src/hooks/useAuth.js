@@ -86,7 +86,7 @@ export const useAuth = () => {
     } catch (_) { /* ignore */ }
     logout()
     toast.success('Đã đăng xuất thành công')
-    navigate('/login', { replace: true })
+    navigate('/welcome', { replace: true })
   }, [logout, navigate, refreshToken])
 
   const isRole = useCallback(

@@ -1,48 +1,78 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { RiEyeLine, RiEyeOffLine, RiCarFill, RiUserLine, RiShieldLine, RiGoogleFill, RiFacebookCircleFill } from 'react-icons/ri'
+import { RiEyeLine, RiEyeOffLine, RiArrowLeftLine, RiGoogleFill, RiFacebookCircleFill } from 'react-icons/ri'
 import { useAuth } from '@/hooks/useAuth'
 import { ROLES } from '@/config'
 import Button from '@/components/Elements/Button'
 import Input from '@/components/Elements/Input'
 import FormField from '@/components/Form/FormField'
-import { cn } from '@/utils/cn'
 
 const schema = z.object({
   userName: z.string().min(1, 'Vui lòng nhập tên đăng nhập'),
   passWord: z.string().min(5, 'Mật khẩu tối thiểu 5 ký tự'),
   roleName: z.enum([ROLES.CUSTOMER, ROLES.DRIVER, ROLES.ADMIN], {
-    errorMap: () => ({ message: 'Chọn loại tài khoản' }),
+    errorMap: () => ({ message: 'Vai trò không hợp lệ' }),
   }),
 })
 
-const ROLE_TABS = [
-  { value: ROLES.CUSTOMER, label: 'Khách hàng', icon: RiUserLine },
-  { value: ROLES.DRIVER,   label: 'Tài xế',     icon: RiCarFill  },
-  { value: ROLES.ADMIN,    label: 'Quản trị',    icon: RiShieldLine },
-]
+const getRoleConfig = (roleParam) => {
+  switch (roleParam) {
+    case 'driver':
+      return {
+        roleValue: ROLES.DRIVER,
+        title: 'Đăng nhập Tài xế',
+        showSocial: false,
+        registerLink: '/register/driver',
+        registerText: 'Đăng ký tài xế',
+        registerPrompt: 'Muốn trở thành tài xế?',
+      }
+    case 'admin':
+      return {
+        roleValue: ROLES.ADMIN,
+        title: 'Đăng nhập Quản trị viên',
+        showSocial: false,
+        registerLink: null,
+      }
+    case 'customer':
+    default:
+      return {
+        roleValue: ROLES.CUSTOMER,
+        title: 'Đăng nhập Khách hàng',
+        showSocial: true,
+        registerLink: '/register/customer',
+        registerText: 'Đăng ký ngay',
+        registerPrompt: 'Chưa có tài khoản khách hàng?',
+      }
+  }
+}
 
 const LoginPage = () => {
+  const { role: roleParam } = useParams()
+  const navigate = useNavigate()
   const { handleLogin } = useAuth()
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const config = getRoleConfig(roleParam)
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { roleName: ROLES.CUSTOMER },
+    defaultValues: { roleName: config.roleValue },
   })
 
-  const selectedRole = watch('roleName')
+  // Đảm bảo roleName trong form luôn đồng bộ với URL params
+  useEffect(() => {
+    setValue('roleName', config.roleValue)
+  }, [config.roleValue, setValue])
 
   const onSubmit = async (data) => {
     setLoading(true)
@@ -71,31 +101,22 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h2 className="font-display text-3xl font-bold text-content-main">Đăng nhập</h2>
-        <p className="text-content-muted">Chào mừng bạn quay trở lại 👋</p>
+    <div className="space-y-8 animate-slide-up w-full">
+      {/* Back button */}
+      <div>
+        <button
+          onClick={() => navigate('/welcome')}
+          className="flex items-center gap-2 text-sm font-semibold text-content-muted hover:text-content-main transition-colors"
+        >
+          <RiArrowLeftLine size={18} />
+          Quay lại
+        </button>
       </div>
 
-      {/* Role selector */}
-      <div className="grid grid-cols-3 gap-2 p-1 bg-surface-dark rounded-2xl border border-surface-border">
-        {ROLE_TABS.map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setValue('roleName', value)}
-            className={cn(
-              'flex flex-col items-center gap-1 py-3 px-2 rounded-xl text-xs font-semibold transition-all duration-200',
-              selectedRole === value
-                ? 'bg-brand-500 text-content-main shadow-glow-green'
-                : 'text-content-muted hover:text-content-muted',
-            )}
-          >
-            <Icon size={18} />
-            {label}
-          </button>
-        ))}
+      {/* Header */}
+      <div className="space-y-2">
+        <h2 className="font-display text-3xl font-bold text-content-main">{config.title}</h2>
+        <p className="text-content-muted">Chào mừng bạn quay trở lại 👋</p>
       </div>
 
       {/* Form */}
@@ -133,44 +154,43 @@ const LoginPage = () => {
         </Button>
       </form>
 
-      {/* Divider */}
-      <div className="divider-label text-xs text-gray-600">hoặc</div>
+      {config.showSocial && (
+        <>
+          <div className="divider-label text-xs text-gray-600">hoặc</div>
 
-      {/* Social Login */}
-      <div className="grid grid-cols-2 gap-4">
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
-        >
-          <RiGoogleFill size={20} className="text-[#DB4437]" />
-          Google
-        </button>
-        <button
-          type="button"
-          onClick={handleFacebookLogin}
-          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
-        >
-          <RiFacebookCircleFill size={20} className="text-[#4267B2]" />
-          Facebook
-        </button>
-      </div>
+          {/* Social Login */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
+            >
+              <RiGoogleFill size={20} className="text-[#DB4437]" />
+              Google
+            </button>
+            <button
+              type="button"
+              onClick={handleFacebookLogin}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
+            >
+              <RiFacebookCircleFill size={20} className="text-[#4267B2]" />
+              Facebook
+            </button>
+          </div>
+        </>
+      )}
 
-      {/* Register links */}
-      <div className="space-y-3">
-        <p className="text-center text-sm text-content-muted">
-          Chưa có tài khoản khách hàng?{' '}
-          <Link to="/register/customer" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
-            Đăng ký ngay
-          </Link>
-        </p>
-        <p className="text-center text-sm text-content-muted">
-          Muốn trở thành tài xế?{' '}
-          <Link to="/register/driver" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
-            Đăng ký tài xế
-          </Link>
-        </p>
-      </div>
+      {/* Register link */}
+      {config.registerLink && (
+        <div className="pt-4 text-center">
+          <p className="text-sm text-content-muted">
+            {config.registerPrompt}{' '}
+            <Link to={config.registerLink} className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
+              {config.registerText}
+            </Link>
+          </p>
+        </div>
+      )}
     </div>
   )
 }

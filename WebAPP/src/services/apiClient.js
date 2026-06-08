@@ -71,7 +71,7 @@ apiClient.interceptors.response.use(
         // Clear auth and redirect to login
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(REFRESH_TOKEN_KEY)
-        window.location.href = '/login'
+        window.location.href = '/welcome'
         return Promise.reject(err)
       } finally {
         isRefreshing = false

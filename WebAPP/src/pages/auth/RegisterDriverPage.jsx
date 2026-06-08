@@ -69,7 +69,7 @@ const RegisterDriverPage = () => {
 
       await driverApi.register(fd)
       toast.success('Đăng ký tài xế thành công! Chờ admin phê duyệt.')
-      navigate('/login')
+      navigate('/login/driver')
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Đăng ký thất bại')
     } finally {
@@ -219,11 +219,12 @@ const RegisterDriverPage = () => {
         </div>
       </form>
 
-      <p className="text-center text-sm text-content-muted">
-        <Link to="/login" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
-          ← Quay lại đăng nhập
-        </Link>
-      </p>
+        <p className="text-center text-sm text-content-muted">
+          Đã có tài khoản?{' '}
+          <Link to="/login/driver" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
+            Đăng nhập
+          </Link>
+        </p>
     </div>
   )
 }

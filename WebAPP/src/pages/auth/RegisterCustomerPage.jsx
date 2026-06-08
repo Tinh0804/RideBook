@@ -36,7 +36,7 @@ const RegisterCustomerPage = () => {
     try {
       await customerApi.register(data)
       toast.success('Đăng ký thành công! Vui lòng đăng nhập.')
-      navigate('/login')
+      navigate('/login/customer')
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Đăng ký thất bại')
     } finally {
@@ -99,7 +99,7 @@ const RegisterCustomerPage = () => {
 
       <p className="text-center text-sm text-content-muted">
         Đã có tài khoản?{' '}
-        <Link to="/login" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
+        <Link to="/login/customer" className="text-brand-400 font-semibold hover:text-brand-300 transition-colors">
           Đăng nhập
         </Link>
       </p>
