@@ -59,7 +59,7 @@ apiClient.interceptors.response.use(
         const { data } = await axios.post(
           `${API_BASE_URL}/auth/refresh-token?refreshToken=${refreshToken}`
         )
-        const newToken = data?.result?.accessToken || data?.accessToken
+        const newToken = data?.result?.token || data?.token || data?.result?.accessToken || data?.accessToken
         if (newToken) {
           localStorage.setItem(TOKEN_KEY, newToken)
           apiClient.defaults.headers.common.Authorization = `Bearer ${newToken}`

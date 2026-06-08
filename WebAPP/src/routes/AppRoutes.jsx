@@ -50,10 +50,12 @@ const PageLoader = () => (
 
 // ─── Root redirect ───────────────────────────────────────────────────────────
 const RootRedirect = () => {
-  const { isAuth, account } = useAuthStore()
+  const { isAuth, user } = useAuthStore()
   if (!isAuth) return <Navigate to="/login" replace />
-  if (account?.role?.roleName?.toUpperCase() === ROLES.DRIVER) return <Navigate to="/driver/dashboard" replace />
-  if (account?.role?.roleName?.toUpperCase() === ROLES.ADMIN)  return <Navigate to="/admin/dashboard"  replace />
+  
+  const userRole = user?.role?.roleName?.toUpperCase()
+  if (userRole === ROLES.DRIVER) return <Navigate to="/driver/dashboard" replace />
+  if (userRole === ROLES.ADMIN)  return <Navigate to="/admin/dashboard"  replace />
   return <Navigate to="/customer/home" replace />
 }
 

@@ -176,7 +176,7 @@ const DriverTripFlowPage = () => {
   }, [isOnline, currentTrip, incomingTrip])
 
   // Listen to global available bookings and personal driver topic
-  const driverId = userProfile?.id || user?.id
+  const driverId = userProfile?.driverId || user?.id
   const topicsToListen = driverId 
     ? ['/topic/available-bookings', `/topic/driver/${driverId}`]
     : ['/topic/available-bookings']
