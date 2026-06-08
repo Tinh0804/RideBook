@@ -95,11 +95,9 @@ public class DriverService {
                 .build();
     }
 
-    public DriverRevenueResponse getDriverRevenue() {
+    public DriverRevenueResponse getDriverRevenue(String period) {
         String driverId = SecurityUtils.getCurrentProfileId()
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         // 🔹 summary
         Object[] summaryResult = rideBookRepository.getRevenueSummary(driverId);
@@ -136,44 +134,130 @@ public class DriverService {
 
         // 🔹 details (group by date)
         List<Object[]> results = rideBookRepository.getRevenueByDate(driverId);
+        Map<LocalDate, Double> revenueMap = new HashMap<>();
+        
+        for (Object[] r : results) {
+            LocalDate date = null;
+            double revenue = 0.0;
+            if (r != null && r.length > 0) {
+                if (r[0] instanceof java.sql.Date) {
+                    date = ((java.sql.Date) r[0]).toLocalDate();
+                } else if (r[0] instanceof LocalDate) {
+                    date = (LocalDate) r[0];
+                }
+                if (r.length > 2 && r[2] instanceof Number) {
+                    revenue = ((Number) r[2]).doubleValue();
+                }
+            }
+            if (date != null) {
+                revenueMap.put(date, revenue * 0.8); // 20% platform fee
+            }
+        }
 
-        List<RevenueDetailDTO> details = results.stream()
-                .map(r -> {
-                    // ✅ Fix phần detail tương tự
-                    LocalDate date = null;
-                    int tripCount = 0;
-                    double revenue = 0.0;
+        List<RevenueDetailDTO> details = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("dd/MM");
 
-                    if (r != null && r.length > 0) {
-                        // Xử lý date
-                        if (r[0] instanceof java.sql.Date) {
-                            date = ((java.sql.Date) r[0]).toLocalDate();
-                        } else if (r[0] instanceof LocalDate) {
-                            date = (LocalDate) r[0];
-                        }
-
-                        // Xử lý tripCount
-                        if (r.length > 1 && r[1] instanceof Number) {
-                            tripCount = ((Number) r[1]).intValue();
-                        }
-
-                        // Xử lý revenue
-                        if (r.length > 2 && r[2] instanceof Number) {
-                            revenue = ((Number) r[2]).doubleValue();
-                        }
-                    }
-
-                    return RevenueDetailDTO.builder()
-                            .timeLabel(date != null ? date.format(formatter) : "")
-                            .tripCount(tripCount)
-                            .revenue(revenue)
-                            .build();
-                })
-                .toList();
+        if ("week".equalsIgnoreCase(period)) {
+            for (int i = 6; i >= 0; i--) {
+                LocalDate d = today.minusDays(i);
+                details.add(RevenueDetailDTO.builder()
+                        .timeLabel(d.format(dayFormatter))
+                        .tripCount(0)
+                        .revenue(revenueMap.getOrDefault(d, 0.0))
+                        .build());
+            }
+        } else if ("month".equalsIgnoreCase(period)) {
+            LocalDate startOfMonth = today.withDayOfMonth(1);
+            int lengthOfMonth = today.lengthOfMonth();
+            for (int i = 0; i < lengthOfMonth; i++) {
+                LocalDate d = startOfMonth.plusDays(i);
+                details.add(RevenueDetailDTO.builder()
+                        .timeLabel(d.format(dayFormatter))
+                        .tripCount(0)
+                        .revenue(revenueMap.getOrDefault(d, 0.0))
+                        .build());
+            }
+        } else {
+            // year or all
+            double[] monthRevenues = new double[12];
+            for (Map.Entry<LocalDate, Double> entry : revenueMap.entrySet()) {
+                if (entry.getKey().getYear() == today.getYear()) {
+                    int month = entry.getKey().getMonthValue();
+                    monthRevenues[month - 1] += entry.getValue();
+                }
+            }
+            for (int i = 0; i < 12; i++) {
+                details.add(RevenueDetailDTO.builder()
+                        .timeLabel("T" + (i + 1))
+                        .tripCount(0)
+                        .revenue(monthRevenues[i])
+                        .build());
+            }
+        }
 
         return DriverRevenueResponse.builder()
                 .summary(summary)
                 .details(details)
+                .build();
+    }
+
+    public com.project.BookCarOnline.DTO.Response.DailyRevenueDTO getDailyRevenue(String dateStr) {
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+        LocalDate targetDate;
+        try {
+            targetDate = LocalDate.parse(dateStr);
+        } catch (Exception e) {
+            targetDate = LocalDate.now();
+        }
+
+        LocalDateTime startOfDay = targetDate.atStartOfDay();
+        LocalDateTime endOfDay = targetDate.plusDays(1).atStartOfDay();
+
+        List<Booking> trips = rideBookRepository.findByDriverAndStatusAndDateRange(
+                driverId, BookingStatus.COMPLETED, startOfDay, endOfDay);
+
+        double PLATFORM_FEE_RATE = 0.20;
+        int QUEST_GOAL = 10;
+        double QUEST_REWARD = 50000.0;
+
+        double grossRevenue = 0.0;
+        double cashIncome = 0.0;
+        double onlineIncome = 0.0;
+
+        for (Booking b : trips) {
+            double price = b.getTotalPrice() != null ? b.getTotalPrice() : 0.0;
+            grossRevenue += price;
+            if (b.getPaymentNo() != null && "CASH".equalsIgnoreCase(b.getPaymentNo().getPaymentType())) {
+                cashIncome += price;
+            } else {
+                onlineIncome += price;
+            }
+        }
+
+        double platformFee = grossRevenue * PLATFORM_FEE_RATE;
+        double netIncome = grossRevenue - platformFee;
+
+        int totalTrips = trips.size();
+        boolean isQuestCompleted = totalTrips >= QUEST_GOAL;
+        double questEarned = isQuestCompleted ? QUEST_REWARD : 0.0;
+        double finalIncome = netIncome + questEarned;
+
+        return com.project.BookCarOnline.DTO.Response.DailyRevenueDTO.builder()
+                .date(targetDate.toString())
+                .grossRevenue(grossRevenue)
+                .netIncome(netIncome)
+                .platformFee(platformFee)
+                .cashIncome(cashIncome)
+                .onlineIncome(onlineIncome)
+                .totalTrips(totalTrips)
+                .questGoal(QUEST_GOAL)
+                .questReward(QUEST_REWARD)
+                .isQuestCompleted(isQuestCompleted)
+                .questEarned(questEarned)
+                .finalIncome(finalIncome)
                 .build();
     }
 

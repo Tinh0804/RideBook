@@ -145,6 +145,21 @@ export const DriverRevenueSchema = z.object({
   details: z.array(RevenueDetailSchema).catch([]),
 })
 
+export const DailyRevenueSchema = z.object({
+  date: z.string().catch(''),
+  grossRevenue: z.number().catch(0),
+  netIncome: z.number().catch(0),
+  platformFee: z.number().catch(0),
+  cashIncome: z.number().catch(0),
+  onlineIncome: z.number().catch(0),
+  totalTrips: z.number().catch(0),
+  questGoal: z.number().catch(0),
+  questReward: z.number().catch(0),
+  isQuestCompleted: z.boolean().catch(false),
+  questEarned: z.number().catch(0),
+  finalIncome: z.number().catch(0),
+})
+
 export const EstimatePriceSchema = z.object({
   vehicleTypeId: z.string().catch(''),
   distance: z.number().catch(0),

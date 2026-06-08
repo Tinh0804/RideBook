@@ -25,6 +25,7 @@ const BASE_CUSTOMER_NAV = [
 const DRIVER_NAV = [
   { to: '/driver/dashboard',  icon: RiDashboardLine,           label: 'Tổng quan' },
   { to: '/driver/trips',      icon: RiCarLine,                 label: 'Nhận chuyến' },
+  { to: '/driver/history',    icon: RiHistoryLine,             label: 'Lịch sử chuyến' },
   { to: '/driver/revenue',    icon: RiBarChartLine,            label: 'Doanh thu' },
   { to: '/driver/wallet',     icon: RiWalletLine,              label: 'Ví tiền' },
   { to: '/driver/profile',    icon: RiUserLine,                label: 'Hồ sơ' },

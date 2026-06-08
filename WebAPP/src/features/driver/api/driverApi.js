@@ -5,6 +5,7 @@ import {
   DriverProfileSchema,
   DriverDashboardSchema,
   DriverRevenueSchema,
+  DailyRevenueSchema,
 } from '@/schemas/dto'
 
 export const driverApi = {
@@ -18,8 +19,11 @@ export const driverApi = {
   getDashboard: () =>
     apiClient.get('/drivers/my-dashboard').then((r) => parseApiResponse(DriverDashboardSchema, r.data)),
 
-  getRevenue: () =>
-    apiClient.get('/drivers/my-revenue').then((r) => parseApiResponse(DriverRevenueSchema, r.data)),
+  getRevenue: (period = 'week') =>
+    apiClient.get(`/drivers/my-revenue?period=${period}`).then((r) => parseApiResponse(DriverRevenueSchema, r.data)),
+
+  getDailyRevenue: (date) =>
+    apiClient.get(`/drivers/my-revenue/daily${date ? `?date=${date}` : ''}`).then((r) => parseApiResponse(DailyRevenueSchema, r.data)),
 
   toggleStatus: () =>
     apiClient.put('/drivers/status-activity').then((r) => r.data),

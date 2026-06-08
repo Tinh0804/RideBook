@@ -30,6 +30,7 @@ const AvailableTripsPage     = lazy(() => import('@/pages/driver/AvailableTripsP
 const DriverRevenuePage      = lazy(() => import('@/pages/driver/DriverRevenuePage'))
 const DriverWalletPage       = lazy(() => import('@/pages/driver/DriverWalletPage'))
 const DriverProfilePage      = lazy(() => import('@/pages/driver/DriverProfilePage'))
+const DriverHistoryPage      = lazy(() => import('@/pages/driver/DriverHistoryPage'))
 
 // Admin
 const AdminDashboardPage     = lazy(() => import('@/pages/admin/AdminDashboardPage'))
@@ -93,6 +94,7 @@ const AppRoutes = () => (
           <Route path="driver/revenue"      element={<DriverRevenuePage />} />
           <Route path="driver/wallet"       element={<DriverWalletPage />} />
           <Route path="driver/profile"      element={<DriverProfilePage />} />
+          <Route path="driver/history"      element={<DriverHistoryPage />} />
         </Route>
       </Route>
 

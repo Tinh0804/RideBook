@@ -71,11 +71,23 @@ public class DriverController {
     }
 
     @GetMapping("/my-revenue")
-    public APIResponse<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse> getMyRevenue(){
-        com.project.BookCarOnline.DTO.Response.DriverRevenueResponse response = driverService.getDriverRevenue();
+    public APIResponse<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse> getMyRevenue(
+            @RequestParam(name = "period", defaultValue = "week") String period){
+        com.project.BookCarOnline.DTO.Response.DriverRevenueResponse response = driverService.getDriverRevenue(period);
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy dữ liệu thống kê thành công")
+                .result(response)
+                .build();
+    }
+
+    @GetMapping("/my-revenue/daily")
+    public APIResponse<com.project.BookCarOnline.DTO.Response.DailyRevenueDTO> getDailyRevenue(
+            @RequestParam(name = "date", required = false) String dateStr){
+        com.project.BookCarOnline.DTO.Response.DailyRevenueDTO response = driverService.getDailyRevenue(dateStr);
+        return APIResponse.<com.project.BookCarOnline.DTO.Response.DailyRevenueDTO>builder()
+                .status(HttpStatus.OK.value())
+                .message("Lấy dữ liệu thống kê ngày thành công")
                 .result(response)
                 .build();
     }

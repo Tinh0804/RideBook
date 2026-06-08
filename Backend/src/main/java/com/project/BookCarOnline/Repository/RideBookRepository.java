@@ -56,6 +56,21 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
 
     // ✅ Customer bookings
     List<Booking> findByCustomerNo_CustomerIdOrderByBookingTimeDesc(String customerId);
+    
+    @Query("""
+        SELECT b FROM Booking b 
+        WHERE b.driverNo.driverId = :driverId 
+        AND b.bookingStatus = :status 
+        AND b.bookingTime >= :startOfDay 
+        AND b.bookingTime < :endOfDay
+    """)
+    List<Booking> findByDriverAndStatusAndDateRange(
+            @Param("driverId") String driverId,
+            @Param("status") BookingStatus status,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay
+    );
+
     @Query(value = """
         SELECT 
             CAST(b.THOIGIANDAT AS DATE) AS date,
