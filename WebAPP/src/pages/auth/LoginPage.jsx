@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { RiEyeLine, RiEyeOffLine, RiCarFill, RiUserLine, RiShieldLine } from 'react-icons/ri'
+import { RiEyeLine, RiEyeOffLine, RiCarFill, RiUserLine, RiShieldLine, RiGoogleFill, RiFacebookCircleFill } from 'react-icons/ri'
 import { useAuth } from '@/hooks/useAuth'
 import { ROLES } from '@/config'
 import Button from '@/components/Elements/Button'
@@ -54,6 +54,20 @@ const LoginPage = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleGoogleLogin = () => {
+    const clientId = '302708839710-4t8374p6qbp4ut1jpcgo4t9396vqigvk.apps.googleusercontent.com'
+    const redirectUri = `${window.location.origin}/oauth2/callback/google`
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile`
+    window.location.href = url
+  }
+
+  const handleFacebookLogin = () => {
+    const clientId = '1914479109126836'
+    const redirectUri = `${window.location.origin}/oauth2/callback/facebook`
+    const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=public_profile,email`
+    window.location.href = url
   }
 
   return (
@@ -121,6 +135,26 @@ const LoginPage = () => {
 
       {/* Divider */}
       <div className="divider-label text-xs text-gray-600">hoặc</div>
+
+      {/* Social Login */}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
+        >
+          <RiGoogleFill size={20} className="text-[#DB4437]" />
+          Google
+        </button>
+        <button
+          type="button"
+          onClick={handleFacebookLogin}
+          className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main font-semibold text-sm hover:bg-surface-hover transition-colors"
+        >
+          <RiFacebookCircleFill size={20} className="text-[#4267B2]" />
+          Facebook
+        </button>
+      </div>
 
       {/* Register links */}
       <div className="space-y-3">

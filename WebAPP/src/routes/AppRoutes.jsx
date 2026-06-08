@@ -9,10 +9,12 @@ import Spinner       from '@/components/Elements/Spinner'
 
 // ─── Lazy page imports ───────────────────────────────────────────────────────
 // Auth
+const WelcomePage            = lazy(() => import('@/pages/auth/WelcomePage'))
 const LoginPage              = lazy(() => import('@/pages/auth/LoginPage'))
 const RegisterCustomerPage   = lazy(() => import('@/pages/auth/RegisterCustomerPage'))
 const RegisterDriverPage     = lazy(() => import('@/pages/auth/RegisterDriverPage'))
 const ForgotPasswordPage     = lazy(() => import('@/pages/auth/ForgotPasswordPage'))
+const OAuthCallbackPage      = lazy(() => import('@/pages/auth/OAuthCallbackPage'))
 
 // Customer
 const CustomerHomePage       = lazy(() => import('@/pages/customer/CustomerHomePage'))
@@ -51,7 +53,7 @@ const PageLoader = () => (
 // ─── Root redirect ───────────────────────────────────────────────────────────
 const RootRedirect = () => {
   const { isAuth, user } = useAuthStore()
-  if (!isAuth) return <Navigate to="/login" replace />
+  if (!isAuth) return <Navigate to="/welcome" replace />
   
   const userRole = user?.role?.roleName?.toUpperCase()
   if (userRole === ROLES.DRIVER) return <Navigate to="/driver/dashboard" replace />
@@ -68,11 +70,15 @@ const AppRoutes = () => (
 
       {/* ── Auth routes ── */}
       <Route element={<AuthLayout />}>
-        <Route path="login"              element={<LoginPage />} />
+        <Route path="welcome"            element={<WelcomePage />} />
+        <Route path="login/:role"        element={<LoginPage />} />
         <Route path="register/customer"  element={<RegisterCustomerPage />} />
         <Route path="register/driver"    element={<RegisterDriverPage />} />
         <Route path="forgot-password"    element={<ForgotPasswordPage />} />
       </Route>
+
+      {/* ── OAuth Callback route ── */}
+      <Route path="oauth2/callback/:provider" element={<OAuthCallbackPage />} />
 
       {/* ── Customer routes ── */}
       <Route element={<ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} />}>

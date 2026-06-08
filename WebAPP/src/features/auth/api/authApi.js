@@ -21,5 +21,5 @@ export const authApi = {
     apiClient.post('/auth/introspect', { token }).then((r) => r.data),
 
   oauthLogin: (payload) =>
-    apiClient.post('/auth/oauth2/external-login', payload).then((r) => r.data),
+    apiClient.post('/auth/oauth2/external-login', payload).then((r) => parseApiResponse(AuthenticationResponseSchema, r.data)),
 }
