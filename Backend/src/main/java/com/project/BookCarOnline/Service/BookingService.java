@@ -20,6 +20,9 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
 import com.project.BookCarOnline.Entity.Payment;
 import com.project.BookCarOnline.DTO.Redis.FareQuote;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.project.BookCarOnline.Utils.Constant;
 import jakarta.transaction.Transactional;
@@ -340,6 +343,16 @@ public class BookingService {
     public List<BookingDetailResponse> getBookingsByDriver(String driverId) {
         return bookingRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId)
                 .stream().map(this::mapToBookingDetailResponse).collect(Collectors.toList());
+    }
+
+    public Page<BookingDetailResponse> getBookingsByDriverPaginated(String driverId, String status, int page, int size) {
+       Pageable pageable = PageRequest.of(page, size);
+        if (status != null && !status.isEmpty() && !status.equals("ALL")) {
+            return bookingRepository.findByDriverNo_DriverIdAndBookingStatusOrderByBookingTimeDesc(driverId, BookingStatus.valueOf(status), pageable)
+                    .map(this::mapToBookingDetailResponse);
+        }
+        return bookingRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId, pageable)
+                .map(this::mapToBookingDetailResponse);
     }
 
     public List<AvailableRideResponse> getAvailableRides(String driverArea) {

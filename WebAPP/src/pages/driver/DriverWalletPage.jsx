@@ -27,6 +27,9 @@ const DriverWalletPage = () => {
   const [actionLoading,setActionLoading]= useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+
   useEffect(() => {
       // Check payment status from query parameters (Return URL)
       const vnpCode = searchParams.get('vnp_ResponseCode')
@@ -53,15 +56,21 @@ const DriverWalletPage = () => {
       walletApi.getMyWallet()
       .then((w) => {
         setWallet(w)
-        if (w?.walletId) {
-          walletApi.getTransactionHistory(w.walletId)
-            .then((h) => setTransactions(h))
-            .catch(() => {})
-        }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (wallet?.walletId) {
+      walletApi.getTransactionHistory(wallet.walletId, page, 10)
+        .then((res) => {
+          setTransactions(res?.content || [])
+          setTotalPages(res?.page?.totalPages ?? res?.totalPages ?? 0)
+        })
+        .catch(() => {})
+    }
+  }, [wallet?.walletId, page])
 
   const handleDeposit = async () => {
     const num = parseInt(amount.replace(/\D/g, ''))
@@ -94,6 +103,7 @@ const DriverWalletPage = () => {
       toast.success('Yêu cầu rút tiền đã được ghi nhận')
       setWithdrawOpen(false)
       setWallet((w) => ({ ...w, balance: (w?.balance || 0) - num }))
+      setPage(0) // Reset to page 0 to see the new transaction
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Rút tiền thất bại')
     } finally {
@@ -174,6 +184,40 @@ const DriverWalletPage = () => {
                 </div>
               )
             })}
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4 pt-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 py-1.5 rounded-lg border border-surface-border disabled:opacity-50 hover:bg-surface-muted transition-colors text-sm"
+            >
+              Trước
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors",
+                    page === i ? "bg-brand-500 text-white" : "hover:bg-surface-muted text-content-main"
+                  )}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              className="px-3 py-1.5 rounded-lg border border-surface-border disabled:opacity-50 hover:bg-surface-muted transition-colors text-sm"
+            >
+              Sau
+            </button>
           </div>
         )}
       </div>

@@ -20,6 +20,9 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -190,13 +193,16 @@ public class WalletService {
         log.info("Đã trừ {} phí nền tảng từ ví tài xế {} cho chuyến {}", platformFee, driverId, bookingId);
     }
 
-    public List<WalletTransactionResponse> getTransactionHistory(String driverId,String walletId) {
+    public Page<WalletTransactionResponse> getTransactionHistory(String driverId, String walletId, int page, int size) {
         Wallet wallet = getOrCreateWallet(driverId);
         if (!wallet.getWalletId().equals(walletId)) {
             throw new AppException(ErrorCode.WALLET_NOT_FOUND);
         }
-        List<WalletTransaction> transactionHistory = transactionRepository.findByWallet_WalletId(wallet.getWalletId());
-        return mapper.toTransactionHistoryResponse(transactionHistory);
-
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WalletTransaction> transactionHistory = transactionRepository.findByWallet_WalletIdOrderByCreatedAtDesc(wallet.getWalletId(), pageable);
+        return transactionHistory.map(txn -> {
+            List<WalletTransactionResponse> mapped = mapper.toTransactionHistoryResponse(List.of(txn));
+            return mapped.isEmpty() ? null : mapped.get(0);
+        });
     }
 }

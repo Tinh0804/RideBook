@@ -35,6 +35,9 @@ export const bookingApi = {
   getDriverHistory: (driverId) =>
     apiClient.get(`/bookings/driver/${driverId}`).then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
 
+  getDriverHistoryPage: (driverId, status = 'ALL', page = 0, size = 10) =>
+    apiClient.get(`/bookings/driver/${driverId}/page?status=${status}&page=${page}&size=${size}`).then((r) => r.data?.result),
+
   getAll: () =>
     apiClient.get('/bookings').then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
 

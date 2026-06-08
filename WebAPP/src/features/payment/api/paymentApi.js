@@ -28,6 +28,6 @@ export const walletApi = {
   withdraw: (amount) =>
     apiClient.post(`/wallets/withdraw?amount=${amount}`).then((r) => r.data),
 
-  getTransactionHistory: (walletId) =>
-    apiClient.get(`/wallets/history-transactions?walletId=${walletId}`).then((r) => parseApiArrayResponse(WalletTransactionSchema, r.data)),
+  getTransactionHistory: (walletId, page = 0, size = 10) =>
+    apiClient.get(`/wallets/history-transactions?walletId=${walletId}&page=${page}&size=${size}`).then((r) => r.data?.result),
 }

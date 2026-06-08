@@ -2,6 +2,8 @@ package com.project.BookCarOnline.Repository;
 
 import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -93,6 +95,8 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
     Object[] getRevenueSummary(@Param("driverId") String driverId);
 
     List<Booking> findByDriverNo_DriverIdOrderByBookingTimeDesc(String driverId);
+    Page<Booking> findByDriverNo_DriverIdOrderByBookingTimeDesc(String driverId, Pageable pageable);
+    Page<Booking> findByDriverNo_DriverIdAndBookingStatusOrderByBookingTimeDesc(String driverId, BookingStatus status, Pageable pageable);
     List<Booking> findByBookingStatusOrderByBookingTimeDesc(BookingStatus status);
     List<Booking> findByBookingStatusAndDriverNoIsNullOrderByBookingTimeAsc(BookingStatus bookingStatus);
     List<Booking> findByBookingStatusAndDriverNoIsNullAndPickupLocationContainingOrderByBookingTimeAsc(BookingStatus bookingStatus, String area);

@@ -16,6 +16,7 @@ import com.project.BookCarOnline.Utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -66,11 +67,6 @@ public class WalletController {
 
     }
 
-    /**
-     * 3. Rút tiền tự động (Trừ tiền và chuyển thành SUCCESS ngay)
-     * API: POST /api/wallets/withdraw
-     * Body: { "driverId": "...", "amount": 500000 }
-     */
     @PostMapping("/withdraw")
     public APIResponse<?> autoWithdraw(@RequestParam Double amount) {
             String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
@@ -92,19 +88,18 @@ public class WalletController {
     }
 
     @GetMapping("/history-transactions")
-    public APIResponse<List<WalletTransactionResponse>> getTransactionHistory(@RequestParam String walletId) {
+    public APIResponse<Page<WalletTransactionResponse>> getTransactionHistory(
+            @RequestParam String walletId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
-        List<WalletTransactionResponse> response = walletService.getTransactionHistory(driverId,walletId);
-        return APIResponse.<List<WalletTransactionResponse>>builder()
+        Page<WalletTransactionResponse> response = walletService.getTransactionHistory(driverId, walletId, page, size);
+        return APIResponse.<org.springframework.data.domain.Page<WalletTransactionResponse>>builder()
                 .result(response)
                 .message("Lịch sử giao dịch retrieved successfully")
                 .build();
     }
 
-    /**
-     * 4. API IPN (Webhook) dành riêng cho VNPay gọi về (KHÔNG PHẢI APP GỌI)
-     * API: GET /api/wallets/vnpay-ipn
-     */
     @GetMapping("/vnpay-ipn")
     public APIResponse<?> vnPayIPN(
             @RequestParam("vnp_TxnRef") String transactionId,

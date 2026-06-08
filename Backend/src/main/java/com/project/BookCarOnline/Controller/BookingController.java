@@ -14,6 +14,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,6 +95,22 @@ public class BookingController {
                 .build();
     }
 
+    @GetMapping("/driver/{driverId}/page")
+    @SecurityRequirement(name = "bearerAuth")
+    public APIResponse<Page<BookingDetailResponse>> getBookingsByDriverPaginated(
+            @PathVariable String driverId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        log.info("REST API: GET /bookings/driver/{}/page?status={}&page={}&size={} - Fetching bookings paginated", driverId, status, page, size);
+       Page<BookingDetailResponse> bookings = bookingService.getBookingsByDriverPaginated(driverId, status, page, size);
+        return APIResponse.<org.springframework.data.domain.Page<BookingDetailResponse>>builder()
+                .status(HttpStatus.OK.value())
+                .message("Danh sách chuyến xe của tài xế (có phân trang)")
+                .result(bookings)
+                .build();
+    }
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -166,12 +183,6 @@ public class BookingController {
                 .build();
     }
 
-    /**
-     * Tài xế chủ động từ chối cuốc xe đang được dispatch đến mình.
-     * Dispatcher đang chạy sẽ phát hiện rejection qua DB và chuyển sang tài xế kế tiếp.
-     *
-     * POST /bookings/{bookingId}/reject?driverId={driverId}
-     */
     @PostMapping("/{bookingId}/reject")
     public APIResponse<Void> rejectBooking(
             @PathVariable String bookingId,

@@ -27,33 +27,31 @@ const DriverHistoryPage = () => {
   const { userProfile, user } = useAuthStore();
   const [trips, setTrips] = useState([]);
   const [filter, setFilter] = useState('ALL');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const driverId = userProfile?.id || user?.id || user?.driverId;
     if (!driverId) return;
     
+    setLoading(true);
     bookingApi
-      .getDriverHistory(driverId)
+      .getDriverHistoryPage(driverId, filter, page, 10)
       .then((res) => {
-        // Sort descending by bookingTime
-        const sorted = (res || []).sort((a, b) => new Date(b.bookingTime) - new Date(a.bookingTime));
-        setTrips(sorted);
+        setTrips(res?.content || []);
+        setTotalPages(res?.page?.totalPages ?? res?.totalPages ?? 0);
+        setTotalElements(res?.page?.totalElements ?? res?.totalElements ?? 0);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [userProfile, user]);
+  }, [userProfile, user, filter, page]);
 
-  const filteredTrips =
-    filter === 'ALL' ? trips : trips.filter((t) => t.bookingStatus === filter);
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    setPage(0);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
@@ -61,7 +59,7 @@ const DriverHistoryPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-content-main">Lịch sử chuyến đi</h1>
-          <p className="text-sm text-content-muted mt-0.5">{trips.length} chuyến đã nhận</p>
+          <p className="text-sm text-content-muted mt-0.5">{totalElements} chuyến đã nhận</p>
         </div>
       </div>
 
@@ -70,7 +68,7 @@ const DriverHistoryPage = () => {
         {FILTERS.map((f) => (
           <button
             key={f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => handleFilterChange(f.value)}
             className={cn(
               'px-4 py-2.5 text-sm font-medium transition-all',
               filter === f.value
@@ -84,13 +82,17 @@ const DriverHistoryPage = () => {
       </div>
 
       {/* Trip list */}
-      {filteredTrips.length === 0 ? (
+      {loading && trips.length === 0 ? (
+        <div className="flex justify-center py-20">
+          <Spinner size="lg" />
+        </div>
+      ) : trips.length === 0 ? (
         <div className="text-center py-16 text-content-muted">
           <p className="text-lg font-medium">Không có chuyến đi nào</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredTrips.map((trip) => (
+          {trips.map((trip) => (
             <div
               key={trip.bookingId}
               className="card p-5 hover:border-brand-500/40 transition-all duration-200"
@@ -160,6 +162,42 @@ const DriverHistoryPage = () => {
               </div>
             </div>
           ))}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-8 pt-4">
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1.5 rounded-lg border border-surface-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-muted transition-colors text-sm"
+              >
+                Trang trước
+              </button>
+              <div className="flex flex-wrap items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-colors",
+                      page === i 
+                        ? "bg-brand-500 text-white" 
+                        : "hover:bg-surface-muted text-content-main"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page === totalPages - 1}
+                className="px-3 py-1.5 rounded-lg border border-surface-border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-surface-muted transition-colors text-sm"
+              >
+                Trang sau
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
