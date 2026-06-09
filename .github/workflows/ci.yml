@@ -1,0 +1,91 @@
+
+name: CI Pipeline
+run-name: ${{ github.actor }}
+
+on:
+  push:
+    branches: ['main','master']
+  full_request:
+    branches: ['main','master']
+
+jobs:
+  build-backend:
+    name: Build & Test Backend (Spring Boot)
+    runs-on: ubuntu-lastest
+    defaults:
+      run: 
+        work-directory: ./Backend
+    
+    steps: 
+      - name: Checkout code #quan trọng phải có
+        users: actions/checkout@v6
+
+      - name: Setup Java 21
+        users: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run tests (Unit Test & Integration Test)
+        run: mvn test
+      
+      - name: Build with Maven
+        run : mvn package -DskipTests
+
+      - name: Setup Docker Buildx
+        users: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        users: docker/login-action@v4
+        with:
+          username: ${{secrets.DOCKER_USERNAME}}
+          password: ${{secrets.DOCKER_PASSWORD}}
+
+      - name : Build and Push Docker Image
+        users: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{secrets.DOCKER_USERNAME}}/bookcar-backend:${{github.sha}}
+  build-frontend:
+    name: Build & Test Frontend (React Vite)
+    runs-on: ubuntu-lastest
+    defaults:
+      run:
+        work-directory: ./WebAPP
+    steps:
+      - name: Checkout code
+        users: actions/checkout@v6
+
+      - name: Setup Node.js
+        users: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './WebAPP/package-lock.json'
+      
+      - name: Install dependencies
+        users: npm@v4
+        with:
+          command: ci
+      
+      - name: Run tests
+        users: npm@v4
+        with:
+          command: test
+      
+      - name: Build Frontend
+        users: npm@v4
+        with:
+          command: run build
+      
+         
+
+
+
+        
+
+  
+  
