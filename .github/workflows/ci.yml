@@ -5,7 +5,7 @@ run-name: ${{ github.actor }}
 on:
   push:
     branches: ['main','master']
-  full_request:
+  pull_request:
     branches: ['main','master']
 
 jobs:
