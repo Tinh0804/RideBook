@@ -1,4 +1,3 @@
-
 name: CI Pipeline
 run-name: ${{ github.actor }}
 
@@ -11,17 +10,17 @@ on:
 jobs:
   build-backend:
     name: Build & Test Backend (Spring Boot)
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest 
     defaults:
       run: 
-        work-directory: ./Backend
+        working-directory: ./Backend
     
     steps: 
-      - name: Checkout code #quan trọng phải có
-        users: actions/checkout@v6
+      - name: Checkout code # quan trọng phải có
+        uses: actions/checkout@v4 
 
       - name: Setup Java 21
-        users: actions/setup-java@v5
+        uses: actions/setup-java@v4 
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -31,61 +30,48 @@ jobs:
         run: mvn test
       
       - name: Build with Maven
-        run : mvn package -DskipTests
+        run: mvn package -DskipTests
 
       - name: Setup Docker Buildx
-        users: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3 
 
       - name: Login to Docker Hub
-        users: docker/login-action@v4
+        uses: docker/login-action@v3 
         with:
-          username: ${{secrets.DOCKER_USERNAME}}
-          password: ${{secrets.DOCKER_PASSWORD}}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name : Build and Push Docker Image
-        users: docker/build-push-action@v6
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5 
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./Backend 
+          file: ./Backend/Dockerfile
           push: true
-          tags: ${{secrets.DOCKER_USERNAME}}/bookcar-backend:${{github.sha}}
+          tags: ${{ secrets.DOCKER_USERNAME }}/bookcar-backend:${{ github.sha }}
+
   build-frontend:
     name: Build & Test Frontend (React Vite)
-    runs-on: ubuntu-lastest
+    runs-on: ubuntu-latest 
     defaults:
       run:
-        work-directory: ./WebAPP
+        working-directory: ./WebAPP
+        
     steps:
       - name: Checkout code
-        users: actions/checkout@v6
+        uses: actions/checkout@v4 
 
       - name: Setup Node.js
-        users: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: './WebAPP/package-lock.json'
       
       - name: Install dependencies
-        users: npm@v4
-        with:
-          command: ci
+        run: npm ci 
       
       - name: Run tests
-        users: npm@v4
-        with:
-          command: test
+        run: npm test 
       
       - name: Build Frontend
-        users: npm@v4
-        with:
-          command: run build
-      
-         
-
-
-
-        
-
-  
-  
+        run: npm run build
