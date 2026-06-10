@@ -81,13 +81,18 @@ export const useAuth = () => {
   )
 
   const handleLogout = useCallback(async () => {
+    const roleStr = typeof user?.role === 'object' ? user?.role?.roleName : user?.role
+    const currentRole = roleStr?.toLowerCase() || 'customer'
+    
+    // Navigate first to prevent ProtectedRoute from redirecting to /welcome
+    navigate(`/login/${currentRole}`, { replace: true })
+
     try {
       if (refreshToken) await authApi.logout(refreshToken)
     } catch (_) { /* ignore */ }
     logout()
     toast.success('Đã đăng xuất thành công')
-    navigate('/welcome', { replace: true })
-  }, [logout, navigate, refreshToken])
+  }, [logout, navigate, refreshToken, user?.role])
 
   const isRole = useCallback(
     (role) => user?.role === role,

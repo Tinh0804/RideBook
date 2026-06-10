@@ -10,7 +10,7 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   const location = useLocation()
 
   if (!isAuth) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to={`/login/${user?.role?.roleName}`} state={{ from: location }} replace />
   }
 
   const userRole = user?.role?.toUpperCase()
@@ -18,9 +18,9 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   if (allowedRoles.length > 0 && userRole && !allowedRoles.includes(userRole)) {
     // Redirect to their own home
     const home =
-      userRole === 'DRIVER'  ? '/driver/dashboard' :
-      userRole === 'ADMIN'   ? '/admin/dashboard'  :
-                               '/customer/home'
+      userRole === 'DRIVER' ? '/driver/dashboard' :
+        userRole === 'ADMIN' ? '/admin/dashboard' :
+          '/customer/home'
     return <Navigate to={home} replace />
   }
 

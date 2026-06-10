@@ -81,6 +81,7 @@ public class AuthenticationService {
                 .account(accountResponse)
                 .build();
     }
+
     String generateToken(Account account,long durationInSeconds) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Customer customer = null;
