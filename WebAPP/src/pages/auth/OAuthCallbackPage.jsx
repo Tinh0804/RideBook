@@ -33,7 +33,7 @@ const OAuthCallbackPage = () => {
 
     const redirectUri = `${window.location.origin}/oauth2/callback/${provider}`
 
-    handleOAuthLogin({ code, provider, redirectUri })
+    handleOAuthLogin({ code, provider, redirect_uri: redirectUri })
       .then(() => {
         toast.success(`Đăng nhập thành công qua ${provider}!`)
       })

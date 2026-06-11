@@ -15,6 +15,7 @@ import com.project.BookCarOnline.Mapper.AccountMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.CustomerRepository;
 import com.project.BookCarOnline.Repository.RoleRepository;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -24,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -42,6 +44,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +56,8 @@ public class OAuth2ExchangeService {
     RoleRepository roleRepository;
     AuthenticationService authenticationService;
     ClientRegistrationRepository clientRegistrationRepository;
+
+    PasswordEncoder passwordEncoder;
 
     AccountMapper accountMapper;
 
@@ -136,6 +141,7 @@ public class OAuth2ExchangeService {
         return delegate.loadUser(userRequest);
     }
 
+    @Transactional
     private Account exchangeToken(String provider, OAuth2User oAuth2User) {
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
@@ -167,7 +173,6 @@ public class OAuth2ExchangeService {
                                 existingAccount.setProviderId(oAuth2User.getName());
                                 return accountRepository.save(existingAccount);
                             })
-                            // BƯỚC 3: Nếu Email cũng chưa có -> Tạo mới hoàn toàn
                             .orElseGet(() -> saveCustomer(email, name, picture, provider, oAuth2User.getName()));
                 });
 
@@ -179,10 +184,11 @@ public class OAuth2ExchangeService {
         var account = accountRepository.save(
                 Account.builder()
                         .userName(email)
+                        .passWord(passwordEncoder.encode(UUID.randomUUID().toString()) )
                         .provider(provider)
-                        .providerId(providerId)  // Lưu 'sub' hoặc 'id'
+                        .providerId(providerId)
                         .createdAt(new Date())
-                        .roleNo(roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getRoleName())
+                        .roleNo(roleRepository.findByRoleName(PredefinedRole.CUSTOMER.getRoleName())
                                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND)))
                         .accountStatus(true)
                         .build());
@@ -192,6 +198,7 @@ public class OAuth2ExchangeService {
                         .customerName(name)
                         .avatar(picture)
                         .account(account)
+                        .email(email)
                         .build()
         );
         customerRepository.save(customer);

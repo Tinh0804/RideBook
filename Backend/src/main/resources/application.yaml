@@ -38,13 +38,13 @@ spring:
             client:
                 registration:
                     google:
-                        client-id: 302708839710-4t8374p6qbp4ut1jpcgo4t9396vqigvk.apps.googleusercontent.com
-                        client-secret: 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
+                        client-id: 121518564838-bqq12cbfh3tto7q87nldbl7lfn8u9oj2.apps.googleusercontent.com
+                        client-secret: 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
                         grant-type: authorization_code
                         scope:
                             - profile
                             - email
-                        redirect-uri: com.googleusercontent.apps.302708839710-uqnlsf5el1b8t3vocto720e76iv6slad:/oauth2redirect/google
+                        redirect-uri: com.googleusercontent.apps.302708839710-uqnlsf5el1b8t3vocto720e76iv6slad:/oauth2redirect/google #for mobile
                         token-uri: https://oauth2.googleapis.com/token
                         user-info-uri: https://www.googleapis.com/oauth2/v2/userinfo
                     facebook:

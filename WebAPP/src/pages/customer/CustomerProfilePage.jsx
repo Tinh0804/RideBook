@@ -59,9 +59,14 @@ const CustomerProfilePage = () => {
         setLoyalty(loyaltyInfo)
         if (info) {
           setForm({ 
-            name: info.customerName || '', phoneNumber: info.phone || '', address: info.address || '', 
-            avatar: info.avatar || '' , gender : info.gender || '' , birthDate : info.birthDate || '',
-            account : info.account || null
+            customerName: info.customerName || '', 
+            phone: info.phone || '', 
+            address: info.address || '', 
+            email: info.email || '',
+            avatar: info.avatar || '' , 
+            gender: info.gender || '' , 
+            birthDate: info.birthDate ? info.birthDate.split('T')[0] : '', // format to YYYY-MM-DD
+            account: info.account || null
           })
         }
       })
@@ -80,11 +85,16 @@ const CustomerProfilePage = () => {
     setSaving(true)
     try {
       const fd = new FormData()
-      fd.append('name',        form.customerName)
-      fd.append('phoneNumber', form.phone)
-      fd.append('address',     form.address)
-      if (newFile) 
+      if (form.customerName) fd.append('customerName', form.customerName)
+      if (form.phone) fd.append('phone', form.phone)
+      if (form.address) fd.append('address', form.address)
+      if (form.email) fd.append('email', form.email)
+      if (form.gender) fd.append('gender', form.gender)
+      if (form.birthDate) fd.append('birthDate', form.birthDate)
+      
+      if (newFile) {
         fd.append('avatar', newFile)
+      }
 
       const updated = await customerApi.updateMyInfo(fd)
       setProfile(updated)
@@ -105,12 +115,13 @@ const CustomerProfilePage = () => {
     setNewFile(null)
     setPreview(null)
     setForm({ 
-      name: profile?.customerName || '', 
-      phoneNumber: profile?.phone || '', 
+      customerName: profile?.customerName || '', 
+      phone: profile?.phone || '', 
       address: profile?.address || '', 
+      email: profile?.email || '',
       avatar: profile?.avatar || '',
       gender: profile?.gender || '',
-      birthDate: profile?.birthDate || '',
+      birthDate: profile?.birthDate ? profile.birthDate.split('T')[0] : '',
       account: profile?.account || null
     })
   }
@@ -281,7 +292,7 @@ const CustomerProfilePage = () => {
       )}
 
       {/* Profile fields */}
-      <div className="card p-6 space-y-5">
+      <div className="card p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         <FormField label="Họ và tên">
           {editing
             ? <Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="Nguyễn Văn A" />
@@ -296,16 +307,52 @@ const CustomerProfilePage = () => {
           }
         </FormField>
 
-        <FormField label="Địa chỉ">
+        <FormField label="Email">
           {editing
-            ? <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Đường ABC..." />
-            : <p className="text-content-main font-medium py-2">{profile?.address || '—'}</p>
+            ? <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" />
+            : <p className="text-content-main font-medium py-2">{profile?.email || '—'}</p>
           }
         </FormField>
 
-        <FormField label="Tên đăng nhập">
-          <p className="text-content-muted font-mono text-sm py-2">{profile?.userName || user?.userName}</p>
+        <FormField label="Giới tính">
+          {editing
+            ? (
+              <select 
+                className="input-field"
+                value={form.gender} 
+                onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              >
+                <option value="">Chọn giới tính</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+            )
+            : <p className="text-content-main font-medium py-2">{profile?.gender || '—'}</p>
+          }
         </FormField>
+
+        <FormField label="Ngày sinh">
+          {editing
+            ? <Input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+            : <p className="text-content-main font-medium py-2">{profile?.birthDate ? new Date(profile.birthDate).toLocaleDateString('vi-VN') : '—'}</p>
+          }
+        </FormField>
+
+        <div className="col-span-full">
+          <FormField label="Địa chỉ">
+            {editing
+              ? <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Đường ABC..." />
+              : <p className="text-content-main font-medium py-2">{profile?.address || '—'}</p>
+            }
+          </FormField>
+        </div>
+
+        <div className="col-span-full">
+          <FormField label="Tên đăng nhập">
+            <p className="text-content-muted font-mono text-sm py-2">{profile?.userName || user?.userName}</p>
+          </FormField>
+        </div>
       </div>
 
       {/* Tier Benefits Section */}

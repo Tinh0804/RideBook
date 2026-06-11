@@ -30,16 +30,16 @@ public class Notification {
 
     @ManyToOne
     @JoinColumn(
-            name = "USERNAME",
-            referencedColumnName = "TENDANGNHAP",
-            columnDefinition = "VARCHAR(11)"
+            name = "ID_TAIKHOANNO",
+            referencedColumnName = "ID_TAIKHOAN",
+            columnDefinition = "VARCHAR(36)"
     )
      Account accountNo;
 
     @Column(name = "TIEU_DE")
      String title;
 
-    @Column(name = "NOI_DUNG", columnDefinition = "NVARCHAR(MAX)") // Để lưu tiếng Việt có dấu
+    @Column(name = "NOI_DUNG", columnDefinition = "NVARCHAR(MAX)")
      String message;
 
     @Column(name = "DOC")

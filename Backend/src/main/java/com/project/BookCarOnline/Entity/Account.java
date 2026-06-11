@@ -24,7 +24,7 @@ public class Account {
     @Column(name = "ID_TAIKHOAN", nullable = false, unique = true, length = 36)
      String accountId;
 
-    @Column(name = "TENDANGNHAP", nullable = false, unique = true, length = 11)
+    @Column(name = "TENDANGNHAP", nullable = false, unique = true, length = 100)
      String userName;
 
     @JsonIgnore

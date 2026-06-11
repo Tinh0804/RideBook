@@ -105,23 +105,23 @@ public class CustomerService {
         Customer customer = customerRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        if(request.getSDT() != null){
-            customer.setPhone(request.getSDT());
+        if(request.getPhone() != null){
+            customer.setPhone(request.getPhone());
         }
-        if (request.getDiaChi() != null){
-            customer.setAddress(request.getDiaChi());
+        if (request.getAddress() != null){
+            customer.setAddress(request.getAddress());
         }
-        if (request.getTenKH() != null){
-            customer.setCustomerName(request.getTenKH());
+        if (request.getCustomerName() != null){
+            customer.setCustomerName(request.getCustomerName());
         }
         if (request.getEmail() != null){
             customer.setEmail(request.getEmail());
         }
-        if(request.getNgaySinh() != null){
-            customer.setBirthDate(request.getNgaySinh());
+        if(request.getBirthDate() != null){
+            customer.setBirthDate(request.getBirthDate());
         }
-        if(request.getGioiTinh() != null){
-            customer.setGender(request.getGioiTinh());
+        if(request.getGender() != null){
+            customer.setGender(request.getGender());
         }
         if(request.getAvatar() != null && !request.getAvatar().isEmpty()){
             String oldFilePath = firebaseStorageService.getFilePathFromUrl(customer.getAvatar());

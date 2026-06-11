@@ -87,7 +87,7 @@ const LoginPage = () => {
   }
 
   const handleGoogleLogin = () => {
-    const clientId = '302708839710-4t8374p6qbp4ut1jpcgo4t9396vqigvk.apps.googleusercontent.com'
+    const clientId = '121518564838-bqq12cbfh3tto7q87nldbl7lfn8u9oj2.apps.googleusercontent.com'
     const redirectUri = `${window.location.origin}/oauth2/callback/google`
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile`
     window.location.href = url

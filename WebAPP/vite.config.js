@@ -14,6 +14,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    allowedHosts: true, // Cho phép các domain từ ngrok truy cập
     proxy: {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
