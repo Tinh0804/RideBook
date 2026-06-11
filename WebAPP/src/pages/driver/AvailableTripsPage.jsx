@@ -122,15 +122,20 @@ const DriverTripFlowPage = () => {
 
   // 1. Fetch current trip if any (on mount)
   useEffect(() => {
-    if (currentTrip?.bookingId && !currentTrip.customerName) {
-      // Refresh current trip info if incomplete
+    if (currentTrip?.bookingId) {
+      // Update URL silently so user sees the ID in address bar
+      window.history.replaceState(null, '', `/driver/trips/${currentTrip.bookingId}`)
+      
+      // Refresh current trip info
       setLoadingTrip(true)
       bookingApi.getById(currentTrip.bookingId)
         .then((b) => { setCurrentTrip(b) })
         .catch(() => toast.error('Không tìm thấy thông tin chuyến đi'))
         .finally(() => setLoadingTrip(false))
+    } else {
+      window.history.replaceState(null, '', `/driver/trips`)
     }
-  }, [currentTrip?.bookingId, currentTrip?.customerName, setCurrentTrip])
+  }, [currentTrip?.bookingId, setCurrentTrip])
 
   // 2. WebSocket for Incoming Trips & Driver Specific Messages
   const onWsAvailableMessage = useCallback((topic, payload) => {

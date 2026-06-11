@@ -81,7 +81,17 @@ public class BookingController {
                 .build();
     }
 
-
+    @GetMapping("/customer/{customerId}/active")
+    @SecurityRequirement(name = "bearerAuth")
+    public APIResponse<BookingDetailResponse> getActiveBookingByCustomer(@PathVariable String customerId) {
+        log.info("REST API: GET /bookings/customer/{}/active - Fetching active booking by customer", customerId);
+        BookingDetailResponse booking = bookingService.getActiveBookingByCustomer(customerId);
+        return APIResponse.<BookingDetailResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Chuyến xe đang hoạt động của khách hàng")
+                .result(booking)
+                .build();
+    }
 
     @GetMapping("/driver/{driverId}")
     @SecurityRequirement(name = "bearerAuth")
@@ -92,6 +102,18 @@ public class BookingController {
                 .status(HttpStatus.OK.value())
                 .message("Danh sách chuyến xe của tài xế")
                 .result(bookings)
+                .build();
+    }
+
+    @GetMapping("/driver/{driverId}/active")
+    @SecurityRequirement(name = "bearerAuth")
+    public APIResponse<BookingDetailResponse> getActiveBookingByDriver(@PathVariable String driverId) {
+        log.info("REST API: GET /bookings/driver/{}/active - Fetching active booking by driver", driverId);
+        BookingDetailResponse booking = bookingService.getActiveBookingByDriver(driverId);
+        return APIResponse.<BookingDetailResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Chuyến xe đang hoạt động của tài xế")
+                .result(booking)
                 .build();
     }
 

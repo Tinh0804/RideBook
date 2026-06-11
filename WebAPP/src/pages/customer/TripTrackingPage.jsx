@@ -49,6 +49,15 @@ const TripTrackingPage = () => {
   const [chatOpen,   setChatOpen]   = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
+  // Sync URL with booking ID silently
+  useEffect(() => {
+    if (bookingId) {
+      window.history.replaceState(null, '', `/customer/tracking/${bookingId}`)
+    } else {
+      window.history.replaceState(null, '', `/customer/tracking`)
+    }
+  }, [bookingId])
+
   const [pickupCoord, setPickupCoord] = useState(
     location.state?.pickup || null
   )

@@ -32,8 +32,14 @@ export const bookingApi = {
   getCustomerHistory: (customerId) =>
     apiClient.get(`/bookings/customer/${customerId}`).then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
 
+  getActiveByCustomer: (customerId) =>
+    apiClient.get(`/bookings/customer/${customerId}/active`).then((r) => r.data?.result ? parseApiResponse(BookingDetailSchema, r.data) : null),
+
   getDriverHistory: (driverId) =>
     apiClient.get(`/bookings/driver/${driverId}`).then((r) => parseApiArrayResponse(BookingDetailSchema, r.data)),
+
+  getActiveByDriver: (driverId) =>
+    apiClient.get(`/bookings/driver/${driverId}/active`).then((r) => r.data?.result ? parseApiResponse(BookingDetailSchema, r.data) : null),
 
   getDriverHistoryPage: (driverId, status = 'ALL', page = 0, size = 10) =>
     apiClient.get(`/bookings/driver/${driverId}/page?status=${status}&page=${page}&size=${size}`).then((r) => r.data?.result),

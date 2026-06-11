@@ -340,9 +340,19 @@ public class BookingService {
                 .stream().map(this::mapToBookingDetailResponse).collect(Collectors.toList());
     }
 
+    public BookingDetailResponse getActiveBookingByCustomer(String customerId) {
+        return bookingRepository.findActiveByCustomer(customerId)
+                .stream().findFirst().map(this::mapToBookingDetailResponse).orElse(null);
+    }
+
     public List<BookingDetailResponse> getBookingsByDriver(String driverId) {
         return bookingRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId)
                 .stream().map(this::mapToBookingDetailResponse).collect(Collectors.toList());
+    }
+
+    public BookingDetailResponse getActiveBookingByDriver(String driverId) {
+        return bookingRepository.findActiveByDriver(driverId)
+                .stream().findFirst().map(this::mapToBookingDetailResponse).orElse(null);
     }
 
     public Page<BookingDetailResponse> getBookingsByDriverPaginated(String driverId, String status, int page, int size) {

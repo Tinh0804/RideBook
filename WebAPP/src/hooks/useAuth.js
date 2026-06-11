@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { useAuthStore } from '@/store/rootStore'
+import { useAuthStore, useBookingStore, useDriverStore } from '@/store/rootStore'
 import { authApi } from '@/features/auth/api/authApi'
 import { customerApi } from '@/features/customer/api/customerApi'
 import { driverApi } from '@/features/driver/api/driverApi'
-import { ROLES, TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/config'
+import { bookingApi } from '@/features/booking/api/bookingApi'
+import { ROLES, TOKEN_KEY, REFRESH_TOKEN_KEY, BOOKING_STATUS } from '@/config'
 
 export const useAuth = () => {
   const { user, userProfile, isAuth, accessToken, refreshToken, login, logout, updateUser, setUserProfile } =
@@ -47,15 +48,31 @@ export const useAuth = () => {
       if (role === ROLES.CUSTOMER) {
         const profile = await customerApi.getMyInfo()
         setUserProfile(profile)
+
+        // Check for active trips to resume using dedicated API
+        const activeTrip = await bookingApi.getActiveByCustomer(profile.customerId || profile.id)
+        if (activeTrip) {
+          useBookingStore.getState().setCurrentBooking(activeTrip)
+          navigate(`/customer/tracking/${activeTrip.bookingId}`, { replace: true })
+          return
+        }
       } else if (role === ROLES.DRIVER) {
         const profile = await driverApi.getMyInfo()
         setUserProfile(profile)
+
+        // Check for active trips to resume using dedicated API
+        const activeTrip = await bookingApi.getActiveByDriver(profile.driverId || profile.id)
+        if (activeTrip) {
+          useDriverStore.getState().setCurrentTrip(activeTrip)
+          navigate(`/driver/trips/${activeTrip.bookingId}`, { replace: true })
+          return
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch user profile:', err)
+      console.error('Failed to fetch user profile or active trip:', err)
     }
 
-    // Navigate by role
+    // Navigate by role if no active trips were found
     const loginRole = roleNameFallback || role
     if      (loginRole === ROLES.DRIVER) navigate('/driver/dashboard', { replace: true })
     else if (loginRole === ROLES.ADMIN)  navigate('/admin/dashboard',  { replace: true })

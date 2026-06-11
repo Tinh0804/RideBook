@@ -75,18 +75,27 @@ export const useAuthStore = create(
 )
 
 // ─── Booking Store ───────────────────────────────────────────────────────────
-export const useBookingStore = create((set) => ({
-  currentBooking:    null,
-  vehicleTypes:      [],
-  activePromotion:   null,
-  estimatedPrice:    null,
+export const useBookingStore = create(
+  persist(
+    (set) => ({
+      currentBooking:    null,
+      vehicleTypes:      [],
+      activePromotion:   null,
+      estimatedPrice:    null,
 
-  setCurrentBooking:  (booking)   => set({ currentBooking: booking }),
-  clearCurrentBooking:()           => set({ currentBooking: null, estimatedPrice: null }),
-  setVehicleTypes:    (types)     => set({ vehicleTypes: types }),
-  setActivePromotion: (promo)     => set({ activePromotion: promo }),
-  setEstimatedPrice:  (price)     => set({ estimatedPrice: price }),
-}))
+      setCurrentBooking:  (booking)   => set({ currentBooking: booking }),
+      clearCurrentBooking:()           => set({ currentBooking: null, estimatedPrice: null }),
+      setVehicleTypes:    (types)     => set({ vehicleTypes: types }),
+      setActivePromotion: (promo)     => set({ activePromotion: promo }),
+      setEstimatedPrice:  (price)     => set({ estimatedPrice: price }),
+    }),
+    {
+      name: 'bookcar_booking',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (s) => ({ currentBooking: s.currentBooking }),
+    }
+  )
+)
 
 // ─── UI Store ────────────────────────────────────────────────────────────────
 export const useUIStore = create(
@@ -147,7 +156,7 @@ export const useDriverStore = create(
     {
       name: 'bookcar_driver',
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ isOnline: s.isOnline }),
+      partialize: (s) => ({ isOnline: s.isOnline, currentTrip: s.currentTrip }),
     }
   )
 )

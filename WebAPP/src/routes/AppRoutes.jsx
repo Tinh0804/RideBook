@@ -85,7 +85,7 @@ const AppRoutes = () => (
         <Route element={<MainLayout />}>
           <Route path="customer/home"     element={<CustomerHomePage />} />
           <Route path="customer/booking"  element={<BookingPage />} />
-          <Route path="customer/tracking" element={<TripTrackingPage />} />
+          <Route path="customer/tracking/:id?" element={<TripTrackingPage />} />
           <Route path="customer/history"  element={<TripHistoryPage />} />
           <Route path="customer/rating"   element={<RatingPage />} />
           <Route path="customer/profile"  element={<CustomerProfilePage />} />
@@ -97,7 +97,7 @@ const AppRoutes = () => (
       <Route element={<ProtectedRoute allowedRoles={[ROLES.DRIVER]} />}>
         <Route element={<MainLayout />}>
           <Route path="driver/dashboard"    element={<DriverDashboardPage />} />
-          <Route path="driver/trips"        element={<AvailableTripsPage />} />
+          <Route path="driver/trips/:id?"        element={<AvailableTripsPage />} />
           <Route path="driver/current-trip" element={<Navigate to="/driver/trips" replace />} />
           <Route path="driver/revenue"      element={<DriverRevenuePage />} />
           <Route path="driver/wallet"       element={<DriverWalletPage />} />

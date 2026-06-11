@@ -58,6 +58,12 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
 
     // ✅ Customer bookings
     List<Booking> findByCustomerNo_CustomerIdOrderByBookingTimeDesc(String customerId);
+
+    @Query("SELECT b FROM Booking b WHERE b.customerNo.customerId = :customerId AND b.bookingStatus IN ('PENDING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
+    List<Booking> findActiveByCustomer(@Param("customerId") String customerId);
+
+    @Query("SELECT b FROM Booking b WHERE b.driverNo.driverId = :driverId AND b.bookingStatus IN ('ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
+    List<Booking> findActiveByDriver(@Param("driverId") String driverId);
     
     @Query("""
         SELECT b FROM Booking b 
