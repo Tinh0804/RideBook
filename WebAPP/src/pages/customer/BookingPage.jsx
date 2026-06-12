@@ -63,13 +63,21 @@ const BookingPage = () => {
   const [tempMapLocation, setTempMapLocation] = useState(null)
   const [mapLoading, setMapLoading] = useState(false)
   
-  const [step,            setStep]            = useState(1) // 1: Select loc, 2: Details, 3: Finding Driver
+  const [step,            setStep]            = useState(() => {
+    const saved = localStorage.getItem('temp_step')
+    return saved ? parseInt(saved, 10) : 1
+  }) // 1: Select loc, 2: Details, 3: Finding Driver
+
+  useEffect(() => {
+    localStorage.setItem('temp_step', step)
+  }, [step])
+
   const [selectedVType,   setSelectedVType]   = useState(null)
   const [paymentMethod,   setPaymentMethod]   = useState(PAYMENT_METHOD.CASH)
   const [paymentProvider, setPaymentProvider] = useState('VNPAY')
-  const [promoCode,       setPromoCode]       = useState('')
-  const [promoData,       setPromoData]       = useState(null)
+  const [selectedPromos,  setSelectedPromos]  = useState([])  // array of promotion objects
   const [promoLoading,    setPromoLoading]    = useState(false)
+  const [promoInput,      setPromoInput]      = useState('')   // manual code input
   const [loading,         setLoading]         = useState(false)
   const [estimating,      setEstimating]      = useState(false)
   const [estimatedPrices, setEstimatedPrices] = useState([])
@@ -114,6 +122,13 @@ const BookingPage = () => {
     }
   }, [currentBooking, navigate, pickup, dropoff])
 
+  // Fallback to step 1 if data is missing
+  useEffect(() => {
+    if (step === 2 && (!pickup || !dropoff)) {
+      setStep(1)
+    }
+  }, [step, pickup, dropoff])
+
   useEffect(() => {
     if (step === 2 && customerId) {
       masterDataApi.getMyPromotions(customerId)
@@ -139,32 +154,36 @@ const BookingPage = () => {
     }
   }, [vehicleTypes, selectedVType, setVehicleTypes])
 
-  const handleEstimatePrice = () => {
+  const handleEstimatePrice = useCallback(() => {
     if (!pickup || !dropoff) return
+    const sp = isValidLocation(pickup) ? pickup : { ...pickup, lat: 10.8231, lng: 106.6297 }
+    const sd = isValidLocation(dropoff) ? dropoff : { ...dropoff, lat: 10.8231, lng: 106.6297 }
     setEstimating(true)
-    bookingApi.estimatePrice({ 
-      pickupLat: safePickup.lat,
-      pickupLng: safePickup.lng,
-      dropoffLat: safeDropoff.lat,
-      dropoffLng: safeDropoff.lng,
-      promotionCode: promoData?.promotionCode || null
-    })
+    const payload = { 
+      pickupLat: sp.lat,
+      pickupLng: sp.lng,
+      dropoffLat: sd.lat,
+      dropoffLng: sd.lng,
+      promotionCodes: selectedPromos.map(p => p.promotionCode),
+    }
+    bookingApi.estimatePrice(payload)
       .then((estimates) => {
         if (Array.isArray(estimates)) {
           setEstimatedPrices(estimates)
-          setCountdown(120) // 120s expiration
+          setCountdown(120)
         }
       })
-      .catch(() => {})
+      .catch((e) => {
+        console.error("=== API ERROR ===", e)
+      })
       .finally(() => setEstimating(false))
-  }
+  }, [pickup, dropoff, selectedPromos])
 
   // Estimate price when step 2 is active
   useEffect(() => {
     if (step !== 2) return
     handleEstimatePrice()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickup, dropoff, step, promoData])
+  }, [step, handleEstimatePrice])
 
   // Countdown timer
   useEffect(() => {
@@ -173,19 +192,32 @@ const BookingPage = () => {
     return () => clearInterval(timer)
   }, [countdown])
 
-  const applyPromo = async () => {
-    if (!promoCode.trim()) return
+  const applyPromoByCode = async () => {
+    if (!promoInput.trim()) return
     setPromoLoading(true)
     try {
-      const data = await masterDataApi.getPromotionByCode(promoCode)
-      setPromoData(data)
-      toast.success('Áp dụng mã khuyến mãi thành công!')
+      const data = await masterDataApi.getPromotionByCode(promoInput.trim().toUpperCase())
+      const alreadyAdded = selectedPromos.some(p => p.promotionCode === data.promotionCode)
+      if (alreadyAdded) {
+        toast.error('Mã này đã được thêm rồi!')
+      } else {
+        setSelectedPromos(prev => [...prev, data])
+        toast.success('Thêm mã khúyến mãi thành công!')
+        setPromoInput('')
+      }
     } catch {
-      toast.error('Mã khuyến mãi không hợp lệ hoặc đã hết hạn')
-      setPromoData(null)
+      toast.error('Mã khúyến mãi không hợp lệ hoặc đã hết hạn')
     } finally {
       setPromoLoading(false)
     }
+  }
+
+  const togglePromo = (promo) => {
+    setSelectedPromos(prev => {
+      const exists = prev.some(p => p.promotionCode === promo.promotionCode)
+      if (exists) return prev.filter(p => p.promotionCode !== promo.promotionCode)
+      return [...prev, promo]
+    })
   }
 
   const handleBook = async () => {
@@ -212,7 +244,7 @@ const BookingPage = () => {
         dropoffLng:      dropoff.lng,
         distance:        selectedEstimate?.distance || DUMMY_DISTANCE,
         vehicleTypeId:   selectedVType.vehicleTypeId,
-        promotionCode:   promoData?.promotionCode || null,
+        promotionCodes:  selectedPromos.map(p => p.promotionCode),
         quoteId:         selectedEstimate?.quoteId,
         returnUrl: `${window.location.origin}/customer/booking`
       }
@@ -276,7 +308,7 @@ const BookingPage = () => {
 
   const selectedEstimate = estimatedPrices.find(e => e.vehicleTypeId === selectedVType?.vehicleTypeId)
   const finalPrice  = selectedEstimate?.totalPrice || 0
-  const originalPrice = (selectedEstimate?.basePrice || 0) * (selectedEstimate?.surgeMultiplier || 1) * (selectedEstimate?.surcharge || 1)
+  const originalPrice = selectedEstimate?.originalPrice || 0
   const isDiscounted = originalPrice > finalPrice
 
   const isValidLocation = (location) => {
@@ -694,19 +726,23 @@ const BookingPage = () => {
                 <RiTicketLine size={16} className="text-brand-400" /> Khuyến mãi
               </h3>
               
-              <button
+              <div
                 onClick={() => setPromoModalOpen(true)}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface hover:border-brand-500/50 hover:bg-surface-hover transition-all duration-200"
+                className="w-full flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface hover:border-brand-500/50 hover:bg-surface-hover transition-all duration-200 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center">
                     <RiTicketLine size={18} className="text-brand-400" />
                   </div>
                   <div className="text-left">
-                    {promoCode ? (
+                    {selectedPromos.length > 0 ? (
                       <>
-                        <p className="text-sm font-semibold text-content-main">Mã: {promoCode}</p>
-                        {promoData && <p className="text-xs text-brand-400 font-medium">Đã áp dụng giảm giá</p>}
+                        <p className="text-sm font-semibold text-content-main">
+                          {selectedPromos.length} mã đang áp dụng
+                        </p>
+                        <p className="text-xs text-brand-400 font-medium">
+                          {selectedPromos.map(p => p.promotionCode).join(', ')}
+                        </p>
                       </>
                     ) : (
                       <>
@@ -716,17 +752,17 @@ const BookingPage = () => {
                     )}
                   </div>
                 </div>
-                {promoCode ? (
+                {selectedPromos.length > 0 ? (
                   <button 
-                    onClick={(e) => { e.stopPropagation(); setPromoCode(''); setPromoData(null); }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedPromos([]); }}
                     className="text-xs text-red-400 hover:text-red-300 font-medium"
                   >
-                    Bỏ chọn
+                    Xóa tất cả
                   </button>
                 ) : (
                   <span className="text-sm text-brand-400 font-medium">Chọn</span>
                 )}
-              </button>
+              </div>
             </div>
 
             {/* Payment method */}
@@ -785,7 +821,7 @@ const BookingPage = () => {
 
           {/* Price summary & Book */}
           <div className="bg-surface rounded-2xl p-5 border border-surface-border mt-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-2">
                <div>
                   <p className="text-xs text-content-muted mb-1">Khoảng cách: ~{formatDistance(selectedEstimate?.distance || DUMMY_DISTANCE)}</p>
                   <p className="text-lg font-display font-bold text-content-main">Tổng cộng</p>
@@ -797,10 +833,27 @@ const BookingPage = () => {
                      <>
                         {isDiscounted && <p className="text-xs text-content-muted line-through mb-1">{formatCurrency(originalPrice)}</p>}
                         <p className="text-2xl font-display font-bold text-brand-400">{formatCurrency(finalPrice)}</p>
+                        {isDiscounted && (
+                          <p className="text-[11px] font-semibold text-green-400 mt-0.5">
+                            Tiết kiệm được {formatCurrency(originalPrice - finalPrice)}
+                          </p>
+                        )}
                      </>
                   )}
                </div>
             </div>
+
+            {/* Breakdown of discount per promo */}
+            {!estimating && isDiscounted && selectedPromos.length > 0 && (
+              <div className="mb-3 px-1 space-y-1">
+                {selectedPromos.map(p => (
+                  <div key={p.promotionCode} className="flex items-center justify-between text-xs">
+                    <span className="text-brand-400 font-medium">🏷 {p.promotionCode}</span>
+                    <span className="text-green-400 font-semibold">- {p.discountLimit ? formatCurrency(p.discountLimit) : `${p.discountValue || 0}%`}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             
             {/* Countdown and Refresh button */}
             {!estimating && estimatedPrices.length > 0 && (
@@ -824,71 +877,106 @@ const BookingPage = () => {
       </div>
 
       {/* Promo Selection Modal */}
-      <Modal isOpen={isPromoModalOpen} onClose={() => setPromoModalOpen(false)} title="Ví Voucher" size="md">
+      <Modal isOpen={isPromoModalOpen} onClose={() => setPromoModalOpen(false)} title="Chọn mã giảm giá" size="md">
         <div className="space-y-4 pt-2">
-          {/* Direct Input */}
+          {/* Direct code input */}
           <div className="flex gap-2">
             <Input
               placeholder="Nhập mã khuyến mãi..."
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && applyPromoByCode()}
               className="flex-1"
             />
             <Button 
-              onClick={() => {
-                applyPromo();
-                setPromoModalOpen(false);
-              }}
-              disabled={promoLoading || !promoCode.trim()}
+              onClick={applyPromoByCode}
+              disabled={promoLoading || !promoInput.trim()}
             >
-              {promoLoading ? <Spinner size="sm" /> : 'Áp dụng'}
+              {promoLoading ? <Spinner size="sm" /> : 'Thêm'}
             </Button>
           </div>
-          
-          <div className="border-t border-surface-border my-4" />
-          
+
+          {/* Currently selected */}
+          {selectedPromos.length > 0 && (
+            <div className="bg-brand-500/5 border border-brand-500/20 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-brand-400">Đang áp dụng ({selectedPromos.length})</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedPromos.map(p => (
+                  <div key={p.promotionCode} className="flex items-center gap-1 bg-brand-500/20 text-brand-400 rounded-lg px-2 py-1 text-xs font-semibold">
+                    <RiTicketLine size={12} />
+                    {p.promotionCode}
+                    <button onClick={() => togglePromo(p)} className="ml-1 hover:text-red-400 transition-colors">×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-surface-border" />
+
           {/* Saved Promos List */}
-          <div className="space-y-3 max-h-[350px] overflow-y-auto no-scrollbar pb-4">
-            <h4 className="text-sm font-semibold text-content-main mb-2">Mã của bạn ({myPromotions.length})</h4>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pb-4">
+            <h4 className="text-sm font-semibold text-content-main">Mã của bạn ({myPromotions.length})</h4>
             {myPromotions.length === 0 ? (
               <div className="text-center py-6 text-content-muted text-sm">
-                Bạn chưa có mã khuyến mãi nào trong ví.
+                Bạn chưa có mã khuyến mãi nào.
               </div>
             ) : (
-              myPromotions.map(p => (
-                <div 
-                  key={p.promotionCode}
-                  className={cn(
-                    "p-3 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between",
-                    promoCode === p.promotionCode 
-                      ? "border-brand-500 bg-brand-500/10" 
-                      : "border-surface-border bg-surface hover:border-brand-500/50"
-                  )}
-                  onClick={() => {
-                    setPromoCode(p.promotionCode);
-                    setTimeout(() => {
-                      applyPromo();
-                      setPromoModalOpen(false);
-                    }, 100);
-                  }}
-                >
-                  <div>
-                    <p className="font-semibold text-brand-400 text-sm">Mã: {p.promotionCode}</p>
-                    <p className="text-xs text-content-muted mt-0.5 max-w-[200px] truncate">{p.promotionName}</p>
-                  </div>
-                  <div className="shrink-0">
-                    {promoCode === p.promotionCode ? (
-                      <div className="w-6 h-6 rounded-full bg-brand-500 flex items-center justify-center text-white">
-                        <RiCheckLine size={14} />
-                      </div>
-                    ) : (
-                      <Button variant="outline" size="sm" className="text-xs py-1 h-auto">Dùng ngay</Button>
+              myPromotions.map(p => {
+                const isSelected = selectedPromos.some(s => s.promotionCode === p.promotionCode)
+                const isEligible = !p.minTripValue || originalPrice >= p.minTripValue
+                return (
+                  <div 
+                    key={p.promotionCode}
+                    className={cn(
+                      "p-3 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3",
+                      isEligible ? "cursor-pointer" : "cursor-not-allowed opacity-60 bg-surface-disabled",
+                      isSelected
+                        ? "border-brand-500 bg-brand-500/10" 
+                        : isEligible ? "border-surface-border bg-surface hover:border-brand-500/50" : "border-surface-border"
                     )}
+                    onClick={() => {
+                      if (isEligible) togglePromo(p)
+                      else toast.error(`Đơn tối thiểu ${formatCurrency(p.minTripValue)} để áp dụng mã này`)
+                    }}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* Checkbox */}
+                      <div className={cn(
+                        "w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all",
+                        isSelected ? "bg-brand-500 border-brand-500" : "border-surface-border",
+                        !isEligible && "bg-surface-border/20"
+                      )}>
+                        {isSelected && <RiCheckLine size={12} className="text-white" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-brand-400 text-sm">{p.promotionCode}</p>
+                        <p className="text-xs text-content-muted mt-0.5 truncate">{p.promotionName}</p>
+                        {p.discountLimit > 0 && (
+                          <p className="text-xs text-green-400 font-medium mt-0.5">
+                            Giảm tối đa {formatCurrency(p.discountLimit)}
+                          </p>
+                        )}
+                        {!isEligible && p.minTripValue > 0 && (
+                          <p className="text-[10px] text-red-400 mt-1">
+                            (Áp dụng cho cuốc xe từ {formatCurrency(p.minTripValue)})
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
+
+          {/* Apply & Close */}
+          <Button
+            fullWidth
+            onClick={() => setPromoModalOpen(false)}
+          >
+            Áp dụng {selectedPromos.length > 0 ? `(${selectedPromos.length} mã)` : ''}
+          </Button>
         </div>
       </Modal>
 

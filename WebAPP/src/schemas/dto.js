@@ -166,6 +166,7 @@ export const EstimatePriceSchema = z.object({
   basePrice: z.number().catch(0),
   surcharge: z.number().catch(0),
   surgeMultiplier: z.number().catch(1),
+  originalPrice: z.number().catch(0),
   totalPrice: z.number().catch(0),
   discount: z.number().catch(0),
   quoteId: z.string().nullable().catch(null),
@@ -208,9 +209,13 @@ export const PromotionSchema = z.object({
   promotionCode: z.string().catch(''),
   promotionName: z.string().nullable().catch(''),
   discountLimit: z.number().catch(0),
+  discountValue: z.number().catch(0),
+  discountType: z.string().nullable().catch(''),
+  minTripValue: z.number().nullable().catch(0),
   startTime: z.string().nullable().catch(''),
   endTime: z.string().nullable().catch(''),
   quantity: z.number().catch(0),
+  usageLimitPerUser: z.number().nullable().catch(null)
 })
 
 export const RatingSchema = z.object({
