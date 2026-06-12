@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -39,6 +41,30 @@ public class PricingService {
         };
     }
 
+    public double calculateTotalDiscount(List<Promotion> promotions, double rawPrice) {
+        if (promotions == null || promotions.isEmpty()) return 0.0;
+        double remaining = rawPrice;
+        double total = 0.0;
+        for (Promotion p : promotions) {
+            if (!isPromotionApplicable(p, remaining)) continue;
+            double d = calculateDiscount(p, remaining);
+            total += d;
+            remaining = Math.max(0.0, remaining - d); // giảm giá lần lượt trên giá còn lại
+        }
+        return total;
+    }
+
+    /** Lấy danh sách Promotion hợp lệ từ các mã */
+    public List<Promotion> resolvePromotions(List<String> promotionCodes) {
+        if (promotionCodes == null || promotionCodes.isEmpty()) return List.of();
+        List<Promotion> result = new ArrayList<>();
+        for (String code : promotionCodes) {
+            if (code == null || code.isBlank()) continue;
+            promotionRepository.findByPromotionCode(code).ifPresent(result::add);
+        }
+        return result;
+    }
+
     private double calculatePercentageDiscount(Promotion promotion, double rawPrice) {
         double percent  = promotion.getDiscountValue() != null ? promotion.getDiscountValue() : 0.0;
         double discount = rawPrice * percent / 100.0;
@@ -50,9 +76,12 @@ public class PricingService {
     }
 
     private boolean isPromotionApplicable(Promotion promotion, double rawPrice) {
-        if (!promotion.getIsActive()) return false;
-        if (promotion.getQuantity() <= 0) return false;
-        if (promotion.getEndTime().before(Timestamp.from(Instant.now()))) return false;
+        if (!Boolean.TRUE.equals(promotion.getIsActive())) return false;
+        if (promotion.getQuantity() == null || promotion.getQuantity() <= 0) return false;
+        
+        Timestamp now = Timestamp.from(Instant.now());
+        if (promotion.getEndTime() != null && promotion.getEndTime().before(now)) return false;
+        
         if (promotion.getMinTripValue() != null && rawPrice < promotion.getMinTripValue()) return false;
         return true;
     }
@@ -69,12 +98,12 @@ public class PricingService {
         // Kiểm tra còn hiệu lực
         if (!promotion.getIsActive() || promotion.getQuantity() <= 0
                 || promotion.getEndTime().before(Timestamp.from(Instant.now()))) {
-            throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE);
+            return null;
         }
 
         // Kiểm tra trip value
         if (promotion.getMinTripValue() != null && tripPrice < promotion.getMinTripValue()) {
-            throw new AppException(ErrorCode.PROMOTION_NOT_ACTIVE); // Hoặc TRIP_VALUE_TOO_LOW
+            return null; 
         }
 
         // Kiểm tra usage limit per user
@@ -83,7 +112,7 @@ public class PricingService {
                     .countByCustomer_CustomerIdAndPromotion_PromotionIdAndStatus(
                             customerId, promotion.getPromotionId(), CustomerPromotionStatus.USED);
             if (used >= promotion.getUsageLimitPerUser()) {
-                throw new RuntimeException("Bạn đã hết lượt sử dụng mã khuyến mãi này");
+                return null;
             }
         }
         

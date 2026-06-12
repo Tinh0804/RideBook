@@ -2,6 +2,7 @@ package com.project.BookCarOnline.DTO.Redis;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,7 +19,7 @@ public class FareQuote {
     Double originalPrice;
     Double totalPrice;
     Double discount;
-    String promotionId;
+    List<String> promotionIds;  // Hỗ trợ nhiều mã giảm giá
     String pickupLocation;
     String dropoffLocation;
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.util.List;
 
 @Data
 @Builder
@@ -24,5 +25,6 @@ public class EstimatePriceRequest {
     @NotNull(message = "Kinh độ điểm đến không được để trống")
     Double dropoffLng;
 
-    String promotionCode;
+    // Hỗ trợ nhiều mã giảm giá
+    List<String> promotionCodes;
 }

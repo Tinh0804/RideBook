@@ -2,9 +2,11 @@ package com.project.BookCarOnline.Controller;
 
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateBookingRequest;
+import com.project.BookCarOnline.DTO.Request.EstimatePriceRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
+import com.project.BookCarOnline.DTO.Response.EstimatePriceResponse;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Service.BookingService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -218,8 +220,8 @@ public class BookingController {
     }
 
     @PostMapping("/estimate-price")
-    public APIResponse<List<com.project.BookCarOnline.DTO.Response.EstimatePriceResponse>> estimatePrice(@Valid @RequestBody com.project.BookCarOnline.DTO.Request.EstimatePriceRequest request) {
-        log.info("REST API: POST /bookings/estimate-price - Estimating price for all vehicles");
+    public APIResponse<List<EstimatePriceResponse>> estimatePrice(@Valid @RequestBody EstimatePriceRequest request) {
+        log.info("REST API: POST /bookings/estimate-price - payload: {}", request);
         return APIResponse.<List<com.project.BookCarOnline.DTO.Response.EstimatePriceResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Lấy giá ước tính thành công")

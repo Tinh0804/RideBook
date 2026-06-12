@@ -78,10 +78,12 @@ public class WalletService {
         transactionRepository.save(txn);
         walletRepository.save(wallet);
     }
-    public void deductBalance(String driverId, Double amount) {
+    public void deductBalance(String driverId, Double amount,String typeDeduct) {
         Wallet wallet = getOrCreateWallet(driverId);
-        if (wallet.getBalance() < amount) {
-            throw new IllegalStateException("Số dư không đủ để thực hiện giao dịch");
+        if (!typeDeduct.equalsIgnoreCase("FEE_BOOKING")){
+            if (wallet.getBalance() < amount) {
+                throw new IllegalStateException("Số dư không đủ để thực hiện giao dịch");
+            }
         }
         wallet.setBalance(wallet.getBalance() - amount);
         WalletTransaction txn = new WalletTransaction();

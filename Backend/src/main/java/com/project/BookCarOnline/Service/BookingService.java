@@ -88,14 +88,14 @@ public class BookingService {
                 request.getPickupLat(), request.getPickupLng(),
                 request.getDropoffLat(), request.getDropoffLng());
 
-        // Resolve promotion 1 lần, tái dùng cho tất cả vehicle types
-        Promotion promotion = resolvePromotion(request.getPromotionCode());
+        // Resolve nhiều mã khuyến mãi
+        List<Promotion> promotions = pricingService.resolvePromotions(request.getPromotionCodes());
 
         List<VehicleType> vehicleTypes = vehicleTypeRepository.findAll();
         long expiryTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(120);
 
         return vehicleTypes.stream()
-                .map(vt -> buildEstimateForVehicleType(vt, distance, promotion, expiryTime))
+                .map(vt -> buildEstimateForVehicleType(vt, distance, promotions, expiryTime))
                 .collect(Collectors.toList());
     }
 
@@ -111,9 +111,18 @@ public class BookingService {
         Customer customer = resolveCustomer(request.getCustomerId());
 
         Promotion validPromotion = null;
-        if (quote.getPromotionId() != null && !quote.getPromotionId().isBlank()) {
-            validPromotion = pricingService.validateAndConsumePromotion(
-                    quote.getPromotionId(), customer.getCustomerId(), quote.getTotalPrice());
+        if (quote.getPromotionIds() != null && !quote.getPromotionIds().isEmpty()) {
+            // Áp dụng và trừ số lượt tất cả các mã khuyến mãi
+            for (String promoCode : quote.getPromotionIds()) {
+                if (promoCode != null && !promoCode.isBlank()) {
+                    try {
+                        validPromotion = pricingService.validateAndConsumePromotion(
+                                promoCode, customer.getCustomerId(), quote.getTotalPrice());
+                    } catch (Exception e) {
+                        log.warn("[Booking] Không thể áp dụng promo {}: {}", promoCode, e.getMessage());
+                    }
+                }
+            }
         }
 
         boolean isCash = isCashPayment(request.getPaymentMethod());
@@ -396,8 +405,9 @@ public class BookingService {
         }
 
         double commission = booking.getTotalPrice() * platformCommissionRate;
+        String typeDeduct = "FEE_BOOKING";
         if (PaymentMethod.CASH.name().equalsIgnoreCase(pmt.getPaymentType())) {
-            walletService.deductBalance(drv.getDriverId(), commission);
+            walletService.deductBalance(drv.getDriverId(), commission,typeDeduct);
         } else {
             walletService.addBalance(drv.getDriverId(), booking.getTotalPrice() - commission);
         }
@@ -408,16 +418,22 @@ public class BookingService {
 
     private EstimatePriceResponse buildEstimateForVehicleType(
             VehicleType vehicleType, double distance,
-            Promotion promotion, long expiryTime) {
+            List<Promotion> promotions, long expiryTime) {
 
         double basePrice       = vehicleType.getPricePerKm() * distance;
         double surcharge       = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
         double surgeMultiplier = 1.0;
         double rawPrice        = basePrice * surcharge * surgeMultiplier;
 
-        double discount        = pricingService.calculateDiscount(promotion, rawPrice);
+        // Tính tổng discount từ nhiều mã khuyến mãi
+        double discount        = pricingService.calculateTotalDiscount(promotions, rawPrice);
         double originalPrice   = roundToThousand(rawPrice);
         double finalPrice      = Math.max(0.0, roundToThousand(originalPrice - discount));
+
+        // Lưu list mã khuyến mãi vào FareQuote
+        List<String> promoIds = (promotions != null)
+                ? promotions.stream().map(Promotion::getPromotionCode).toList()
+                : List.of();
 
         String quoteId = UUID.randomUUID().toString();
         FareQuote quote = FareQuote.builder()
@@ -430,7 +446,7 @@ public class BookingService {
                 .originalPrice(originalPrice)
                 .totalPrice(finalPrice)
                 .discount(discount)
-                .promotionId(promotion != null ? promotion.getPromotionCode() : null)
+                .promotionIds(promoIds)
                 .build();
         redisTemplate.opsForValue().set("quote:" + quoteId, quote, 120, TimeUnit.SECONDS);
 

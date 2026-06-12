@@ -60,4 +60,7 @@ public class Promotion {
     @Column(name = "GIOIHANMOTKHACH")
      Integer usageLimitPerUser;
 
+    @Column(name = "HINHANHKHUYENMAI")
+     String promotionImage;
+
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,7 +19,7 @@ public class CreateBookingRequest {
 
     String paymentId;
 
-    String promotionId;
+    List<String> promotionCodes; // Hỗ trợ nhiều mã giảm giá
 
     String quoteId;
 
