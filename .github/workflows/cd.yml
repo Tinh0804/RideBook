@@ -1,12 +1,12 @@
-# name: CD Pipleline
-# runs-name: ${{ github.actor }}
-# on:
-#   workflow_run: 
-#     workflows:
-#       - CI Pipeline # Triggered when CI Pipeline is completed 
-#     types: 
-#       - completed 
-#     branches: ['main','master']
+name: CD Pipleline
+runs-name: ${{ github.actor }}
+on:
+  workflow_run: 
+    workflows:
+      - CI Pipeline # Triggered when CI Pipeline is completed 
+    types: 
+      - completed 
+    branches: ['main','master']
 
 # jobs: 
 #   deploy-backend: 
