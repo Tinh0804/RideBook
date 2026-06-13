@@ -15,15 +15,15 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "INVALID_TOKEN")
+@Table
 public class InvalidToken {
     @Id
-    @Column(name = "ID_TOKEN", nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 36)
     String id;
 
-    @Column(name = "REASON", nullable = false)
+    @Column(nullable = false)
     String reason;
 
-    @Column(name = "EXPIRY_TIME", nullable = false)
+    @Column(nullable = false)
     Date expiryTime;
 }

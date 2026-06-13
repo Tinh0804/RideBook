@@ -230,7 +230,7 @@ public class DriverService {
         for (Booking b : trips) {
             double price = b.getTotalPrice() != null ? b.getTotalPrice() : 0.0;
             grossRevenue += price;
-            if (b.getPaymentNo() != null && "CASH".equalsIgnoreCase(b.getPaymentNo().getPaymentType())) {
+            if (b.getPaymentNo() != null && com.project.BookCarOnline.Entity.Enum.PaymentMethod.CASH == b.getPaymentNo().getPaymentType()) {
                 cashIncome += price;
             } else {
                 onlineIncome += price;

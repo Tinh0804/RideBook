@@ -13,24 +13,24 @@ import org.hibernate.validator.constraints.UUID;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "LOAIXE")
+@Table
 public class VehicleType {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_LOAIXE", nullable = false, length = 36)
+    @Column(nullable = false, length = 36)
      String vehicleTypeId;
 
-    @Column(name = "TENLOAIXE")
+    @Column
      String vehicleTypeName;
 
-    @Column(name = "GIA1KM")
+    @Column
      Double pricePerKm;
 
     // Extra field not in original DB - keep for future use
-    @Column(name = "SOCHONGOI")
+    @Column
      Integer maxPassengers;
 
-    @Column(name = "HINHANH")
+    @Column
     String icon;
 
 }

@@ -2,6 +2,9 @@
 package com.project.BookCarOnline.Entity;
 
 import com.project.BookCarOnline.Entity.Enum.DiscountType;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,51 +19,52 @@ import java.sql.Timestamp;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "KHUYENMAI")
+@Table
 public class Promotion {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_KHUYENMAI", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
      String promotionId;
 
-    @Column(name = "MAKHUYENMAI")
+    @Column
      String promotionCode;
 
-    @Column(name = "TENKM")
+    @Column
      String promotionName;
 
-    @Column(name = "HANMUC")
+    @Column
      Double discountLimit;
 
-    @Column(name = "TGBATDAU")
+    @Column
      Timestamp startTime;
 
-    @Column(name = "TGKETTHUC")
+    @Column
      Timestamp endTime;
 
-    @Column(name = "DIEUKIENAPDUNG")
+    @Column
      String applicationCondition;
 
-    @Column(name = "SOLUONG")
+    @Column
      Integer quantity;
 
-    @Column(name = "HOATDONG")
+    @Column
      Boolean isActive;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "LOAIGIAMGIA", length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(length = 20)
      DiscountType discountType;
 
-    @Column(name = "MUCGIAM")
+    @Column
      Double discountValue;
 
-    @Column(name = "GIACHUYENTOITHIEU")
+    @Column
      Double minTripValue;
 
-    @Column(name = "GIOIHANMOTKHACH")
+    @Column
      Integer usageLimitPerUser;
 
-    @Column(name = "HINHANHKHUYENMAI")
+    @Column
      String promotionImage;
 
 }

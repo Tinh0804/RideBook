@@ -12,7 +12,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "LOAIXE_GIO")
+@Table
 public class VehicleType_Time {
 
     @EmbeddedId
@@ -20,15 +20,15 @@ public class VehicleType_Time {
 
     @ManyToOne
     @MapsId("vehicleTypeId")
-    @JoinColumn(name = "ID_LOAIXENO",columnDefinition = "VARCHAR(36)")
+    @JoinColumn(name = "vehicle_type_id")
      VehicleType vehicleType;
 
     @ManyToOne
     @MapsId("timeId")
-    @JoinColumn(name = "ID_GIONO",columnDefinition = "VARCHAR(36)")
+    @JoinColumn(name = "time_id")
      Time time;
 
-    @Column(name = "PHUTHU")
+    @Column
      double surcharge;
 
 
@@ -39,9 +39,9 @@ public class VehicleType_Time {
 @NoArgsConstructor
 @AllArgsConstructor
 class VehicleType_Time_ID implements Serializable {
-    @Column(name = "ID_LOAIXENO")
+    @Column(length = 36)
     private String vehicleTypeId;
 
-    @Column(name = "ID_GIONO")
+    @Column(length = 36)
     private String timeId;
 }

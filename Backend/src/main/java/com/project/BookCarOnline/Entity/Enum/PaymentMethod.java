@@ -3,7 +3,7 @@ package com.project.BookCarOnline.Entity.Enum;
 public enum PaymentMethod {
     VNPAY("VNPay"),
     MOMO("MoMo"),
-    CASH("Cash");
+    CASH("Cash"), ONLINE("Online");
 
     private final String method;
 

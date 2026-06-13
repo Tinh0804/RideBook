@@ -1,6 +1,9 @@
 package com.project.BookCarOnline.Entity;
 
 import com.project.BookCarOnline.Entity.Enum.TransactionStatus;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.project.BookCarOnline.Entity.Enum.TransactionType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,32 +14,35 @@ import java.sql.Timestamp;
 
 
 @Entity
-@Table(name = "GIAODICHVI")
+@Table
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class WalletTransaction {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(nullable = false, unique = true, length = 36)
     private String transactionId;
 
     @ManyToOne
-    @JoinColumn(name = "ID_VI")
+    @JoinColumn(name = "wallet_id")
     private Wallet wallet;
 
-    @Column(name = "SOTIEN")
+    @Column
     private Double amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "LOAIGIAODICH")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column
     private TransactionType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "TRANGTHAI")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column
     private TransactionStatus status;
 
-    @Column(name = "MATHAMCHIEU")
+    @Column
     private String referenceId;
 
-    @Column(name = "THOIGIAN")
+    @Column
     private Timestamp createdAt;
 }

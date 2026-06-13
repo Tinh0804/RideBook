@@ -1,35 +1,36 @@
 package com.project.BookCarOnline.Document;
 
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Data;
+import jakarta.persistence.*;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.Date;
 
-@Document(collection = "chat_messages")
+@Entity
+@Table(name = "chat_message")
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ChatMessage {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(nullable = false, unique = true, length = 36)
     String id;
 
-    @Field("booking_id")
+    @Column(name = "booking_id", length = 36)
     String bookingId;
 
-    @Field("sender_id")
+    @Column(name = "sender_id", length = 36)
     String senderId;
 
-    @Field("receiver_id")
+    @Column(name = "receiver_id", length = 36)
     String receiverId;
 
-    @Field("content")
+    @Column(name = "content", columnDefinition = "TEXT")
     String content;
 
-    @Field("timestamp")
+    @Column(name = "timestamp")
     Date timestamp;
 }

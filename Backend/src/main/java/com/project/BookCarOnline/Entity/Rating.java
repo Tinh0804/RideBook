@@ -14,26 +14,26 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "DANHGIA")
+@Table
 public class Rating {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column( name ="ID_DANHGIA",nullable = false, unique = true,length = 36)
+    @Column( nullable = false, unique = true,length = 36)
      String ratingId;
 
     @ManyToOne
-    @JoinColumn(name = "ID_DATXENO", referencedColumnName = "ID_DATXE",columnDefinition = "VARCHAR(36)")
+    @JoinColumn(name = "booking_id")
      Booking bookingNo;
 
-    @Column(name = "LOAIDANHGIA")
+    @Column
      String ratingType;
 
-    @Column(name = "DIEM")
+    @Column
      double score;
 
-    @Column(name = "DANHGIA")
+    @Column
      String review;
 
-    @Column(name = "NGAY_TAO")
+    @Column
      Date createdAt;
 }

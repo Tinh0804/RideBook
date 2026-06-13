@@ -6,6 +6,7 @@ import com.project.BookCarOnline.DTO.Response.PaymentCallbackResponse;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.Service.MoMoService;
 import com.project.BookCarOnline.Service.VNPayService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.Map;
 @RequestMapping("/payments")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+
 public class PaymentController {
 
     VNPayService vnPayService;
@@ -33,6 +35,7 @@ public class PaymentController {
     protected String frontendUrl;
 
     // ==================== VNPay Endpoints ====================
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/vnpay/create")
     @ResponseStatus(HttpStatus.CREATED)
     public APIResponse<PaymentResponse> createVNPayPayment(@Valid @RequestBody PaymentRequest request) {
@@ -94,6 +97,7 @@ public class PaymentController {
     }
 
     @GetMapping("/vnpay/query/{orderId}")
+    @SecurityRequirement(name = "bearerAuth")
     public APIResponse<Map<String, String>> queryVNPayTransaction(
             @PathVariable String orderId,
             @RequestParam String transactionDate) {
@@ -109,6 +113,7 @@ public class PaymentController {
     }
 
     // ==================== MoMo Endpoints ====================
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/momo/create")
     @ResponseStatus(HttpStatus.CREATED)
     public APIResponse<PaymentResponse> createMoMoPayment(@Valid @RequestBody PaymentRequest request) {
@@ -173,7 +178,7 @@ public class PaymentController {
                 .result(response)
                 .build();
     }
-
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/momo/query/{orderId}")
     public APIResponse<Map<String, Object>> queryMoMoTransaction(
             @PathVariable String orderId,

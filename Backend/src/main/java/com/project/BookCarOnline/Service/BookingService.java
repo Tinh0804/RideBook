@@ -127,7 +127,7 @@ public class BookingService {
 
         boolean isCash = isCashPayment(request.getPaymentMethod());
         Payment payment = paymentRepository.save(Payment.builder()
-                .paymentType(isCash ? PaymentMethod.CASH.name() : "ONLINE")
+                .paymentType(isCash ? PaymentMethod.CASH : PaymentMethod.ONLINE)
                 .amount(quote.getTotalPrice())
                 .paymentStatus(isCash)
                 .build());
@@ -406,7 +406,7 @@ public class BookingService {
 
         double commission = booking.getTotalPrice() * platformCommissionRate;
         String typeDeduct = "FEE_BOOKING";
-        if (PaymentMethod.CASH.name().equalsIgnoreCase(pmt.getPaymentType())) {
+        if (PaymentMethod.CASH == pmt.getPaymentType()) {
             walletService.deductBalance(drv.getDriverId(), commission,typeDeduct);
         } else {
             walletService.addBalance(drv.getDriverId(), booking.getTotalPrice() - commission);
@@ -546,8 +546,7 @@ public class BookingService {
     }
 
     private boolean isCashPayment(String paymentMethod) {
-        return PaymentMethod.CASH.name().equalsIgnoreCase(
-                paymentMethod != null ? paymentMethod : "ONLINE");
+        return PaymentMethod.CASH.name().equalsIgnoreCase(paymentMethod != null ? paymentMethod : "ONLINE");
     }
 
     private void validateStatusTransition(BookingStatus current, BookingStatus next) {
@@ -626,7 +625,7 @@ public class BookingService {
                 .arrivalTime(booking.getArrivalTime())
                 .bookingStatus(booking.getBookingStatus())
                 .distance(booking.getDistance())
-                .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentType() : null)
+                .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentType().name() : null)
                 .paymentStatus(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentStatus() : null)
                 .promotionCode(booking.getPromotionNo() != null ? booking.getPromotionNo().getPromotionId() : null)
                 .build();

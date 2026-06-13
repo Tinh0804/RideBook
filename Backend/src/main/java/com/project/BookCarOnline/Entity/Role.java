@@ -2,7 +2,10 @@
 package com.project.BookCarOnline.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
@@ -16,18 +19,20 @@ import java.util.Set;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Builder
-@Table(name = "VAITRO")
+@Table
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_VAITRO", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
     @JsonIgnore
      String roleId;
 
-    @Column(name = "TENVAITRO",columnDefinition = "NVARCHAR(255)")
-     String roleName;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "role_name")
+    PredefinedRole roleName;
 
-    @Column(name = "MOTA", columnDefinition = "NVARCHAR(255)")
+    @Column
      String description;
 
     @EqualsAndHashCode.Exclude

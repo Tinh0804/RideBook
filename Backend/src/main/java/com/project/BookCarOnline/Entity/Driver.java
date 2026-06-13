@@ -17,76 +17,76 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "TAIXE")
+@Table
 public class Driver {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_TX", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
      String driverId;
 
     @ManyToOne
-    @JoinColumn(name = "ID_LOAIXENO", referencedColumnName = "ID_LOAIXE")
+    @JoinColumn(name = "vehicle_type_id")
      VehicleType vehicleType;
 
-    @Column(name = "TENTX")
+    @Column
      String driverName;
 
-    @Column(name = "NGSINH")
+    @Column
     @Temporal(TemporalType.DATE)
      Date birthDate;
 
-    @Column(name = "CCCD", unique = true, length = 200)
+    @Column(unique = true, length = 200)
      String citizenId;
 
-    @Column(name = "GPLX", length = 200)
+    @Column(length = 200)
      String drivingLicense;
 
     // Extra field not in original DB - keep for future use
-    @Column(name = "LLTP")
+    @Column
      String criminalRecord;
 
-    @Column(name = "SDT", unique = true, length = 15)
+    @Column(unique = true, length = 15)
      String phone;
 
-    @Column(name = "EMAIL", unique = true, length = 100)
+    @Column(unique = true, length = 100)
      String email;
 
-    @Column(name = "BIENSOXE", unique = true, length = 20)
+    @Column(unique = true, length = 20)
      String licensePlate;
 
-    @Column(name = "TENXE")
+    @Column
      String vehicleName;
 
     // Extra fields not in original DB - keep for future use
-    @Column(name = "ANHDAIDIEN")
+    @Column
      String avatar;
 
-    @Column(name = "TRANGTHAIHD")
+    @Column
      Boolean activityStatus;
 
-    @Column(name = "GIOITINH")
+    @Column
      String gender;
 
-    @Column(name = "DIACHI")
+    @Column
      String address;
 
-    @Column(name = "KHUVUC")
+    @Column
      String area;
 
-    @Column(name = "VIDO")
+    @Column
      Double currentLat;
 
-    @Column(name = "KINHDO")
+    @Column
      Double currentLng;
 
-    @Column(name = "CHUYENCUOI")
+    @Column
      Timestamp lastTripTime;
 
-    @Column(name = "DIEMSO")
+    @Column
     Double score;
 
     @OneToOne
-    @JoinColumn(name = "ID_TAIKHOANNO", referencedColumnName = "ID_TAIKHOAN",columnDefinition = "VARCHAR(36)")
+    @JoinColumn(name = "account_id")
      Account account;
 
     @Transient // Không lưu vào DB, chỉ dùng để nhận giá trị tính toán từ Procedure

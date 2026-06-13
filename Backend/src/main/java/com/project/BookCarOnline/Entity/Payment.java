@@ -2,6 +2,10 @@ package com.project.BookCarOnline.Entity;
 
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import com.project.BookCarOnline.Entity.Enum.PaymentMethod;
+
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
@@ -13,20 +17,22 @@ import org.hibernate.validator.constraints.UUID;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "PHUONGTHUCTHANHTOAN")
+@Table
 public class Payment {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_THANHTOAN", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
      String paymentId;
 
-    @Column(name = "LOAIHINHTHANHTOAN")
-     String paymentType;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column
+    PaymentMethod paymentType;
 
-    @Column(name = "GIATIEN")
+    @Column
      Double amount;
 
-    @Column(name = "TRANGTHAITT")
+    @Column
      Boolean paymentStatus;
 
 }

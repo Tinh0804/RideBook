@@ -12,38 +12,38 @@ import org.hibernate.validator.constraints.UUID;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "KHACHHANG")
+@Table
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_KH", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
      String customerId;
 
-    @Column(name = "TENKH")
+    @Column
      String customerName;
 
-    @Column(name = "SDT", unique = true, length = 15)
+    @Column(unique = true, length = 15)
      String phone;
 
-    @Column(name = "DIACHI")
+    @Column
      String address;
 
 //    // Extra fields not in original DB - keep for future use
-    @Column(name = "ANHDAIDIEN")
+    @Column
      String avatar;
 
-    @Column(name = "EMAIL")
+    @Column
      String email;
 
-    @Column(name = "NGSINH")
+    @Column
     @Temporal(TemporalType.DATE)
      java.util.Date birthDate;
 
-    @Column(name = "GIOITINH")
+    @Column
      String gender;
 
     @OneToOne
-    @JoinColumn(name = "ID_TAIKHOANNO", referencedColumnName = "ID_TAIKHOAN",columnDefinition = "VARCHAR(36)")
+    @JoinColumn(name = "account_id")
      Account account;
 
 }

@@ -79,17 +79,17 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
             @Param("endOfDay") LocalDateTime endOfDay
     );
 
-    @Query(value = """
+    @Query("""
         SELECT 
-            CAST(b.THOIGIANDAT AS DATE) AS date,
-            COUNT(*) AS tripCount,
-            SUM(b.GIATIEN) AS revenue
-        FROM DATXE b
-        WHERE b.ID_TXNO = :driverId
-        AND b.TRANGTHAI = 'COMPLETED'
-        GROUP BY CAST(b.THOIGIANDAT AS DATE)
+            CAST(b.bookingTime AS date) AS date,
+            COUNT(b) AS tripCount,
+            SUM(b.totalPrice) AS revenue
+        FROM Booking b
+        WHERE b.driverNo.driverId = :driverId
+        AND b.bookingStatus = 'COMPLETED'
+        GROUP BY CAST(b.bookingTime AS date)
         ORDER BY date DESC
-    """, nativeQuery = true)
+    """)
     List<Object[]> getRevenueByDate(@Param("driverId") String driverId);
 
     @Query("""

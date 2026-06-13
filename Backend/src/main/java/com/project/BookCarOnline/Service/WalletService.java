@@ -56,7 +56,7 @@ public class WalletService {
                     Wallet newWallet = new Wallet();
                     newWallet.setDriver(driver);
                     newWallet.setBalance(0.0);
-                    newWallet.setStatus(true);
+                    newWallet.setStatus(com.project.BookCarOnline.Entity.Enum.WalletStatus.ACTIVE);
                     return walletRepository.save(newWallet);
                 });
     }

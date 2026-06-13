@@ -15,7 +15,7 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     Optional<Account> findByUserName(String userName);
 
 
-    @Query(value = "SELECT * FROM TAIKHOAN WHERE SDT = :userName AND MATKHAU = :passWord AND ID_VAITRONO = :role", nativeQuery = true)
+    @Query("SELECT a FROM Account a WHERE a.userName = :userName AND a.passWord = :passWord AND a.roleNo.roleId = :role")
     Optional<Account> login(@Param("userName") String userName, @Param("passWord") String passWord, @Param("role") String role);
-    Optional<Account> findByProviderAndProviderId(String provider,String providerId);
+    Optional<Account> findByProviderAndProviderId(com.project.BookCarOnline.Entity.Enum.Provider provider, String providerId);
 }

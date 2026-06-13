@@ -15,20 +15,20 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "GIO")
+@Table
 public class Time {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_GIO", nullable = false,length = 36)
+    @Column(nullable = false,length = 36)
      String timeId;
 
-    @Column(name="TEN")
+    @Column
      String slotName;
 
-    @Column(name = "THOIGIANBATDAU")
+    @Column
      LocalTime startTime;
 
-    @Column(name = "THOIGIANKETTHUC")
+    @Column
      LocalTime endTime;
 
 

@@ -65,7 +65,7 @@ public class AuthenticationService {
         if (!encoder.matches(request.getPassWord(), account.getPassWord())) {
             throw new AppException(ErrorCode.UNAUTHENTACATED);
         }
-        if(!account.getRoleNo().getRoleName().equalsIgnoreCase(request.getRoleName()) || !account.getAccountStatus())
+        if(!account.getRoleNo().getRoleName().getRoleName().equalsIgnoreCase(request.getRoleName()) || !account.getAccountStatus())
             throw  new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
 
        String token = generateToken(account, VALID_DURATION);
@@ -86,15 +86,15 @@ public class AuthenticationService {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Customer customer = null;
         Driver driver = null;
-        String roleName = account.getRoleNo().getRoleName();
+        PredefinedRole roleName = account.getRoleNo().getRoleName();
         String userId = null;
-        if(roleName.equalsIgnoreCase(PredefinedRole.CUSTOMER.getRoleName()))
+        if(roleName.equals(PredefinedRole.CUSTOMER))
         {
              customer = customerRepository.findByAccountId(account.getAccountId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
                 userId = customer.getCustomerId();
         }
-        else if(roleName.equalsIgnoreCase(PredefinedRole.DRIVER.getRoleName()))
+        else if(roleName.equals(PredefinedRole.DRIVER))
         {
              driver = driverRepository.findByAccountId(account.getAccountId()).orElseThrow(
                      () -> new AppException(ErrorCode.DRIVER_NOT_FOUND)
@@ -133,7 +133,7 @@ public class AuthenticationService {
         if (role == null || role.getRoleName() == null) {
             return "";
         }
-        return role.getRoleName().toUpperCase();   // Chỉ "DRIVER" hoặc "CUSTOMER"
+        return role.getRoleName().getRoleName().toUpperCase();   // Chỉ "DRIVER" hoặc "CUSTOMER"
     }
 
 

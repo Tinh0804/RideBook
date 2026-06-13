@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.UUID;
 
 @Configuration
 @Slf4j
@@ -48,11 +49,11 @@ public class ApplicationInitConfig {
             log.info("Bắt đầu khởi tạo dữ liệu hệ thống...");
 
             // 1. Khởi tạo Role ADMIN
-            if (!roleRepository.existsByRoleName(PredefinedRole.RoleName.ADMIN)) {
+            if (!roleRepository.existsByRoleName(PredefinedRole.ADMIN)) {
                 roleRepository.save(
                         Role.builder()
-                                .roleId(PredefinedRole.RoleName.ADMIN) // ID là "ADMIN"
-                                .roleName("Quản trị viên")
+                                .roleName(PredefinedRole.ADMIN)
+                                .description("Quản trị viên")
                                 .build()
                 );
                 log.info("Đã tạo Role ADMIN");
@@ -60,7 +61,7 @@ public class ApplicationInitConfig {
 
 
             // Lấy role Admin để gán cho tài khoản (chắc chắn đã tồn tại sau bước 1)
-            Role adminRole = roleRepository.findByRoleName(PredefinedRole.RoleName.ADMIN).orElseThrow();
+            Role adminRole = roleRepository.findByRoleName(PredefinedRole.ADMIN).orElseThrow();
 
             // 3. Khởi tạo tài khoản Admin mặc định
             if (!accountRepository.existsByUserName(ADMIN_USER_NAME)) {
@@ -69,7 +70,7 @@ public class ApplicationInitConfig {
                         .passWord(passwordEncoder.encode(ADMIN_PASSWORD))
                         .roleNo(adminRole)
                         .accountStatus(true)
-                        .provider(Provider.LOCAL.name().toLowerCase(Locale.ROOT))
+                        .provider(com.project.BookCarOnline.Entity.Enum.Provider.LOCAL)
                         .build();
 
                 // Lưu Account trước

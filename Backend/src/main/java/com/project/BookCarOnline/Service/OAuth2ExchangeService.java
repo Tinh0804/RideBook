@@ -92,7 +92,7 @@ public class OAuth2ExchangeService {
 
         String token = authenticationService.generateToken(account, VALID_DURATION);
         String refreshToken = authenticationService.generateToken(
-                accountRepository.findByProviderAndProviderId(request.getProvider(), user.getName())
+                accountRepository.findByProviderAndProviderId(com.project.BookCarOnline.Entity.Enum.Provider.valueOf(request.getProvider().toUpperCase()), user.getName())
                         .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED)),REFRESHABLE_DURATION
         );
 
@@ -164,12 +164,12 @@ public class OAuth2ExchangeService {
             throw new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL);
         }
 
-        return accountRepository.findByProviderAndProviderId(provider, oAuth2User.getName())
+        return accountRepository.findByProviderAndProviderId(Provider.valueOf(provider.toUpperCase()), oAuth2User.getName())
                 .orElseGet(() -> {
                     return accountRepository.findByUserName(email)
                             .map(existingAccount -> {
                                 // Cập nhật thông tin Provider cho tài khoản sẵn có
-                                existingAccount.setProvider(provider);
+                                existingAccount.setProvider(Provider.valueOf(provider.toUpperCase()));
                                 existingAccount.setProviderId(oAuth2User.getName());
                                 return accountRepository.save(existingAccount);
                             })
@@ -185,10 +185,10 @@ public class OAuth2ExchangeService {
                 Account.builder()
                         .userName(email)
                         .passWord(passwordEncoder.encode(UUID.randomUUID().toString()) )
-                        .provider(provider)
+                        .provider(com.project.BookCarOnline.Entity.Enum.Provider.valueOf(provider.toUpperCase()))
                         .providerId(providerId)
                         .createdAt(new Date())
-                        .roleNo(roleRepository.findByRoleName(PredefinedRole.CUSTOMER.getRoleName())
+                        .roleNo(roleRepository.findByRoleName(PredefinedRole.CUSTOMER)
                                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND)))
                         .accountStatus(true)
                         .build());

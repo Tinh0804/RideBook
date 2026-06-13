@@ -13,39 +13,31 @@ import java.util.Date;
 @NoArgsConstructor
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "NOTIFICATION")
+@Table
 public class Notification {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID_NOTIFICATION", nullable = false, unique = true, length = 36)
+    @Column(nullable = false, unique = true, length = 36)
      String notificationId;
 
     @ManyToOne
-    @JoinColumn(
-            name = "ID_DATXENO",
-            referencedColumnName = "ID_DATXE",
-            columnDefinition = "VARCHAR(36)"
-    )
+    @JoinColumn(name = "booking_id")
      Booking bookingNo;
 
     @ManyToOne
-    @JoinColumn(
-            name = "ID_TAIKHOANNO",
-            referencedColumnName = "ID_TAIKHOAN",
-            columnDefinition = "VARCHAR(36)"
-    )
+    @JoinColumn(name = "account_id")
      Account accountNo;
 
-    @Column(name = "TIEU_DE")
+    @Column
      String title;
 
-    @Column(name = "NOI_DUNG", columnDefinition = "NVARCHAR(MAX)")
+    @Column
      String message;
 
-    @Column(name = "DOC")
+    @Column
      boolean isRead = false;
 
     @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "NGAY_GUI")
+    @Column
      Date sentAt = new Date();
 }
