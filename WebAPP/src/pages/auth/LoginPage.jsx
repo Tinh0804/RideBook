@@ -56,6 +56,20 @@ const LoginPage = () => {
     }
   }
 
+  const handleGoogleLogin = () => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    const redirectUri = `${window.location.origin}/oauth2/callback/google`
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile`
+    window.location.href = url
+  }
+
+  const handleFacebookLogin = () => {
+    const clientId = import.meta.env.VITE_FACEBOOK_APP_ID
+    const redirectUri = `${window.location.origin}/oauth2/callback/facebook`
+    const url = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=public_profile,email`
+    window.location.href = url
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}

@@ -195,4 +195,16 @@ public class DriverController {
                 .message("Xóa tài xế thành công")
                 .build();
     }
+
+    @PutMapping("/{driverId}/account-status")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public APIResponse<Boolean> toggleDriverAccountStatus(@PathVariable String driverId) {
+        log.info("REST API: PUT /drivers/{}/account-status - Toggling account status", driverId);
+        Boolean status = driverService.toggleDriverAccountStatus(driverId);
+        return APIResponse.<Boolean>builder()
+                .status(HttpStatus.OK.value())
+                .message(status ? "Mở khóa tài khoản tài xế thành công" : "Khóa tài khoản tài xế thành công")
+                .result(status)
+                .build();
+    }
 }

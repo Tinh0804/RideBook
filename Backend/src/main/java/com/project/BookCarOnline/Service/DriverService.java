@@ -437,6 +437,18 @@ public class DriverService {
         return driver.getActivityStatus();
     }
 
+    @Transactional
+    public Boolean toggleDriverAccountStatus(String driverId) {
+        log.info("Toggling account status for driver: {}", driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        Account account = driver.getAccount();
+        account.setAccountStatus(!account.getAccountStatus());
+        accountRepository.save(account);
+        log.info("Driver account status toggled: {} is now {}", driverId, account.getAccountStatus());
+        return account.getAccountStatus();
+    }
+
 
     public List<DriverDetailResponse> getDriversByVehicleType(String vehicleTypeId) {
         log.info("Fetching drivers by vehicle type: {}", vehicleTypeId);

@@ -46,9 +46,22 @@ export const driverApi = {
   getByArea: (area) =>
     apiClient.get(`/drivers/area/${area}`).then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
 
+  toggleAccountStatus: (driverId) =>
+    apiClient.put(`/drivers/${driverId}/account-status`).then((r) => r.data),
+
   getByVehicleType: (vehicleTypeId) =>
     apiClient.get(`/drivers/vehicle-type/${vehicleTypeId}`).then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
 
   updateLocation: (driverId, lat, lng) =>
     apiClient.put(`/drivers/${driverId}`, { currentLat: lat, currentLng: lng }).then((r) => r.data),
+
+  // --- Admin Wallet Management ---
+  getDriverWallet: (driverId) =>
+    apiClient.get(`/wallets/admin/driver/${driverId}`).then((r) => r.data),
+
+  getDriverTransactions: (driverId, page = 0, size = 10) =>
+    apiClient.get(`/wallets/admin/driver/${driverId}/transactions?page=${page}&size=${size}`).then((r) => r.data),
+
+  adjustDriverBalance: (driverId, amount, reason) =>
+    apiClient.post(`/wallets/admin/driver/${driverId}/adjust?amount=${amount}&reason=${encodeURIComponent(reason)}`).then((r) => r.data),
 }

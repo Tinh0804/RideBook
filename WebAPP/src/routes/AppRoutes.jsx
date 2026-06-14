@@ -34,6 +34,7 @@ const DriverHistoryPage      = lazy(() => import('@/pages/driver/DriverHistoryPa
 
 // Admin
 const AdminDashboardPage     = lazy(() => import('@/pages/admin/AdminDashboardPage'))
+const AdminDriversPage       = lazy(() => import('@/pages/admin/AdminDriversPage'))
 
 // Payment
 const PaymentCallbackPage    = lazy(() => import('@/pages/customer/PaymentCallbackPage'))
@@ -108,7 +109,7 @@ const AppRoutes = () => (
         <Route element={<MainLayout />}>
           <Route path="admin/dashboard"  element={<AdminDashboardPage />} />
           <Route path="admin/customers"  element={<AdminDashboardPage />} />
-          <Route path="admin/drivers"    element={<AdminDashboardPage />} />
+          <Route path="admin/drivers"    element={<AdminDriversPage />} />
           <Route path="admin/bookings"   element={<AdminDashboardPage />} />
           <Route path="admin/*"          element={<AdminDashboardPage />} />
         </Route>

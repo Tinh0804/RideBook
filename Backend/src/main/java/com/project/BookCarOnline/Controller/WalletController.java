@@ -28,7 +28,6 @@ import java.util.Map;
 @RequestMapping("/wallets")
 @RequiredArgsConstructor
 @FieldDefaults(level = lombok.AccessLevel.PRIVATE, makeFinal = true)
-@PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
 @SecurityRequirement(name = "bearerAuth")
 public class WalletController {
     WalletService walletService;
@@ -36,6 +35,7 @@ public class WalletController {
     MoMoService moMoService;
 
     @GetMapping("/my-wallet")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
     public APIResponse<WalletResponse> getMyBalance(){
         WalletResponse balance = walletService.getMyBlance();
         return APIResponse.<WalletResponse>builder()
@@ -47,6 +47,7 @@ public class WalletController {
 
 
     @PostMapping("/deposit")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
     public APIResponse<PaymentResponse> requestDeposit(@RequestBody PaymentRequest request) {
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
         Double amount = request.getAmount();
@@ -68,6 +69,7 @@ public class WalletController {
     }
 
     @PostMapping("/withdraw")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
     public APIResponse<?> autoWithdraw(@RequestParam Double amount) {
             String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
 
@@ -88,6 +90,7 @@ public class WalletController {
     }
 
     @GetMapping("/history-transactions")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_DRIVER)
     public APIResponse<Page<WalletTransactionResponse>> getTransactionHistory(
             @RequestParam String walletId,
             @RequestParam(defaultValue = "0") int page,
@@ -101,6 +104,7 @@ public class WalletController {
     }
 
     @GetMapping("/vnpay-ipn")
+    // public API - no auth needed
     public APIResponse<?> vnPayIPN(
             @RequestParam("vnp_TxnRef") String transactionId,
             @RequestParam("vnp_ResponseCode") String responseCode,
@@ -121,6 +125,44 @@ public class WalletController {
             return APIResponse.builder().result(Map.of("RspCode", "99", "Message", "Unknown Error"))
                     .build();
         }
+    }
+
+    // ==================== ADMIN ENDPOINTS ====================
+
+    @GetMapping("/admin/driver/{driverId}")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public APIResponse<WalletResponse> getAdminWalletBalance(@PathVariable String driverId){
+        WalletResponse balance = walletService.getAdminWalletBalance(driverId);
+        return APIResponse.<WalletResponse>builder()
+                .result(balance)
+                .message("Balance retrieved successfully")
+                .build();
+    }
+
+    @GetMapping("/admin/driver/{driverId}/transactions")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public APIResponse<Page<WalletTransactionResponse>> getAdminTransactionHistory(
+            @PathVariable String driverId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<WalletTransactionResponse> response = walletService.getAdminTransactionHistory(driverId, page, size);
+        return APIResponse.<Page<WalletTransactionResponse>>builder()
+                .result(response)
+                .message("Transaction history retrieved successfully")
+                .build();
+    }
+
+    @PostMapping("/admin/driver/{driverId}/adjust")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public APIResponse<WalletTransactionResponse> adjustBalanceAdmin(
+            @PathVariable String driverId,
+            @RequestParam Double amount,
+            @RequestParam String reason) {
+        WalletTransactionResponse txn = walletService.adjustBalanceAdmin(driverId, amount, reason);
+        return APIResponse.<WalletTransactionResponse>builder()
+                .result(txn)
+                .message("Balance adjusted successfully")
+                .build();
     }
 
 }
