@@ -1,5 +1,6 @@
 package com.project.BookCarOnline.Repository;
 
+import com.project.BookCarOnline.DTO.Response.MonthlyStatProjection;
 import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import org.springframework.data.domain.Page;
@@ -61,6 +62,27 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
 
     @Query("SELECT b FROM Booking b WHERE b.customerNo.customerId = :customerId AND b.bookingStatus IN ('PENDING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
     List<Booking> findActiveByCustomer(@Param("customerId") String customerId);
+
+    @Query("SELECT b FROM Booking b WHERE b.driverNo.driverId = :driverId AND b.bookingStatus IN ('PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED')")
+    List<Booking> findActiveBookingByDriverId(@Param("driverId") String driverId);
+
+    // Bổ sung cho Admin Thống kê
+    @Query("SELECT SUM(b.totalPrice) FROM Booking b WHERE b.bookingStatus = 'COMPLETED'")
+    Double calculateTotalRevenue();
+
+    @Query(value = "SELECT EXTRACT(MONTH FROM booking_time) AS month, SUM(total_price) AS value " +
+                   "FROM booking " +
+                   "WHERE EXTRACT(YEAR FROM booking_time) = :year AND booking_status = 'COMPLETED' " +
+                   "GROUP BY EXTRACT(MONTH FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getRevenueByMonth(@Param("year") int year);
+
+    @Query(value = "SELECT EXTRACT(MONTH FROM booking_time) AS month, CAST(COUNT(*) AS DOUBLE PRECISION) AS value " +
+                   "FROM booking " +
+                   "WHERE EXTRACT(YEAR FROM booking_time) = :year " +
+                   "GROUP BY EXTRACT(MONTH FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getTripsByMonth(@Param("year") int year);
 
     @Query("SELECT b FROM Booking b WHERE b.driverNo.driverId = :driverId AND b.bookingStatus IN ('ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
     List<Booking> findActiveByDriver(@Param("driverId") String driverId);

@@ -7,6 +7,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { customerApi } from '@/features/customer/api/customerApi'
 import { driverApi }   from '@/features/driver/api/driverApi'
 import { bookingApi }  from '@/features/booking/api/bookingApi'
+import { adminApi }    from '@/features/admin/api/adminApi'
 import { formatCurrency } from '@/utils/currency'
 import { formatDate }     from '@/utils/formatDate'
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config'
@@ -23,6 +24,7 @@ const MOCK_CHART = [
 ]
 
 const AdminDashboardPage = () => {
+  const [statsData, setStatsData] = useState(null)
   const [customers, setCustomers] = useState([])
   const [drivers,   setDrivers]   = useState([])
   const [bookings,  setBookings]  = useState([])
@@ -31,24 +33,23 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     Promise.allSettled([
+      adminApi.getOverviewStats(new Date().getFullYear()),
       customerApi.getAll(),
       driverApi.getAll(),
       bookingApi.getAll(),
-    ]).then(([c, d, b]) => {
+    ]).then(([s, c, d, b]) => {
+      if (s.value) setStatsData(s.value)
       setCustomers(c.value || [])
       setDrivers(d.value || [])
       setBookings(b.value || [])
     }).finally(() => setLoading(false))
   }, [])
 
-  const completedBookings = bookings.filter((b) => b.status === BOOKING_STATUS.COMPLETED)
-  const totalRevenue      = completedBookings.reduce((s, b) => s + (b.totalFare || 0), 0)
-
   const stats = [
-    { label: 'Tổng khách hàng', value: customers.length, icon: RiUserLine,                  color: 'text-blue-400',   bg: 'bg-blue-400/10',   trend: '+12%' },
-    { label: 'Tổng tài xế',     value: drivers.length,   icon: RiCarLine,                   color: 'text-brand-400',  bg: 'bg-brand-400/10',  trend: '+8%'  },
-    { label: 'Tổng chuyến đi',  value: bookings.length,  icon: RiMapPinLine,                color: 'text-purple-400', bg: 'bg-purple-400/10', trend: '+24%' },
-    { label: 'Doanh thu',       value: formatCurrency(totalRevenue, true), icon: RiMoneyDollarCircleLine, color: 'text-yellow-400', bg: 'bg-yellow-400/10', trend: '+18%' },
+    { label: 'Tổng khách hàng', value: statsData?.totalCustomers || 0, icon: RiUserLine,                  color: 'text-blue-400',   bg: 'bg-blue-400/10',   trend: '+12%' },
+    { label: 'Tổng tài xế',     value: statsData?.totalDrivers || 0,   icon: RiCarLine,                   color: 'text-brand-400',  bg: 'bg-brand-400/10',  trend: '+8%'  },
+    { label: 'Tổng chuyến đi',  value: statsData?.totalBookings || 0,  icon: RiMapPinLine,                color: 'text-purple-400', bg: 'bg-purple-400/10', trend: '+24%' },
+    { label: 'Doanh thu',       value: formatCurrency(statsData?.totalRevenue || 0, true), icon: RiMoneyDollarCircleLine, color: 'text-yellow-400', bg: 'bg-yellow-400/10', trend: '+18%' },
   ]
 
   const TABS = [
@@ -114,9 +115,9 @@ const AdminDashboardPage = () => {
       {activeTab === 'overview' && (
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="card p-6 space-y-4">
-            <h2 className="font-display text-lg font-bold text-content-main">Doanh thu theo tháng</h2>
+            <h2 className="font-display text-lg font-bold text-content-main">Doanh thu theo tháng (Năm {new Date().getFullYear()})</h2>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
+              <BarChart data={statsData?.revenueByMonth || MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
@@ -124,21 +125,21 @@ const AdminDashboardPage = () => {
                 />
                 <Tooltip contentStyle={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px' }}
                   formatter={(v) => [formatCurrency(v), 'Doanh thu']} />
-                <Bar dataKey="revenue" fill="#22c55e" radius={[6,6,0,0]} maxBarSize={36} />
+                <Bar dataKey="value" fill="#22c55e" radius={[6,6,0,0]} maxBarSize={36} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="card p-6 space-y-4">
-            <h2 className="font-display text-lg font-bold text-content-main">Số chuyến đi theo tháng</h2>
+            <h2 className="font-display text-lg font-bold text-content-main">Số chuyến đi theo tháng (Năm {new Date().getFullYear()})</h2>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
+              <LineChart data={statsData?.tripsByMonth || MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
                 <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px' }}
                   formatter={(v) => [v, 'Chuyến đi']} />
-                <Line type="monotone" dataKey="trips" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 4 }} />
+                <Line type="monotone" dataKey="value" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

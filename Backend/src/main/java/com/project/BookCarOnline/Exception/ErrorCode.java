@@ -48,8 +48,6 @@ public enum ErrorCode {
     BOOKING_ALREADY_CANCELLED(400,"Chuyến xe đã bị huỷ",HttpStatus.BAD_REQUEST),
     BOOKING_ALREADY_TAKEN(400,"Chuyến xe đã được nhận bởi tài xế khác",HttpStatus.BAD_REQUEST),
     
-    // Vehicle type related errors
-    VEHICLE_TYPE_NOT_FOUND(404,"Loại xe không tồn tại",HttpStatus.NOT_FOUND),
     
     // Validation errors
     INVALID_INPUT(400,"Dữ liệu đầu vào không hợp lệ",HttpStatus.BAD_REQUEST),
@@ -66,8 +64,17 @@ public enum ErrorCode {
     PROMOTION_EXPIRED(400, "Mã khuyến mãi đã hết hạn", HttpStatus.BAD_REQUEST),
     PROMOTION_OUT_OF_STOCK(400, "Mã khuyến mãi đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
     PROMOTION_NOT_ACTIVE(400, "Mã khuyến mãi hiện không khả dụng", HttpStatus.BAD_REQUEST),
-    QUOTE_EXPIRED(400, "Báo giá đã hết hạn hoặc không tồn tại, vui lòng lấy giá mới", HttpStatus.BAD_REQUEST);
+    QUOTE_EXPIRED(400, "Báo giá đã hết hạn hoặc không tồn tại, vui lòng lấy giá mới", HttpStatus.BAD_REQUEST),
 
+    // Vehicle type related errors
+    VEHICLE_TYPE_NOT_FOUND(404, "Loại xe không tồn tại", HttpStatus.NOT_FOUND),
+    VEHICLE_TYPE_ALREADY_EXISTS(400, "Loại xe đã tồn tại", HttpStatus.BAD_REQUEST),
+
+
+    //Time related errors
+    TIME_NOT_FOUND(404, "Time slot không tồn tại", HttpStatus.NOT_FOUND),
+    TIME_SLOT_ALREADY_EXISTS(400, "Time slot đã tồn tại", HttpStatus.BAD_REQUEST),
+    TIME_SLOT_NOT_ACTIVE(400, "Time slot hiện không khả dụng", HttpStatus.BAD_REQUEST);
 
     private final int status;
     private final String message;
