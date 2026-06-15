@@ -207,4 +207,41 @@ public class WalletService {
             return mapped.isEmpty() ? null : mapped.get(0);
         });
     }
+
+    // ==================== ADMIN METHODS ====================
+
+    public WalletResponse getAdminWalletBalance(String driverId) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        return mapper.toWalletResponse(wallet);
+    }
+
+    public Page<WalletTransactionResponse> getAdminTransactionHistory(String driverId, int page, int size) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<WalletTransaction> transactionHistory = transactionRepository.findByWallet_WalletIdOrderByCreatedAtDesc(wallet.getWalletId(), pageable);
+        return transactionHistory.map(txn -> {
+            List<WalletTransactionResponse> mapped = mapper.toTransactionHistoryResponse(List.of(txn));
+            return mapped.isEmpty() ? null : mapped.get(0);
+        });
+    }
+
+    @Transactional
+    public WalletTransactionResponse adjustBalanceAdmin(String driverId, Double amount, String reason) {
+        Wallet wallet = getOrCreateWallet(driverId);
+        wallet.setBalance(wallet.getBalance() + amount);
+        walletRepository.save(wallet);
+
+        WalletTransaction txn = new WalletTransaction();
+        txn.setWallet(wallet);
+        txn.setAmount(Math.abs(amount));
+        txn.setType(amount >= 0 ? TransactionType.DEPOSIT : TransactionType.WITHDRAWAL);
+        txn.setStatus(TransactionStatus.COMPLETED);
+        // Save reason in referenceId or similar. Here we prepend ADMIN_ADJUST
+        txn.setReferenceId("ADMIN_ADJUST_" + reason);
+        txn.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+        transactionRepository.save(txn);
+
+        List<WalletTransactionResponse> mapped = mapper.toTransactionHistoryResponse(List.of(txn));
+        return mapped.isEmpty() ? null : mapped.get(0);
+    }
 }
