@@ -42,6 +42,7 @@ public class SecurityConfig {
             "/payments/momo/return","/payments/vnpay/return","/payments/momo/notify","/payments/vnpay/notify",
             "/payments/momo/callback","/payments/vnpay/callback"
     };
+    private final String[] ADMIN_ENDPOINTS = {"/admin/**"};
 
 
 
@@ -60,6 +61,7 @@ public class SecurityConfig {
                         .requestMatchers(DRIVER_ENDPOINTS).permitAll()
                         .requestMatchers(SOCKET_ENDPOINTS).permitAll()
                         .requestMatchers(PAYMENT_ENDPOINTS).permitAll()
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .csrf(AbstractHttpConfigurer::disable);    // tắt CSRF

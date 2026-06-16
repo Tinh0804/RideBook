@@ -6,6 +6,8 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.validator.constraints.UUID;
 
+import java.util.Date;
+
 @Entity
 @Builder
 @AllArgsConstructor
@@ -19,10 +21,10 @@ public class Customer {
     @Column(nullable = false, unique = true, length = 36)
      String customerId;
 
-    @Column
+    @Column(columnDefinition = "varchar")
      String customerName;
 
-    @Column(unique = true, length = 15)
+    @Column(columnDefinition = "varchar",unique = true, length = 15)
      String phone;
 
     @Column
@@ -32,12 +34,12 @@ public class Customer {
     @Column
      String avatar;
 
-    @Column
+    @Column(columnDefinition = "varchar")
      String email;
 
     @Column
     @Temporal(TemporalType.DATE)
-     java.util.Date birthDate;
+    Date birthDate;
 
     @Column
      String gender;

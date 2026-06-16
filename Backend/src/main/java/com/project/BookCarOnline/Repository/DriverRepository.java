@@ -3,6 +3,8 @@ package com.project.BookCarOnline.Repository;
 import com.project.BookCarOnline.Entity.Customer;
 import com.project.BookCarOnline.Entity.Driver;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -65,5 +67,14 @@ public interface DriverRepository extends JpaRepository<Driver,String> {
             @Param("driverId") String driverId,
             @Param("time") LocalDateTime time
     );
+
+    @Query("SELECT d FROM Driver d WHERE "+
+            "(:search IS NULL OR LOWER(d.driverName) LIKE :search " +
+            "OR d.phone LIKE :search "+
+            "OR LOWER(d.email) LIKE :search " +
+            "OR d.citizenId LIKE :search " +
+            "OR d.licensePlate LIKE :search)"
+    )
+    Page<Driver>  searchDrivers( @Param("search") String search, Pageable pageable);
 
 }

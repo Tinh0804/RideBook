@@ -127,42 +127,4 @@ public class WalletController {
         }
     }
 
-    // ==================== ADMIN ENDPOINTS ====================
-
-    @GetMapping("/admin/driver/{driverId}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<WalletResponse> getAdminWalletBalance(@PathVariable String driverId){
-        WalletResponse balance = walletService.getAdminWalletBalance(driverId);
-        return APIResponse.<WalletResponse>builder()
-                .result(balance)
-                .message("Balance retrieved successfully")
-                .build();
-    }
-
-    @GetMapping("/admin/driver/{driverId}/transactions")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<Page<WalletTransactionResponse>> getAdminTransactionHistory(
-            @PathVariable String driverId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<WalletTransactionResponse> response = walletService.getAdminTransactionHistory(driverId, page, size);
-        return APIResponse.<Page<WalletTransactionResponse>>builder()
-                .result(response)
-                .message("Transaction history retrieved successfully")
-                .build();
-    }
-
-    @PostMapping("/admin/driver/{driverId}/adjust")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<WalletTransactionResponse> adjustBalanceAdmin(
-            @PathVariable String driverId,
-            @RequestParam Double amount,
-            @RequestParam String reason) {
-        WalletTransactionResponse txn = walletService.adjustBalanceAdmin(driverId, amount, reason);
-        return APIResponse.<WalletTransactionResponse>builder()
-                .result(txn)
-                .message("Balance adjusted successfully")
-                .build();
-    }
-
 }

@@ -3,6 +3,7 @@ package com.project.BookCarOnline.Controller;
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
+import com.project.BookCarOnline.DTO.Response.DailyRevenueDTO;
 import com.project.BookCarOnline.DTO.Response.DriverDashboardResponse;
 import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
 import com.project.BookCarOnline.DTO.Response.DriverResponse;
@@ -19,7 +20,9 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -39,17 +42,7 @@ public class DriverController {
     DriverService driverService;
 
 
-    @GetMapping
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<List<DriverDetailResponse>> getAllDrivers() {
-        log.info("REST API: GET /drivers - Fetching all drivers");
-        List<DriverDetailResponse> drivers = driverService.getAllDrivers();
-        return APIResponse.<List<DriverDetailResponse>>builder()
-                .status(HttpStatus.OK.value())
-                .message("Danh sách tài xế")
-                .result(drivers)
-                .build();
-    }
+
     @GetMapping("/my-info")
     public APIResponse<DriverDetailResponse> getMyInfo(){
         DriverDetailResponse response = driverService.getMyInfo();
@@ -82,7 +75,7 @@ public class DriverController {
     }
 
     @GetMapping("/my-revenue/daily")
-    public APIResponse<com.project.BookCarOnline.DTO.Response.DailyRevenueDTO> getDailyRevenue(
+    public APIResponse<DailyRevenueDTO> getDailyRevenue(
             @RequestParam(name = "date", required = false) String dateStr){
         com.project.BookCarOnline.DTO.Response.DailyRevenueDTO response = driverService.getDailyRevenue(dateStr);
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DailyRevenueDTO>builder()
@@ -102,17 +95,7 @@ public class DriverController {
                 .build();
     }
 
-    @GetMapping("/{driverId}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<DriverDetailResponse> getDriverById(@PathVariable String driverId) {
-        log.info("REST API: GET /drivers/{} - Fetching driver by ID", driverId);
-        DriverDetailResponse driver = driverService.getDriverById(driverId);
-        return APIResponse.<DriverDetailResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Thông tin tài xế")
-                .result(driver)
-                .build();
-    }
+
 
 
     @GetMapping("/active")
@@ -166,45 +149,5 @@ public class DriverController {
     }
 
 
-    @PutMapping("/{driverId}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<DriverDetailResponse> updateDriver(
-            @PathVariable String driverId,
-            @Valid @RequestBody UpdateDriverRequest request) throws IOException {
-        log.info("REST API: PUT /drivers/{} - Updating driver", driverId);
 
-        // Ensure the ID in path matches the ID in request body
-//        request.setDriverId(driverId);
-        DriverDetailResponse driver = driverService.updateDriver(driverId, request, null);
-        
-        return APIResponse.<DriverDetailResponse>builder()
-                .status(HttpStatus.OK.value())
-                .message("Cập nhật tài xế thành công")
-                .result(driver)
-                .build();
-    }
-
-
-    @DeleteMapping("/{driverId}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<Void> deleteDriver(@PathVariable String driverId) {
-        log.info("REST API: DELETE /drivers/{} - Deleting driver", driverId);
-        driverService.deleteDriver(driverId);
-        return APIResponse.<Void>builder()
-                .status(HttpStatus.OK.value())
-                .message("Xóa tài xế thành công")
-                .build();
-    }
-
-    @PutMapping("/{driverId}/account-status")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<Boolean> toggleDriverAccountStatus(@PathVariable String driverId) {
-        log.info("REST API: PUT /drivers/{}/account-status - Toggling account status", driverId);
-        Boolean status = driverService.toggleDriverAccountStatus(driverId);
-        return APIResponse.<Boolean>builder()
-                .status(HttpStatus.OK.value())
-                .message(status ? "Mở khóa tài khoản tài xế thành công" : "Khóa tài khoản tài xế thành công")
-                .result(status)
-                .build();
-    }
 }

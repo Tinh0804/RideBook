@@ -34,12 +34,12 @@ const AdminDashboardPage = () => {
   useEffect(() => {
     Promise.allSettled([
       adminApi.getOverviewStats(new Date().getFullYear()),
-      customerApi.getAll(),
+      customerApi.getAllForAdmin(0, 20),
       driverApi.getAll(),
       bookingApi.getAll(),
     ]).then(([s, c, d, b]) => {
       if (s.value) setStatsData(s.value)
-      setCustomers(c.value || [])
+      setCustomers(c.value?.content || c.value || [])
       setDrivers(d.value || [])
       setBookings(b.value || [])
     }).finally(() => setLoading(false))

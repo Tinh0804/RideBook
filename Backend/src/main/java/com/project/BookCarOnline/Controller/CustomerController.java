@@ -5,12 +5,15 @@ import com.project.BookCarOnline.DTO.Request.RegisterCustomerRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateCustomerRequest;
 import com.project.BookCarOnline.DTO.Response.CustomerResponse;
 import com.project.BookCarOnline.Entity.Customer;
+import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
 import com.project.BookCarOnline.Service.CustomerService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -42,15 +45,6 @@ public class CustomerController {
                 .build();
     }
 
-    @GetMapping("")
-    @SecurityRequirement(name = "bearerAuth")
-    APIResponse<List<Customer>> getAllCustomer() {
-        List<Customer> customerResponse = service.getAllCustomers();
-        return APIResponse.<List<Customer>>builder()
-                .result(customerResponse)
-                .message("All customers retrieved successfully")
-                .build();
-    }
 
     @PutMapping(value = "/my-info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     APIResponse<CustomerResponse> updateMyInfo(@ModelAttribute UpdateCustomerRequest request) throws IOException {

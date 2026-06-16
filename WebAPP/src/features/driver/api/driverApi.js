@@ -32,22 +32,22 @@ export const driverApi = {
     apiClient.get('/drivers/my-info').then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   updateDriver: (driverId, payload) =>
-    apiClient.put(`/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.put(`/admin/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   getAll: () =>
-    apiClient.get('/drivers').then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
+    apiClient.get('/admin/drivers').then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
 
   getById: (driverId) =>
-    apiClient.get(`/drivers/${driverId}`).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.get(`/admin/drivers/${driverId}`).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   deleteDriver: (driverId) =>
-    apiClient.delete(`/drivers/${driverId}`).then((r) => r.data),
+    apiClient.delete(`/admin/drivers/${driverId}`).then((r) => r.data),
 
   getByArea: (area) =>
     apiClient.get(`/drivers/area/${area}`).then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
 
   toggleAccountStatus: (driverId) =>
-    apiClient.put(`/drivers/${driverId}/account-status`).then((r) => r.data),
+    apiClient.put(`/admin/drivers/${driverId}/account-status`).then((r) => r.data),
 
   getByVehicleType: (vehicleTypeId) =>
     apiClient.get(`/drivers/vehicle-type/${vehicleTypeId}`).then((r) => parseApiArrayResponse(DriverProfileSchema, r.data)),
@@ -57,11 +57,11 @@ export const driverApi = {
 
   // --- Admin Wallet Management ---
   getDriverWallet: (driverId) =>
-    apiClient.get(`/wallets/admin/driver/${driverId}`).then((r) => r.data),
+    apiClient.get(`/admin/wallets/driver/${driverId}`).then((r) => r.data),
 
   getDriverTransactions: (driverId, page = 0, size = 10) =>
-    apiClient.get(`/wallets/admin/driver/${driverId}/transactions?page=${page}&size=${size}`).then((r) => r.data),
+    apiClient.get(`/admin/wallets/driver/${driverId}/transactions?page=${page}&size=${size}`).then((r) => r.data),
 
   adjustDriverBalance: (driverId, amount, reason) =>
-    apiClient.post(`/wallets/admin/driver/${driverId}/adjust?amount=${amount}&reason=${encodeURIComponent(reason)}`).then((r) => r.data),
+    apiClient.post(`/admin/wallets/driver/${driverId}/adjust?amount=${amount}&reason=${encodeURIComponent(reason)}`).then((r) => r.data),
 }

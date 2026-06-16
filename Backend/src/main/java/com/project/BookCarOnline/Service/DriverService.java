@@ -2,11 +2,7 @@ package com.project.BookCarOnline.Service;
 
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
-import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
-import com.project.BookCarOnline.DTO.Response.DriverResponse;
-import com.project.BookCarOnline.DTO.Response.DriverRevenueResponse;
-import com.project.BookCarOnline.DTO.Response.RevenueDetailDTO;
-import com.project.BookCarOnline.DTO.Response.RevenueSummaryDTO;
+import com.project.BookCarOnline.DTO.Response.*;
 import com.project.BookCarOnline.Entity.Account;
 import com.project.BookCarOnline.Entity.Driver;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
@@ -24,12 +20,15 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import com.project.BookCarOnline.DTO.Response.DriverDashboardResponse;
 import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Entity.Rating;
 import com.project.BookCarOnline.Repository.RideBookRepository;
 import com.project.BookCarOnline.Repository.RatingRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDate;
@@ -93,6 +92,12 @@ public class DriverService {
                 .todayIncome(todayIncome)
                 .averageRating(Math.round(averageRating))
                 .build();
+    }
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public Page<DriverDetailResponse> searchDrivers(int page, int size ,String search) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("driverName").ascending());
+        Page<Driver> drivers = driverRepository.searchDrivers(search,pageable);
+        return drivers.map(mapper::toDriverDetailResponse);
     }
 
     public DriverRevenueResponse getDriverRevenue(String period) {
@@ -202,7 +207,7 @@ public class DriverService {
                 .build();
     }
 
-    public com.project.BookCarOnline.DTO.Response.DailyRevenueDTO getDailyRevenue(String dateStr) {
+    public DailyRevenueDTO getDailyRevenue(String dateStr) {
         String driverId = SecurityUtils.getCurrentProfileId()
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
 
@@ -419,7 +424,7 @@ public class DriverService {
         return mapper.toDriverDetailResponse(driver);
     }
 
-
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public List<DriverDetailResponse> getDriversByArea(String area) {
         log.info("Fetching drivers by area: {}", area);
         List<Driver> drivers = driverRepository.findByAreaAndActivityStatusTrue(area);

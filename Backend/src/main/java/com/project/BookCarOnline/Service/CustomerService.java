@@ -21,6 +21,10 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +35,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+
 
 @Slf4j
 @Service
@@ -89,10 +94,22 @@ public class CustomerService {
 
         return mapper.toCustomerResponse(customer);
     }
-    @PreAuthorize("hasRole('"+PredefinedRole.RoleName.ADMIN+"')")
-    public List<Customer> getAllCustomers() {
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public Page<CustomerResponse> getAllCustomers(int page, int size, String search) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("customerName").ascending());
+        String searchTerm = (search == null || search.trim().isEmpty()) ? null : "%" + search.toLowerCase() + "%";
+        Page<Customer> customers = customerRepository.searchCustomers(searchTerm, pageable);
+        return customers.map(mapper::toCustomerResponse);
+    }
 
-        return  customerRepository.findAll();
+    @Transactional
+    public Boolean toggleCustomerAccountStatus(String customerId) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.CUSTOMER_NOT_FOUND));
+        Account account = customer.getAccount();
+        account.setAccountStatus(!account.getAccountStatus());
+        accountRepository.save(account);
+        return account.getAccountStatus();
     }
     public CustomerResponse getMyInfo(){
         String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()-> new AppException(ErrorCode.PROFILE_NOT_FOUND));

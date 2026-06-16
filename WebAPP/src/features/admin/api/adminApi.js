@@ -1,4 +1,4 @@
-import apiClient from '../../core/api/apiClient';
+import apiClient from '@/services/apiClient'
 
 export const adminApi = {
     getOverviewStats: async (year = new Date().getFullYear()) => {
@@ -12,35 +12,35 @@ export const adminApi = {
         return response.data;
     },
     createVehicleType: async (data) => {
-        const response = await apiClient.post('/vehicle-types', data);
+        const response = await apiClient.post('/admin/vehicle-types', data);
         return response.data;
     },
     updateVehicleType: async (id, data) => {
-        const response = await apiClient.put(`/vehicle-types/${id}`, data);
+        const response = await apiClient.put(`/admin/vehicle-types/${id}`, data);
         return response.data;
     },
     deleteVehicleType: async (id) => {
-        const response = await apiClient.delete(`/vehicle-types/${id}`);
+        const response = await apiClient.delete(`/admin/vehicle-types/${id}`);
         return response.data;
     },
 
     // Time Slots
     getAllTimeSlots: async () => {
-        const response = await apiClient.get('/time-slots');
+        const response = await apiClient.get('/admin/time-slots');
         return response.data;
     },
     updateTimeSlot: async (id, data) => {
-        const response = await apiClient.put(`/time-slots/${id}`, data);
+        const response = await apiClient.put(`/admin/time-slots/${id}`, data);
         return response.data;
     },
 
     // Pricing
     getAllPricing: async () => {
-        const response = await apiClient.get('/pricing');
+        const response = await apiClient.get('/admin/pricing');
         return response.data;
     },
     updatePricing: async (id, data) => {
-        const response = await apiClient.put(`/pricing/${id}`, data);
+        const response = await apiClient.put(`/admin/pricing/${id}`, data);
         return response.data;
     }
 };

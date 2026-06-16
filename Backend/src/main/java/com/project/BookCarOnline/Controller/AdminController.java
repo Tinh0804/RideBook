@@ -20,7 +20,6 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/stats/overview")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public APIResponse<AdminStatsResponse> getOverviewStats(@RequestParam(defaultValue = "2026") int year) {
         return APIResponse.<AdminStatsResponse>builder()
                 .result(adminService.getOverviewStats(year))

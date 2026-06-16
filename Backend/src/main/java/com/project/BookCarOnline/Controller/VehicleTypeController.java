@@ -29,52 +29,5 @@ public class VehicleTypeController {
                 .build();
     }
 
-    @PostMapping("/vehicle-types")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<VehicleType> createVehicleType(@RequestBody VehicleType vehicleType) {
-        return APIResponse.<VehicleType>builder()
-                .result(vehicleTypeService.createVehicleType(vehicleType))
-                .build();
-    }
 
-    @PutMapping("/vehicle-types/{id}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<VehicleType> updateVehicleType(@PathVariable String id, @RequestBody VehicleType vehicleType) {
-        return APIResponse.<VehicleType>builder()
-                .result(vehicleTypeService.updateVehicleType(id, vehicleType))
-                .build();
-    }
-
-    @DeleteMapping("/vehicle-types/{id}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<Void> deleteVehicleType(@PathVariable String id) {
-        vehicleTypeService.deleteVehicleType(id);
-        return APIResponse.<Void>builder().build();
-    }
-
-    // Time Slots Settings
-    @GetMapping("/time-slots")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<List<Time>> getAllTimeSlots() {
-        return APIResponse.<List<Time>>builder().result(vehicleTypeService.getAllTimeSlots()).build();
-    }
-
-    @PutMapping("/time-slots/{id}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<Time> updateTimeSlot(@PathVariable String id, @RequestBody Time time) {
-        return APIResponse.<Time>builder().result(vehicleTypeService.updateTimeSlot(id, time)).build();
-    }
-
-    // Pricing Settings
-    @GetMapping("/pricing")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<List<VehicleType_Time>> getAllPricing() {
-        return APIResponse.<List<VehicleType_Time>>builder().result(vehicleTypeService.getAllPricing()).build();
-    }
-
-    @PutMapping("/pricing/{id}")
-    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
-    public APIResponse<VehicleType_Time> updatePricing(@PathVariable String id, @RequestBody VehicleType_Time pricing) {
-        return APIResponse.<VehicleType_Time>builder().result(vehicleTypeService.updatePricing(id, pricing)).build();
-    }
 }
