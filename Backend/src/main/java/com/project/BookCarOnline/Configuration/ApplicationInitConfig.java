@@ -48,15 +48,17 @@ public class ApplicationInitConfig {
         return args -> {
             log.info("Bắt đầu khởi tạo dữ liệu hệ thống...");
 
-            // 1. Khởi tạo Role ADMIN
-            if (!roleRepository.existsByRoleName(PredefinedRole.ADMIN)) {
-                roleRepository.save(
-                        Role.builder()
-                                .roleName(PredefinedRole.ADMIN)
-                                .description("Quản trị viên")
-                                .build()
-                );
-                log.info("Đã tạo Role ADMIN");
+            // 1. Khởi tạo tất cả các Role
+            for (PredefinedRole predefinedRole : PredefinedRole.values()) {
+                if (!roleRepository.existsByRoleName(predefinedRole)) {
+                    roleRepository.save(
+                            Role.builder()
+                                    .roleName(predefinedRole)
+                                    .description("Role " + predefinedRole.name())
+                                    .build()
+                    );
+                    log.info("Đã tạo Role {}", predefinedRole.name());
+                }
             }
 
 

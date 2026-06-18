@@ -338,6 +338,77 @@ public class BookingService {
         );
     }
 
+    public Page<BookingDetailResponse> searchBookingsForAdmin(int page, int size, String status, String search,
+                                                              String fromDate, String toDate) {
+        Pageable pageable = PageRequest.of(page, size);
+        BookingStatus bookingStatus = null;
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            bookingStatus = BookingStatus.valueOf(status);
+        }
+        Timestamp from = null, to = null;
+        if (fromDate != null && !fromDate.isBlank()) {
+            from = Timestamp.valueOf(java.time.LocalDate.parse(fromDate).atStartOfDay());
+        }
+        if (toDate != null && !toDate.isBlank()) {
+            to = Timestamp.valueOf(java.time.LocalDate.parse(toDate).plusDays(1).atStartOfDay());
+        }
+        String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
+        return bookingRepository.searchForAdmin(bookingStatus, searchParam, from, to, pageable)
+                .map(this::mapToBookingDetailResponse);
+    }
+
+    @Transactional
+    public BookingDetailResponse adminForceCancel(String bookingId) {
+        Booking booking = getBookingOrThrow(bookingId);
+        Set<BookingStatus> cancellable = Set.of(BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.ARRIVED);
+        if (!cancellable.contains(booking.getBookingStatus())) {
+            throw new IllegalStateException("Chỉ có thể huỷ chuyến khi chưa đón khách (trạng thái hiện tại: " + booking.getBookingStatus() + ")");
+        }
+        booking.setBookingStatus(BookingStatus.CANCELLED);
+        Booking updated = bookingRepository.save(booking);
+
+        if (booking.getDriverNo() != null) {
+            messagingTemplate.convertAndSend(
+                    "/topic/driver/" + booking.getDriverNo().getDriverId(),
+                    "ADMIN_CANCELLED:" + bookingId);
+        }
+        if (booking.getCustomerNo() != null) {
+            messagingTemplate.convertAndSend(
+                    "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
+                    "ADMIN_CANCELLED:" + bookingId);
+        }
+        driverLocationService.clearLocation(bookingId);
+        log.info("[Admin] Đã huỷ booking {}", bookingId);
+        return mapToBookingDetailResponse(updated);
+    }
+
+    @Transactional
+    public BookingDetailResponse adminAssignDriver(String bookingId, String driverId) {
+        Booking booking = getBookingOrThrow(bookingId);
+        if (!BookingStatus.PENDING.equals(booking.getBookingStatus())) {
+            throw new IllegalStateException("Chỉ có thể gán tài xế khi chuyến đang ở trạng thái PENDING");
+        }
+        if (booking.getDriverNo() != null) {
+            throw new IllegalStateException("Chuyến đã có tài xế");
+        }
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        boolean driverBusy = bookingRepository.existsByDriverNo_DriverIdAndBookingStatusIn(
+                driverId, List.of(BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.ARRIVED));
+        if (driverBusy) {
+            throw new IllegalStateException("Tài xế đang thực hiện chuyến khác");
+        }
+
+        booking.setDriverNo(driver);
+        booking.setBookingStatus(BookingStatus.ACCEPTED);
+        booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
+        Booking updated = bookingRepository.save(booking);
+        notifyCustomerDriverAssigned(updated, driver);
+        log.info("[Admin] Gán tài xế {} vào booking {}", driverId, bookingId);
+        return mapToBookingDetailResponse(updated);
+    }
+
     public BookingDetailResponse getBookingById(String bookingId) {
         return mapToBookingDetailResponse(
                 bookingRepository.findById(bookingId)

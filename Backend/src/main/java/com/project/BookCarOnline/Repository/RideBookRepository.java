@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.swing.text.html.Option;
 import java.time.LocalDateTime;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,4 +133,26 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
     List<Booking> findByCustomerNo_CustomerIdAndBookingStatusOrderByBookingTimeDesc(String customerId, BookingStatus status);
     boolean existsByDriverNo_DriverIdAndBookingStatusIn(String driverId, List<BookingStatus> statuses);
 
+    @Query("""
+        SELECT b FROM Booking b
+        LEFT JOIN b.customerNo c
+        LEFT JOIN b.driverNo d
+        WHERE (CAST(:status AS string) IS NULL OR b.bookingStatus = :status)
+        AND (CAST(:fromDate AS timestamp) IS NULL OR b.bookingTime >= :fromDate)
+        AND (CAST(:toDate AS timestamp) IS NULL OR b.bookingTime < :toDate)
+        AND (CAST(:search AS string) IS NULL
+            OR LOWER(CAST(c.customerName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR CAST(c.phone AS string) LIKE CONCAT('%', CAST(:search AS string), '%')
+            OR LOWER(CAST(d.driverName AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR CAST(d.phone AS string) LIKE CONCAT('%', CAST(:search AS string), '%')
+            OR LOWER(CAST(b.bookingId AS string)) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+        ORDER BY b.bookingTime DESC
+    """)
+    Page<Booking> searchForAdmin(
+            @Param("status") BookingStatus status,
+            @Param("search") String search,
+            @Param("fromDate") Timestamp fromDate,
+            @Param("toDate") Timestamp toDate,
+            Pageable pageable
+    );
 }

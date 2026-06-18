@@ -40,7 +40,7 @@ const AdminCustomersPage = () => {
       const res = await customerApi.getAllForAdmin(page, 20, search)
       const data = res.result
       setCustomers(data?.content || [])
-      setPagination({ page: data?.number || 0, totalPages: data?.totalPages || 1, totalElements: data?.totalElements || 0 })
+      setPagination({ page: data?.page?.number || 0, totalPages: data?.page?.totalPages || 1, totalElements: data?.page?.totalElements || 0 })
     } catch (e) {
       console.error(e)
     } finally {

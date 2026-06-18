@@ -7,6 +7,7 @@ import {
   RiEyeLine, RiCloseLine, RiCarLine, RiWallet3Line, RiUserLine 
 } from 'react-icons/ri'
 import { cn } from '@/utils/cn'
+import { WalletStatus, TransactionType } from '@/constants/enums'
 
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null
@@ -59,8 +60,8 @@ const AdminDriversPage = () => {
   const fetchDrivers = async () => {
     setLoading(true)
     try {
-      const response = await driverApi.getAll()
-      setDrivers(response.result || [])
+      const response = await driverApi.getAll(0, 1000)
+      setDrivers(response.result?.content || response.result || [])
     } catch (error) {
       console.error('Error fetching drivers:', error)
     } finally {
@@ -106,8 +107,8 @@ const AdminDriversPage = () => {
         driverApi.getDriverWallet(selectedDriver.driverId),
         driverApi.getDriverTransactions(selectedDriver.driverId)
       ])
-      setWallet(w)
-      setTransactions(t?.content || [])
+      setWallet(w?.result || null)
+      setTransactions(t?.result?.content || [])
     } catch (e) {
       console.error('Lỗi khi tải ví:', e)
     }
@@ -366,7 +367,8 @@ const AdminDriversPage = () => {
                         <option value="">-- Chọn loại xe --</option>
                         {vehicleTypes.map(v => (
                           <option key={v.vehicleTypeId} value={v.vehicleTypeId}>
-                            {v.icon} {v.vehicleTypeName}
+                           
+                             {v.vehicleTypeName}
                           </option>
                         ))}
                       </select>
@@ -395,8 +397,8 @@ const AdminDriversPage = () => {
                       {wallet ? formatMoney(wallet.balance) : 'Đang tải...'}
                     </p>
                   </div>
-                  <div className={`px-4 py-2 rounded-lg font-medium text-sm ${wallet?.status ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                    {wallet?.status ? 'Ví hoạt động' : 'Ví bị khóa'}
+                  <div className={`px-4 py-2 rounded-lg font-medium text-sm ${wallet?.status?.toUpperCase() === WalletStatus.ACTIVE ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                    {wallet?.status?.toUpperCase() === WalletStatus.ACTIVE ? 'Ví hoạt động' : 'Ví bị khóa'}
                   </div>
                 </div>
 
@@ -462,14 +464,14 @@ const AdminDriversPage = () => {
                             <tr key={t.transactionId} className="hover:bg-surface-border/5">
                               <td className="px-4 py-3 text-content-muted">{new Date(t.createdAt).toLocaleString('vi-VN')}</td>
                               <td className="px-4 py-3">
-                                {t.type === 'DEPOSIT' ? <span className="text-green-500">Nạp tiền</span> :
-                                 t.type === 'WITHDRAWAL' ? <span className="text-red-500">Rút tiền</span> :
-                                 t.type === 'TRIP_INCOME' ? <span className="text-blue-500">Thu nhập chuyến</span> :
-                                 t.type === 'TRIP_FEE' ? <span className="text-orange-500">Phí nền tảng</span> : 
+                                {t.type === TransactionType.DEPOSIT ? <span className="text-green-500">Nạp tiền</span> :
+                                 t.type === TransactionType.WITHDRAWAL ? <span className="text-red-500">Rút tiền</span> :
+                                 t.type === TransactionType.TRIP_INCOME ? <span className="text-blue-500">Thu nhập chuyến</span> :
+                                 t.type === TransactionType.TRIP_FEE ? <span className="text-orange-500">Phí nền tảng</span> : 
                                  t.type}
                               </td>
                               <td className="px-4 py-3 font-mono font-medium">
-                                {(t.type === 'WITHDRAWAL' || t.type === 'TRIP_FEE') ? '-' : '+'}{formatMoney(t.amount)}
+                                {(t.type === TransactionType.WITHDRAWAL || t.type === TransactionType.TRIP_FEE) ? '-' : '+'}{formatMoney(t.amount)}
                               </td>
                               <td className="px-4 py-3 text-xs font-mono text-content-muted">{t.referenceId}</td>
                             </tr>

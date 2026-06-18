@@ -37,7 +37,6 @@ public class PromotionService {
     CustomerPromotionRepository customerPromotionRepository;
     CustomerRepository customerRepository;
 
-
     public PromotionResponse createPromotion(CreatePromotionRequest request) {
         if (promotionRepository.findByPromotionCode(request.getPromotionCode()).isPresent()) {
             throw new AppException(ErrorCode.PROMOTION_ALREADY_EXISTS);
@@ -94,18 +93,22 @@ public class PromotionService {
         promotion.setEndTime(request.getEndTime());
         promotion.setApplicationCondition(request.getApplicationCondition());
         promotion.setQuantity(request.getQuantity());
-        
-        if (request.getDiscountType() != null) promotion.setDiscountType(DiscountType.valueOf(request.getDiscountType()));
-        if (request.getDiscountValue() != null) promotion.setDiscountValue(request.getDiscountValue());
-        if (request.getMinTripValue() != null) promotion.setMinTripValue(request.getMinTripValue());
-        if (request.getUsageLimitPerUser() != null) promotion.setUsageLimitPerUser(request.getUsageLimitPerUser());
 
-        if (request.getIsActive() != null) promotion.setIsActive(request.getIsActive());
+        if (request.getDiscountType() != null)
+            promotion.setDiscountType(DiscountType.valueOf(request.getDiscountType()));
+        if (request.getDiscountValue() != null)
+            promotion.setDiscountValue(request.getDiscountValue());
+        if (request.getMinTripValue() != null)
+            promotion.setMinTripValue(request.getMinTripValue());
+        if (request.getUsageLimitPerUser() != null)
+            promotion.setUsageLimitPerUser(request.getUsageLimitPerUser());
+
+        if (request.getIsActive() != null)
+            promotion.setIsActive(request.getIsActive());
 
         log.info("[Promotion] Admin cập nhật khuyến mãi id={}", promotionId);
         return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
     }
-
 
     @Transactional
     public PromotionResponse toggleActive(String promotionId) {
@@ -125,7 +128,8 @@ public class PromotionService {
         log.info("[Promotion] Admin xóa khuyến mãi id={}", promotionId);
     }
 
-    // ── Customer Voucher Actions ───────────────────────────────────────────────────
+    // ── Customer Voucher Actions
+    // ───────────────────────────────────────────────────
 
     @Transactional
     public void savePromotionForCustomer(String customerId, String promotionCode) {
@@ -143,7 +147,8 @@ public class PromotionService {
             throw new AppException(ErrorCode.PROMOTION_EXPIRED);
 
         // Check if already saved
-        if (customerPromotionRepository.existsByCustomer_CustomerIdAndPromotion_PromotionId(customerId, promotion.getPromotionId())) {
+        if (customerPromotionRepository.existsByCustomer_CustomerIdAndPromotion_PromotionId(customerId,
+                promotion.getPromotionId())) {
             throw new RuntimeException("Bạn đã lưu mã khuyến mãi này rồi");
         }
 

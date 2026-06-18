@@ -36,11 +36,10 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CustomerService {
 
     AccountRepository accountRepository;
@@ -59,7 +58,7 @@ public class CustomerService {
             }
             log.info(PredefinedRole.CUSTOMER.getRoleName());
             Role role = roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getRoleName())
-                    .orElseThrow(()->new AppException(ErrorCode.ROLE_NOT_EXISTS));
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXISTS));
             Account account = Account.builder()
                     .userName(request.getUserName())
                     .passWord(passwordEncoder.encode(request.getPassWord()))
@@ -78,7 +77,6 @@ public class CustomerService {
 
             customerRepository.save(khachHang);
 
-
             return mapper.toCustomerResponse(khachHang);
 
         } catch (IllegalArgumentException e) {
@@ -94,6 +92,7 @@ public class CustomerService {
 
         return mapper.toCustomerResponse(customer);
     }
+
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public Page<CustomerResponse> getAllCustomers(int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("customerName").ascending());
@@ -111,44 +110,48 @@ public class CustomerService {
         accountRepository.save(account);
         return account.getAccountStatus();
     }
-    public CustomerResponse getMyInfo(){
-        String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()-> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+
+    public CustomerResponse getMyInfo() {
+        String profileId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
 
         return this.getCustomerResponseById(profileId);
 
     }
+
     public CustomerResponse updateMyInfo(UpdateCustomerRequest request) throws IOException {
-        String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()-> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        String profileId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         Customer customer = customerRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        if(request.getPhone() != null){
+        if (request.getPhone() != null) {
             customer.setPhone(request.getPhone());
         }
-        if (request.getAddress() != null){
+        if (request.getAddress() != null) {
             customer.setAddress(request.getAddress());
         }
-        if (request.getCustomerName() != null){
+        if (request.getCustomerName() != null) {
             customer.setCustomerName(request.getCustomerName());
         }
-        if (request.getEmail() != null){
+        if (request.getEmail() != null) {
             customer.setEmail(request.getEmail());
         }
-        if(request.getBirthDate() != null){
+        if (request.getBirthDate() != null) {
             customer.setBirthDate(request.getBirthDate());
         }
-        if(request.getGender() != null){
+        if (request.getGender() != null) {
             customer.setGender(request.getGender());
         }
-        if(request.getAvatar() != null && !request.getAvatar().isEmpty()){
+        if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
             String oldFilePath = firebaseStorageService.getFilePathFromUrl(customer.getAvatar());
             if (oldFilePath != null) {
                 firebaseStorageService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
-            }
-            else {
-                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-                String folderPath = "users"+ "/" + accountID;
+            } else {
+                String accountID = SecurityUtils.getCurrentAccountId()
+                        .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
+                String folderPath = "users" + "/" + accountID;
                 String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
                 customer.setAvatar(fileURL);
             }
@@ -159,20 +162,21 @@ public class CustomerService {
 
         return mapper.toCustomerResponse(customer);
     }
+
     public Boolean deleteMyAvatar() throws IOException {
-        String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()-> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        String profileId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         Customer customer = customerRepository.findById(profileId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        if(customer.getAvatar() != null){
+        if (customer.getAvatar() != null) {
             firebaseStorageService.deleteFile(customer.getAvatar());
-        }else{
+        } else {
             throw new AppException(ErrorCode.AVATAR_NOT_FOUND);
         }
         customer.setAvatar(null);
         customerRepository.save(customer);
         return true;
     }
-
 
 }

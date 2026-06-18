@@ -58,4 +58,26 @@ export const bookingApi = {
 
   getDriverLocation: (bookingId) =>
     apiClient.get(`/drivers/location/${bookingId}`).then((r) => r.data.result),
+
+  // --- Admin APIs ---
+  getAllForAdmin: (page = 0, size = 20, status = '', search = '', fromDate = '', toDate = '') => {
+    const params = new URLSearchParams({ page, size })
+    if (status && status !== 'ALL') params.append('status', status)
+    if (search) params.append('search', search)
+    if (fromDate) params.append('fromDate', fromDate)
+    if (toDate) params.append('toDate', toDate)
+    return apiClient.get(`/admin/bookings?${params}`).then(r => r.data)
+  },
+
+  getByIdForAdmin: (bookingId) =>
+    apiClient.get(`/admin/bookings/${bookingId}`).then(r => r.data),
+
+  adminForceCancel: (bookingId) =>
+    apiClient.delete(`/admin/bookings/${bookingId}`).then(r => r.data),
+
+  adminAssignDriver: (bookingId, driverId) =>
+    apiClient.put(`/admin/bookings/${bookingId}/assign-driver?driverId=${driverId}`).then(r => r.data),
+
+  getAdminSummary: () =>
+    apiClient.get('/admin/bookings/summary').then(r => r.data),
 }

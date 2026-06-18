@@ -13,6 +13,7 @@ import Input from '@/components/Elements/Input'
 import Modal from '@/components/Elements/Modal'
 import Spinner from '@/components/Elements/Spinner'
 import { cn } from '@/utils/cn'
+import { TransactionType } from '@/constants/enums'
 
 const QUICK_AMOUNTS = [100_000, 200_000, 500_000, 1_000_000]
 
@@ -111,8 +112,8 @@ const DriverWalletPage = () => {
     }
   }
 
-  const TX_ICON  = { DEPOSIT: RiArrowDownLine, WITHDRAW: RiArrowUpLine, default: RiWalletLine }
-  const TX_COLOR = { DEPOSIT: 'text-brand-400 bg-brand-400/10', WITHDRAW: 'text-red-400 bg-red-400/10', default: 'text-content-muted bg-gray-400/10' }
+  const TX_ICON  = { [TransactionType.DEPOSIT]: RiArrowDownLine, [TransactionType.WITHDRAWAL]: RiArrowUpLine, default: RiWalletLine }
+  const TX_COLOR = { [TransactionType.DEPOSIT]: 'text-brand-400 bg-brand-400/10', [TransactionType.WITHDRAWAL]: 'text-red-400 bg-red-400/10', default: 'text-content-muted bg-gray-400/10' }
 
   if (loading) return <div className="flex justify-center py-16"><Spinner size="xl" /></div>
 
@@ -168,7 +169,7 @@ const DriverWalletPage = () => {
             {transactions.map((tx) => {
               const Icon  = TX_ICON[tx.type]  || TX_ICON.default
               const color = TX_COLOR[tx.type] || TX_COLOR.default
-              const isIn  = tx.type === 'DEPOSIT'
+              const isIn  = tx.type === TransactionType.DEPOSIT
               return (
                 <div key={tx.id} className="card p-4 flex items-center gap-4">
                   <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', color)}>

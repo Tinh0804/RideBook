@@ -65,6 +65,9 @@ public class AuthenticationService {
         if (!encoder.matches(request.getPassWord(), account.getPassWord())) {
             throw new AppException(ErrorCode.UNAUTHENTACATED);
         }
+
+
+
         if(!account.getRoleNo().getRoleName().getRoleName().equalsIgnoreCase(request.getRoleName()) || !account.getAccountStatus())
             throw  new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
 

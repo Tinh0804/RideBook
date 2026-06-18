@@ -6,6 +6,7 @@ import com.project.BookCarOnline.DTO.Response.WalletTransactionResponse;
 import com.project.BookCarOnline.Entity.Wallet;
 import com.project.BookCarOnline.Entity.WalletTransaction;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 

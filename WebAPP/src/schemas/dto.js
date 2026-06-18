@@ -145,6 +145,7 @@ export const DriverRevenueSchema = z.object({
   details: z.array(RevenueDetailSchema).catch([]),
 })
 
+
 export const DailyRevenueSchema = z.object({
   date: z.string().catch(''),
   grossRevenue: z.number().catch(0),

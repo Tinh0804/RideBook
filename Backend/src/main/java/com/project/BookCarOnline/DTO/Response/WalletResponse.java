@@ -1,5 +1,6 @@
 package com.project.BookCarOnline.DTO.Response;
 
+import com.project.BookCarOnline.Entity.Enum.WalletStatus;
 import lombok.AccessLevel;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -11,5 +12,5 @@ import lombok.experimental.FieldDefaults;
 public class WalletResponse {
     String walletId;
     double balance;
-    boolean isActive;
+    WalletStatus status;
 }
