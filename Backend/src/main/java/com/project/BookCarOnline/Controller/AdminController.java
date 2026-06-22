@@ -20,9 +20,11 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/stats/overview")
-    public APIResponse<AdminStatsResponse> getOverviewStats(@RequestParam(defaultValue = "2026") int year) {
+    public APIResponse<AdminStatsResponse> getOverviewStats(
+            @RequestParam(required = false, defaultValue = "YEAR") String period,
+            @RequestParam(defaultValue = "2026") int year) {
         return APIResponse.<AdminStatsResponse>builder()
-                .result(adminService.getOverviewStats(year))
+                .result(adminService.getOverviewStats(period, year))
                 .build();
     }
 

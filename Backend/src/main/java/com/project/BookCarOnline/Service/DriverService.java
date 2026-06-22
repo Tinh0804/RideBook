@@ -290,7 +290,7 @@ public class DriverService {
     }
 
     @Transactional
-    public DriverDetailResponse createDriver(CreateDriverRequest request, VehicleType vehicleType) {
+    public DriverDetailResponse createDriver(CreateDriverRequest request, VehicleType vehicleType) throws java.io.IOException {
         log.info("Creating new driver: {}", request.getEmail());
 
         validateDriverUniqueness(request);
@@ -314,6 +314,15 @@ public class DriverService {
                 .createdAt(new Date())
                 .build();
         accountRepository.save(account);
+
+        if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
+            String folderPath = "drivers/" + account.getAccountId() + "/avatar";
+            String url = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+            driver.setAvatar(url);
+        }
+
+        // We ignore citizenIdImage and drivingLicenseImage as Driver entity doesn't store them currently
+        // Alternatively, if needed, they can be uploaded here but not saved to the DB.
 
         driver.setAccount(account);
         Driver savedDriver = driverRepository.save(driver);

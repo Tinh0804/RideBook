@@ -57,7 +57,7 @@ public class CustomerService {
                 throw new IllegalArgumentException("Số điện thoại đã được đăng ký.");
             }
             log.info(PredefinedRole.CUSTOMER.getRoleName());
-            Role role = roleRepository.findByRoleId(PredefinedRole.CUSTOMER.getRoleName())
+            Role role = roleRepository.findByRoleName(PredefinedRole.CUSTOMER)
                     .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXISTS));
             Account account = Account.builder()
                     .userName(request.getUserName())

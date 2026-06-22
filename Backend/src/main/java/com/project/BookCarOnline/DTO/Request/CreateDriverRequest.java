@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import org.springframework.web.multipart.MultipartFile;
 import java.util.Date;
 
 @Data
@@ -22,6 +23,7 @@ public class CreateDriverRequest {
 
     @NotNull(message = "Ngày sinh không được để trống")
     @JsonFormat(pattern = "yyyy-MM-dd")
+    @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd")
     Date birthDate;
 
     @NotBlank(message = "CCCD không được để trống")
@@ -64,7 +66,7 @@ public class CreateDriverRequest {
     String password;
 
     // For file uploads (will be handled separately via multipart)
-    String avatar;
-    String citizenIdImage;
-    String drivingLicenseImage;
+    MultipartFile avatar;
+    MultipartFile citizenIdImage;
+    MultipartFile drivingLicenseImage;
 }

@@ -130,7 +130,7 @@ CREATE TABLE driver (
     birth_date DATE,
     driving_license VARCHAR(200),
     vehicle_name VARCHAR(255),
-    activity_status WalletStatus,
+    activity_status boolean,
     current_lat FLOAT(53),
     current_lng FLOAT(53),
     score FLOAT(53),
@@ -411,3 +411,65 @@ INSERT INTO chat_message (id, booking_id, sender_id, receiver_id, content, times
  'Bạn đến đúng giờ nhé.', '2025-03-11 14:30:00'),
 ('cm4d5e6f-a7b8-9012-3456-7890abcdef12', 'bk2b3c4d-e5f6-7890-1234-567890abcdef', 'ac4d5e6f-a7b8-9012-3456-7890abcdef12', 'ac3c4d5e-f6a7-8901-2345-67890abcdef1',
  'Tôi sẽ tới trong 5 phút nữa.', '2025-03-11 14:32:00');
+
+
+create or replace function Pr_FindAvailableDriversCloserCustomer (
+	lat double precision,
+	lng double precision,
+	radius double precision,
+	p_vehicle_type_id varchar(36) 
+)
+returns table (
+	driver_id VARCHAR(36),
+    account_id VARCHAR(36) ,
+    vehicle_type_id VARCHAR(36),
+    phone VARCHAR(15),
+    email VARCHAR(100),
+    citizen_id VARCHAR(200),
+    license_plate VARCHAR(20),
+    driver_name VARCHAR(255),
+    birth_date DATE,
+    driving_license VARCHAR(200),
+    vehicle_name VARCHAR(255),
+    current_lat FLOAT(53),
+    current_lng FLOAT(53),
+    score FLOAT(53),
+    last_trip_time TIMESTAMP(6),
+    address VARCHAR(255),
+    area VARCHAR(255),
+    avatar VARCHAR(255),
+    criminal_record VARCHAR(255),
+    gender VARCHAR(255),
+    activity_status BOOLEAN,
+    Distance double precision
+)
+language plpgsql
+as $$
+begin
+	return query
+	select d.driver_id, d.account_id, d.vehicle_type_id, d.phone, d.email, d.citizen_id, d.license_plate, d.driver_name, d.birth_date, d.driving_license, d.vehicle_name, d.current_lat, d.current_lng, d.score, d.last_trip_time, d.address, d.area, d.avatar, d.criminal_record, d.gender, d.activity_status, (6371 * acos(
+		            cos(radians(lat)) * cos(radians(d.current_lat)) 
+		            * cos(radians(d.current_lng) - radians(lng)) 
+		            + sin(radians(lat)) * sin(radians(d.current_lat))
+		        )) AS Distance
+	from driver d
+	join vehicle_type vt on vt.vehicle_type_id = d.vehicle_type_id
+	where d.activity_status = true
+		and vt.vehicle_type_id = p_vehicle_type_id
+		and not exists (
+			select 1 
+			from booking b
+			where b.driver_id = d.driver_id and b.booking_status in ('ACCEPTED','ARRIVED','IN_PROGRESS')
+		)
+		and (6371 * acos(
+            cos(radians(lat)) * cos(radians(d.current_lat)) 
+            * cos(radians(d.current_lng) - radians(lng)) 
+            + sin(radians(lat)) * sin(radians(d.current_lat))
+        )) <= radius
+	order by Distance asc;
+end;
+$$;
+
+
+\df Pr_FindAvailableDriversCloserCustomer
+

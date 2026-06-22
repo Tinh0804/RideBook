@@ -35,7 +35,7 @@ export const driverApi = {
     apiClient.put(`/admin/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   getAll: (page = 0, size = 20, search = '') =>
-    apiClient.get(`/admin/drivers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then((r) => r.data),
+    apiClient.get(`/admin/drivers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then((r) => r.data?.result ?? r.data),
 
   getById: (driverId) =>
     apiClient.get(`/admin/drivers/${driverId}`).then((r) => parseApiResponse(DriverProfileSchema, r.data)),

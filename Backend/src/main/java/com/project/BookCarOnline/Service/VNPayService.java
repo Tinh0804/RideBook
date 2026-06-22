@@ -293,7 +293,9 @@ public class VNPayService {
                     List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
                             geo.geometry.location.lat,
                             geo.geometry.location.lng,
-                            5.0);
+                            5.0,
+                            booking.getVehicleTypeNo().getVehicleTypeId()
+                    );
                     dispatcherService.startDispatching(finalBookingId, candidates);
                 });
             }

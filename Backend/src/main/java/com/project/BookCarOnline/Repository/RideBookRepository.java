@@ -85,6 +85,48 @@ public interface RideBookRepository extends JpaRepository<Booking, String> {
                    "ORDER BY month", nativeQuery = true)
     List<MonthlyStatProjection> getTripsByMonth(@Param("year") int year);
 
+    @Query(value = "SELECT EXTRACT(HOUR FROM booking_time) AS month, SUM(total_price) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end AND booking_status = 'COMPLETED' " +
+                   "GROUP BY EXTRACT(HOUR FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getRevenueByHour(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT EXTRACT(HOUR FROM booking_time) AS month, CAST(COUNT(*) AS DOUBLE PRECISION) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end " +
+                   "GROUP BY EXTRACT(HOUR FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getTripsByHour(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT EXTRACT(ISODOW FROM booking_time) AS month, SUM(total_price) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end AND booking_status = 'COMPLETED' " +
+                   "GROUP BY EXTRACT(ISODOW FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getRevenueByDayOfWeek(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT EXTRACT(ISODOW FROM booking_time) AS month, CAST(COUNT(*) AS DOUBLE PRECISION) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end " +
+                   "GROUP BY EXTRACT(ISODOW FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getTripsByDayOfWeek(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT EXTRACT(DAY FROM booking_time) AS month, SUM(total_price) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end AND booking_status = 'COMPLETED' " +
+                   "GROUP BY EXTRACT(DAY FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getRevenueByDayOfMonth(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    @Query(value = "SELECT EXTRACT(DAY FROM booking_time) AS month, CAST(COUNT(*) AS DOUBLE PRECISION) AS value " +
+                   "FROM booking " +
+                   "WHERE booking_time >= :start AND booking_time < :end " +
+                   "GROUP BY EXTRACT(DAY FROM booking_time) " +
+                   "ORDER BY month", nativeQuery = true)
+    List<MonthlyStatProjection> getTripsByDayOfMonth(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
     @Query("SELECT b FROM Booking b WHERE b.driverNo.driverId = :driverId AND b.bookingStatus IN ('ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
     List<Booking> findActiveByDriver(@Param("driverId") String driverId);
     

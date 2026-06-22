@@ -28,6 +28,7 @@ public interface DriverMapper {
     @Mapping(target = "vehicleType", ignore = true)
 
     @Mapping(target = "activityStatus", constant = "true")
+    @Mapping(target = "avatar", ignore = true)
     Driver toDriverFromCreateRequest(CreateDriverRequest request);
 
     @Mapping(target = "vehicleType", ignore = true)

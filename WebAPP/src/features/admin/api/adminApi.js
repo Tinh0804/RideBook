@@ -1,9 +1,9 @@
 import apiClient from '@/services/apiClient'
 
 export const adminApi = {
-    getOverviewStats: async (year = new Date().getFullYear()) => {
-        const response = await apiClient.get(`/admin/stats/overview?year=${year}`);
-        return response.data;
+    getOverviewStats: async (period = 'YEAR', year = new Date().getFullYear()) => {
+        const response = await apiClient.get(`/admin/stats/overview?period=${period}&year=${year}`);
+        return response.data?.result ?? response.data;
     },
 
     // Vehicle Types

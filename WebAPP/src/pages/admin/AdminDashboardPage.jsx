@@ -24,26 +24,39 @@ const MOCK_CHART = [
 ]
 
 const AdminDashboardPage = () => {
+  const [period, setPeriod] = useState('YEAR')
+  const [year, setYear] = useState(new Date().getFullYear())
   const [statsData, setStatsData] = useState(null)
   const [customers, setCustomers] = useState([])
   const [drivers,   setDrivers]   = useState([])
   const [bookings,  setBookings]  = useState([])
   const [loading,   setLoading]   = useState(true)
+  const [statsLoading, setStatsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
     Promise.allSettled([
-      adminApi.getOverviewStats(new Date().getFullYear()),
       customerApi.getAllForAdmin(0, 20),
       driverApi.getAll(),
       bookingApi.getAll(),
-    ]).then(([s, c, d, b]) => {
-      if (s.value) setStatsData(s.value)
+    ]).then(([c, d, b]) => {
       setCustomers(c.value?.content || c.value || [])
       setDrivers(d.value || [])
       setBookings(b.value || [])
     }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    setStatsLoading(true)
+    adminApi.getOverviewStats(period, year)
+      .then((data) => {
+        setStatsData(data)
+      })
+      .catch((err) => {
+        console.error('Error fetching admin stats', err)
+      })
+      .finally(() => setStatsLoading(false))
+  }, [period, year])
 
   const stats = [
     { label: 'Tổng khách hàng', value: statsData?.totalCustomers || 0, icon: RiUserLine,                  color: 'text-blue-400',   bg: 'bg-blue-400/10',   trend: '+12%' },
@@ -74,9 +87,46 @@ const AdminDashboardPage = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="section-title">Admin Dashboard</h1>
-        <p className="text-content-muted text-sm mt-1">Tổng quan hoạt động hệ thống BookCar</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="section-title">Admin Dashboard</h1>
+          <p className="text-content-muted text-sm mt-1">Tổng quan hoạt động hệ thống BookCar</p>
+        </div>
+        
+        {/* Period Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-content-muted">Lọc theo:</span>
+          <div className="flex gap-1 p-1 bg-surface-dark border border-surface-border rounded-lg">
+            {[
+              { value: 'DAY', label: 'Ngày' },
+              { value: 'WEEK', label: 'Tuần' },
+              { value: 'MONTH', label: 'Tháng' },
+              { value: 'YEAR', label: 'Năm' },
+            ].map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPeriod(p.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                  period === p.value ? 'bg-brand-500 text-content-main' : 'text-content-muted hover:text-content-main'
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {period === 'YEAR' && (
+            <select
+              value={year}
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="bg-surface-dark border border-surface-border text-content-main text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-brand-500 cursor-pointer"
+            >
+              {[2024, 2025, 2026, 2027].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -114,14 +164,24 @@ const AdminDashboardPage = () => {
       {/* Overview charts */}
       {activeTab === 'overview' && (
         <div className="grid lg:grid-cols-2 gap-6">
-          <div className="card p-6 space-y-4">
-            <h2 className="font-display text-lg font-bold text-content-main">Doanh thu theo tháng (Năm {new Date().getFullYear()})</h2>
+          <div className="card p-6 space-y-4 relative">
+            {statsLoading && (
+              <div className="absolute inset-0 bg-surface-dark/40 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10">
+                <Spinner size="md" />
+              </div>
+            )}
+            <h2 className="font-display text-base font-bold text-content-main">
+              {period === 'DAY' && 'Doanh thu hôm nay (theo giờ)'}
+              {period === 'WEEK' && 'Doanh thu tuần này (theo thứ)'}
+              {period === 'MONTH' && 'Doanh thu tháng này (theo ngày)'}
+              {period === 'YEAR' && `Doanh thu theo tháng (Năm ${year})`}
+            </h2>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={statsData?.revenueByMonth || MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
+              <BarChart data={statsData?.revenueByMonth || []} margin={{ left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`}
+                  tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(0)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v}
                 />
                 <Tooltip contentStyle={{ background: '#111827', border: '1px solid #1F2937', borderRadius: '12px' }}
                   formatter={(v) => [formatCurrency(v), 'Doanh thu']} />
@@ -130,10 +190,20 @@ const AdminDashboardPage = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="card p-6 space-y-4">
-            <h2 className="font-display text-lg font-bold text-content-main">Số chuyến đi theo tháng (Năm {new Date().getFullYear()})</h2>
+          <div className="card p-6 space-y-4 relative">
+            {statsLoading && (
+              <div className="absolute inset-0 bg-surface-dark/40 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10">
+                <Spinner size="md" />
+              </div>
+            )}
+            <h2 className="font-display text-base font-bold text-content-main">
+              {period === 'DAY' && 'Số chuyến đi hôm nay (theo giờ)'}
+              {period === 'WEEK' && 'Số chuyến đi tuần này (theo thứ)'}
+              {period === 'MONTH' && 'Số chuyến đi tháng này (theo ngày)'}
+              {period === 'YEAR' && `Số chuyến đi theo tháng (Năm ${year})`}
+            </h2>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={statsData?.tripsByMonth || MOCK_CHART} margin={{ left: -20, bottom: 0 }}>
+              <LineChart data={statsData?.tripsByMonth || []} margin={{ left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
                 <XAxis dataKey="month" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />

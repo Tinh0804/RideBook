@@ -49,11 +49,13 @@ public interface DriverRepository extends JpaRepository<Driver,String> {
 
     Optional<Driver> findByLicensePlate(String licensePlate);
 
-    @Procedure(procedureName = "Pr_FindAvailableDriversCloserCustomer")
+    @Query(value = "SELECT * FROM Pr_FindAvailableDriversCloserCustomer(:lat, :lng, :radius, :vehicle_type_id)",
+            nativeQuery = true)
     List<Driver> findTrulyAvailableDriversNearby(
             @Param("lat") Double lat,
             @Param("lng") Double lng,
-            @Param("radius") Double radius
+            @Param("radius") Double radius,
+            @Param("vehicle_type_id") String vehicleTypeId
     );
 
     @Modifying

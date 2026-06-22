@@ -62,15 +62,16 @@ public class MoMoService {
             long amount = Math.round(request.getAmount());
 
             String rawSignature =
-                    "partnerCode=" + moMoConfig.getPartnerCode() +
-                            "&accessKey=" + moMoConfig.getAccessKey() +
-                            "&requestId=" + requestId +
-                            "&amount=" + amount +
-                            "&orderId=" + orderId +
-                            "&orderInfo=" + request.getOrderInfo() +
-                            "&returnUrl=" + returnUrl +
-                            "&notifyUrl=" + notifyUrl +
-                            "&extraData=" + extraData;
+                    "accessKey=" + moMoConfig.getAccessKey() +
+                    "&amount=" + amount +
+                    "&extraData=" + extraData +
+                    "&ipnUrl=" + notifyUrl +
+                    "&orderId=" + orderId +
+                    "&orderInfo=" + request.getOrderInfo() +
+                    "&partnerCode=" + moMoConfig.getPartnerCode() +
+                    "&redirectUrl=" + returnUrl +
+                    "&requestId=" + requestId +
+                    "&requestType=" + moMoConfig.getRequestType();
 
             String signature = PaymentUtils.hmacSHA256(
                     moMoConfig.getSecretKey(),
@@ -79,16 +80,16 @@ public class MoMoService {
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("partnerCode", moMoConfig.getPartnerCode());
-            requestBody.put("accessKey", moMoConfig.getAccessKey());
-            requestBody.put("requestType", moMoConfig.getRequestType());
-            requestBody.put("notifyUrl", notifyUrl);
-            requestBody.put("returnUrl", returnUrl);
-            requestBody.put("orderId", orderId);
-            requestBody.put("amount", String.valueOf(amount));
-            requestBody.put("orderInfo", request.getOrderInfo());
             requestBody.put("requestId", requestId);
+            requestBody.put("amount", amount);
+            requestBody.put("orderId", orderId);
+            requestBody.put("orderInfo", request.getOrderInfo());
+            requestBody.put("redirectUrl", returnUrl);
+            requestBody.put("ipnUrl", notifyUrl);
             requestBody.put("extraData", extraData);
+            requestBody.put("requestType", moMoConfig.getRequestType());
             requestBody.put("signature", signature);
+            requestBody.put("lang", "vi");
 
 
             HttpHeaders headers = new HttpHeaders();
@@ -106,7 +107,7 @@ public class MoMoService {
             log.info("MoMo response: {}", responseBody);
 
             if (responseBody != null &&
-                    "0".equals(String.valueOf(responseBody.get("errorCode")))) {
+                    "0".equals(String.valueOf(responseBody.get("resultCode")))) {
 
                 String payUrl = (String) responseBody.get("payUrl");
 
@@ -149,30 +150,31 @@ public class MoMoService {
             String orderInfo = "Nạp tiền vào ví tài xế " + driverId;
 
             String rawSignature =
-                    "partnerCode=" + moMoConfig.getPartnerCode() +
-                            "&accessKey=" + moMoConfig.getAccessKey() +
-                            "&requestId=" + requestId +
-                            "&amount=" + amount +
-                            "&orderId=" + orderId +
-                            "&orderInfo=" + orderInfo +
-                            "&returnUrl=" + finalReturnUrl +
-                            "&notifyUrl=" + notifyUrl +
-                            "&extraData=" + extraData;
+                    "accessKey=" + moMoConfig.getAccessKey() +
+                    "&amount=" + amount +
+                    "&extraData=" + extraData +
+                    "&ipnUrl=" + notifyUrl +
+                    "&orderId=" + orderId +
+                    "&orderInfo=" + orderInfo +
+                    "&partnerCode=" + moMoConfig.getPartnerCode() +
+                    "&redirectUrl=" + finalReturnUrl +
+                    "&requestId=" + requestId +
+                    "&requestType=" + moMoConfig.getRequestType();
 
             String signature = PaymentUtils.hmacSHA256(moMoConfig.getSecretKey(), rawSignature);
 
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("partnerCode", moMoConfig.getPartnerCode());
-            requestBody.put("accessKey", moMoConfig.getAccessKey());
-            requestBody.put("requestType", moMoConfig.getRequestType());
-            requestBody.put("notifyUrl", notifyUrl);
-            requestBody.put("returnUrl", finalReturnUrl);
-            requestBody.put("orderId", orderId);
-            requestBody.put("amount", String.valueOf(amount));
-            requestBody.put("orderInfo", orderInfo);
             requestBody.put("requestId", requestId);
+            requestBody.put("amount", amount);
+            requestBody.put("orderId", orderId);
+            requestBody.put("orderInfo", orderInfo);
+            requestBody.put("redirectUrl", finalReturnUrl);
+            requestBody.put("ipnUrl", notifyUrl);
             requestBody.put("extraData", extraData);
+            requestBody.put("requestType", moMoConfig.getRequestType());
             requestBody.put("signature", signature);
+            requestBody.put("lang", "vi");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -182,7 +184,7 @@ public class MoMoService {
             ResponseEntity<Map> response = restTemplate.postForEntity(moMoConfig.getApiUrl(), entity, Map.class);
             Map<String, Object> responseBody = response.getBody();
 
-            if (responseBody != null && "0".equals(String.valueOf(responseBody.get("errorCode")))) {
+            if (responseBody != null && "0".equals(String.valueOf(responseBody.get("resultCode")))) {
                 String payUrl = (String) responseBody.get("payUrl");
                 return PaymentResponse.builder()
                         .status("SUCCESS")
@@ -217,7 +219,6 @@ public class MoMoService {
             String orderType = params.get("orderType");
             String transId = params.get("transId");
             String message = params.get("message");
-            String localMessage = params.get("localMessage");
             String responseTime = params.get("responseTime");
             String errorCode = params.get("resultCode");
             if (errorCode == null) {
@@ -229,25 +230,26 @@ public class MoMoService {
 
 
             if (errorCode == null) errorCode = "";
-            if (localMessage == null) localMessage = "";
             if (extraData == null) extraData = "";
+            if (message == null) message = "";
+            if (orderType == null) orderType = "";
+            if (payType == null) payType = "";
 
 
             String rawSignature =
-                    "partnerCode=" + partnerCode +
-                            "&accessKey=" + accessKey +
-                            "&requestId=" + requestId +
-                            "&amount=" + amount +
-                            "&orderId=" + orderId +
-                            "&orderInfo=" + orderInfo +
-                            "&orderType=" + orderType +
-                            "&transId=" + transId +
-                            "&message=" + message +
-                            "&localMessage=" + localMessage +
-                            "&responseTime=" + responseTime +
-                            "&errorCode=" + errorCode +
-                            "&payType=" + payType +
-                            "&extraData=" + extraData;
+                    "accessKey=" + accessKey +
+                    "&amount=" + amount +
+                    "&extraData=" + extraData +
+                    "&message=" + message +
+                    "&orderId=" + orderId +
+                    "&orderInfo=" + orderInfo +
+                    "&orderType=" + orderType +
+                    "&partnerCode=" + partnerCode +
+                    "&payType=" + payType +
+                    "&requestId=" + requestId +
+                    "&responseTime=" + responseTime +
+                    "&resultCode=" + errorCode +
+                    "&transId=" + transId;
 
             String calculatedSignature = PaymentUtils.hmacSHA256(
                     moMoConfig.getSecretKey(),
@@ -315,7 +317,9 @@ public class MoMoService {
                                 List<Driver> candidates = driverRepository.findTrulyAvailableDriversNearby(
                                         geo.geometry.location.lat,
                                         geo.geometry.location.lng,
-                                        5.0);
+                                        5.0,
+                                        booking.getVehicleTypeNo().getVehicleTypeId()
+                                );
                                 dispatcherService.startDispatching(bookingId, candidates);
                             });
                 }

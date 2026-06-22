@@ -1,5 +1,5 @@
 package com.project.BookCarOnline.Controller;
-
+import org.springframework.http.MediaType;
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
@@ -134,9 +134,9 @@ public class DriverController {
     }
 
 
-    @PostMapping("/register")
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public APIResponse<DriverDetailResponse> createDriver(@Valid @RequestBody CreateDriverRequest request) {
+    public APIResponse<DriverDetailResponse> createDriver(@Valid @ModelAttribute CreateDriverRequest request) throws IOException {
         log.info("REST API: POST /drivers - Creating new driver: {}", request.getEmail());
 
         DriverDetailResponse driver = driverService.createDriver(request, null);

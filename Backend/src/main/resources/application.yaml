@@ -82,10 +82,10 @@ momo:
     partner-code: "MOMO"
     access-key: "F8BBA842ECF85"
     secret-key: "K951B6PE1waDMi640xX08PD3vg6EkVlz"
-    api-url: "https://test-payment.momo.vn/gw_payment/transactionProcessor"
+    api-url: "https://test-payment.momo.vn/v2/gateway/api/create"
     return-url: "http://localhost:8080/RideBook/payments/momo/return"
     notify-url: "http://localhost:8080/RideBook/payments/momo/callback"
-    request-type: "captureMoMoWallet"
+    request-type: "captureWallet"
 firebase:
     bucket-name: "ridebook-dc1ad.firebasestorage.app"
     config-path: "firebase/firebase-adminsdk.json"

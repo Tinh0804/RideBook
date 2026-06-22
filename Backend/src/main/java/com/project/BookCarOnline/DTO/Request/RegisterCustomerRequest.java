@@ -17,5 +17,6 @@ public class RegisterCustomerRequest {
     String name;
     String phoneNumber;
     String address;
+    String confirm;
 
 }

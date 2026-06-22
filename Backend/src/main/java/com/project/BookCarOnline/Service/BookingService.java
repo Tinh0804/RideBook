@@ -164,7 +164,7 @@ public class BookingService {
         redisTemplate.delete("quote:" + request.getQuoteId());
 
         if (isCash) {
-            dispatchWithPriority(saved.getBookingId(), pickupLat, pickupLng, Set.of());
+            dispatchWithPriority(saved, pickupLat, pickupLng, Set.of());
         } else {
             paymentTimeoutService.schedulePaymentTimeout(saved.getBookingId(), 10 * 60 * 1000L);
         }
@@ -193,7 +193,7 @@ public class BookingService {
         // Lấy blacklist đã có (trường hợp này luôn rỗng vì booking mới tạo)
         Set<String> blacklist = rejectionRepository.findDriverIdsByBookingId(bookingId);
 
-        dispatchWithPriority(bookingId, lat, lng, blacklist);
+        dispatchWithPriority(booking, lat, lng, blacklist);
     }
 
     //  TÀI XẾ TỪ CHỐI CHỦ ĐỘNG (gọi từ BookingController)
@@ -535,10 +535,10 @@ public class BookingService {
                 .build();
     }
 
-    private void dispatchWithPriority(String bookingId, double lat, double lng,
+    private void dispatchWithPriority(Booking booking, double lat, double lng,
                                       Set<String> existingBlacklist) {
         List<Driver> candidates = driverRepository
-                .findTrulyAvailableDriversNearby(lat, lng, constant.getSEARCH_RADIUS_KM())
+                .findTrulyAvailableDriversNearby(lat, lng, constant.getSEARCH_RADIUS_KM(),booking.getVehicleTypeNo().getVehicleTypeId())
                 .stream()
                 .filter(d -> !existingBlacklist.contains(d.getDriverId()))
                 .collect(Collectors.toList());
@@ -552,8 +552,8 @@ public class BookingService {
 
         candidates.sort(Comparator.comparingDouble(Driver::getScore).reversed());
 
-        log.info("[Booking] Dispatch booking={} cho {} tài xế", bookingId, candidates.size());
-        dispatcherService.startDispatching(bookingId, candidates);
+        log.info("[Booking] Dispatch booking={} cho {} tài xế", booking.getBookingId(), candidates.size());
+        dispatcherService.startDispatching(booking.getBookingId(), candidates);
     }
 
     private double calculateScore(Driver driver, double distanceKm, int rejectCount, int ignoreCount) {

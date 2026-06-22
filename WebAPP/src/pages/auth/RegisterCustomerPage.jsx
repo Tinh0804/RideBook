@@ -34,6 +34,7 @@ const RegisterCustomerPage = () => {
   const onSubmit = async ({ confirm, ...data }) => {
     setLoading(true)
     try {
+      console.log(data)
       await customerApi.register(data)
       toast.success('Đăng ký thành công! Vui lòng đăng nhập.')
       navigate('/login/customer')
