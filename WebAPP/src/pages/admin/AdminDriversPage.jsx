@@ -61,7 +61,8 @@ const AdminDriversPage = () => {
     setLoading(true)
     try {
       const response = await driverApi.getAll(0, 1000)
-      setDrivers(response.result?.content || response.result || [])
+      // driverApi.getAll already unwraps r.data?.result, so response IS the Page object
+      setDrivers(response?.content || (Array.isArray(response) ? response : []))
     } catch (error) {
       console.error('Error fetching drivers:', error)
     } finally {

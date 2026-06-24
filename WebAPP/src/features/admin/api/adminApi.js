@@ -29,8 +29,16 @@ export const adminApi = {
         const response = await apiClient.get('/admin/time-slots');
         return response.data;
     },
+    createTimeSlot: async (data) => {
+        const response = await apiClient.post('/admin/time-slots', data);
+        return response.data;
+    },
     updateTimeSlot: async (id, data) => {
         const response = await apiClient.put(`/admin/time-slots/${id}`, data);
+        return response.data;
+    },
+    deleteTimeSlot: async (id) => {
+        const response = await apiClient.delete(`/admin/time-slots/${id}`);
         return response.data;
     },
 
@@ -39,8 +47,16 @@ export const adminApi = {
         const response = await apiClient.get('/admin/pricing');
         return response.data;
     },
-    updatePricing: async (id, data) => {
-        const response = await apiClient.put(`/admin/pricing/${id}`, data);
+    createPricing: async (data) => {
+        const response = await apiClient.post('/admin/pricing', data);
+        return response.data;
+    },
+    updatePricing: async (vehicleTypeId, timeId, data) => {
+        const response = await apiClient.put(`/admin/pricing/${vehicleTypeId}/${timeId}`, data);
+        return response.data;
+    },
+    deletePricing: async (vehicleTypeId, timeId) => {
+        const response = await apiClient.delete(`/admin/pricing/${vehicleTypeId}/${timeId}`);
         return response.data;
     }
 };

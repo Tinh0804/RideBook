@@ -21,8 +21,8 @@ public interface CustomerRepository extends JpaRepository<Customer,String> {
     boolean existsByPhone(String phone);
 
     @Query("SELECT c FROM Customer c WHERE " +
-            "(:search IS NULL OR LOWER(c.customerName) LIKE :search " +
+            "LOWER(c.customerName) LIKE :search " +
             "OR c.phone LIKE :search " +
-            "OR LOWER(c.email) LIKE :search)")
+            "OR LOWER(c.email) LIKE :search")
     Page<Customer> searchCustomers(@Param("search") String search, Pageable pageable);
 }

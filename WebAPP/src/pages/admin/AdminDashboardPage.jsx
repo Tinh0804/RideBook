@@ -40,8 +40,10 @@ const AdminDashboardPage = () => {
       driverApi.getAll(),
       bookingApi.getAll(),
     ]).then(([c, d, b]) => {
-      setCustomers(c.value?.content || c.value || [])
-      setDrivers(d.value || [])
+      // customerApi.getAllForAdmin and driverApi.getAll both return Page objects already unwrapped
+      setCustomers(c.value?.content || [])
+      setDrivers(d.value?.content || (Array.isArray(d.value) ? d.value : []))
+      // bookingApi.getAll uses parseApiArrayResponse which returns the array directly
       setBookings(b.value || [])
     }).finally(() => setLoading(false))
   }, [])

@@ -209,14 +209,21 @@ export const PromotionSchema = z.object({
   promotionId: z.string().catch(''),
   promotionCode: z.string().catch(''),
   promotionName: z.string().nullable().catch(''),
-  discountLimit: z.number().catch(0),
-  discountValue: z.number().catch(0),
+  discountLimit: z.number().nullable().catch(0),
+  discountValue: z.number().nullable().catch(0),
   discountType: z.string().nullable().catch(''),
   minTripValue: z.number().nullable().catch(0),
   startTime: z.string().nullable().catch(''),
   endTime: z.string().nullable().catch(''),
-  quantity: z.number().catch(0),
-  usageLimitPerUser: z.number().nullable().catch(null)
+  quantity: z.number().nullable().catch(0),
+  usageLimitPerUser: z.number().nullable().catch(null),
+  isActive: z.boolean().nullable().catch(null),
+  applicationCondition: z.string().nullable().catch(null),
+  promotionImage: z.string().nullable().catch(null),
+  // Admin stats fields
+  usedCount: z.number().nullable().catch(null),
+  savedCount: z.number().nullable().catch(null),
+  isExpired: z.boolean().nullable().catch(null),
 })
 
 export const RatingSchema = z.object({

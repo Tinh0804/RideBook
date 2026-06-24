@@ -38,9 +38,10 @@ const AdminCustomersPage = () => {
     setLoading(true)
     try {
       const res = await customerApi.getAllForAdmin(page, 20, search)
-      const data = res.result
-      setCustomers(data?.content || [])
-      setPagination({ page: data?.page?.number || 0, totalPages: data?.page?.totalPages || 1, totalElements: data?.page?.totalElements || 0 })
+      // customerApi.getAllForAdmin already unwraps r.data?.result,
+      // so `res` is the Page object directly
+      setCustomers(res?.content || [])
+      setPagination({ page: res?.page?.number || 0, totalPages: res?.page?.totalPages || 1, totalElements: res?.page?.totalElements || 0 })
     } catch (e) {
       console.error(e)
     } finally {
@@ -56,6 +57,7 @@ const AdminCustomersPage = () => {
   const openDetail = async (customer) => {
     try {
       const res = await customerApi.getById(customer.customerId)
+      // getById returns r.data (full ApiResponse), so result is in res.result
       setSelectedCustomer(res.result || customer)
     } catch {
       setSelectedCustomer(customer)

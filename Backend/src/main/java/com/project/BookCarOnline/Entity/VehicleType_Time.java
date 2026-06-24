@@ -34,14 +34,4 @@ public class VehicleType_Time {
 
 }
 
-@Embeddable
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-class VehicleType_Time_ID implements Serializable {
-    @Column(length = 36)
-    private String vehicleTypeId;
 
-    @Column(length = 36)
-    private String timeId;
-}

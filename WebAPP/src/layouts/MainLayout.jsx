@@ -6,7 +6,7 @@ import {
   RiLogoutBoxLine, RiDashboardLine, RiCarLine,
   RiBarChartLine, RiMapPinLine, RiSettings3Line,
   RiCloseLine, RiMoneyDollarCircleLine,
-  RiSunLine, RiMoonLine
+  RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line
 } from 'react-icons/ri'
 import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/store/rootStore'
 import { useAuth } from '@/hooks/useAuth'
@@ -32,12 +32,14 @@ const DRIVER_NAV = [
 ]
 
 const ADMIN_NAV = [
-  { to: '/admin/dashboard',   icon: RiDashboardLine,           label: 'Dashboard' },
-  { to: '/admin/customers',   icon: RiUserLine,                label: 'Khách hàng' },
-  { to: '/admin/drivers',     icon: RiCarLine,                 label: 'Tài xế' },
-  { to: '/admin/bookings',    icon: RiHistoryLine,             label: 'Chuyến đi' },
-  { to: '/admin/promotions',  icon: RiMoneyDollarCircleLine,   label: 'Khuyến mãi' },
-  { to: '/admin/settings',    icon: RiSettings3Line,           label: 'Cài đặt' },
+  { to: '/admin/dashboard',      icon: RiDashboardLine,           label: 'Dashboard' },
+  { to: '/admin/customers',      icon: RiUserLine,                label: 'Khách hàng' },
+  { to: '/admin/drivers',        icon: RiCarLine,                 label: 'Tài xế' },
+  { to: '/admin/bookings',       icon: RiHistoryLine,             label: 'Chuyến đi' },
+  { to: '/admin/promotions',     icon: RiMoneyDollarCircleLine,   label: 'Khuyến mãi' },
+  { to: '/admin/vehicle-types',  icon: RiCarFill,                 label: 'Loại xe' },
+  { to: '/admin/time-slots',     icon: RiTimeLine,                label: 'Khung giờ' },
+  { to: '/admin/pricing',        icon: RiPriceTag3Line,           label: 'Bảng giá' },
 ]
 
 const MainLayout = () => {

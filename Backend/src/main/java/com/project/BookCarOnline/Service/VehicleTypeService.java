@@ -46,7 +46,12 @@ public class VehicleTypeService {
     }
 
     public void deleteVehicleType(String id) {
+        vehicleTypeTimeRepository.deleteByVehicleType_VehicleTypeId(id);
         vehicleTypeRepository.deleteById(id);
+    }
+
+    public Time createTimeSlot(Time time) {
+        return timeRepository.save(time);
     }
 
     public List<Time> getAllTimeSlots() {
@@ -61,14 +66,33 @@ public class VehicleTypeService {
         return timeRepository.save(existing);
     }
 
+    public void deleteTimeSlot(String id) {
+        vehicleTypeTimeRepository.deleteByTime_TimeId(id);
+        timeRepository.deleteById(id);
+    }
+
     public List<VehicleType_Time> getAllPricing() {
         return vehicleTypeTimeRepository.findAll();
     }
 
-    public VehicleType_Time updatePricing(String id, VehicleType_Time pricing) {
-        VehicleType_Time existing = vehicleTypeTimeRepository.findById(id).orElseThrow(() -> new RuntimeException("Pricing not found"));
+    public VehicleType_Time createPricing(VehicleType_Time pricing) {
+        // Find existing relations to set them
+        VehicleType v = vehicleTypeRepository.findById(pricing.getId().getVehicleTypeId()).orElseThrow();
+        Time t = timeRepository.findById(pricing.getId().getTimeId()).orElseThrow();
+        pricing.setVehicleType(v);
+        pricing.setTime(t);
+        return vehicleTypeTimeRepository.save(pricing);
+    }
+
+    public VehicleType_Time updatePricing(String vehicleTypeId, String timeId, VehicleType_Time pricing) {
+        VehicleType_Time existing = vehicleTypeTimeRepository.findByVehicleType_VehicleTypeIdAndTime_TimeId(vehicleTypeId, timeId)
+                .orElseThrow(() -> new RuntimeException("Pricing not found"));
         existing.setSurcharge(pricing.getSurcharge());
         return vehicleTypeTimeRepository.save(existing);
+    }
+
+    public void deletePricing(String vehicleTypeId, String timeId) {
+        vehicleTypeTimeRepository.deleteByVehicleType_VehicleTypeIdAndTime_TimeId(vehicleTypeId, timeId);
     }
 
     public double getCurrentSurcharge(String vehicleTypeId) {

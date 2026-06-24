@@ -15,4 +15,8 @@ public interface CustomerPromotionRepository extends JpaRepository<CustomerPromo
     Optional<CustomerPromotion> findByCustomer_CustomerIdAndPromotion_PromotionId(String customerId, String promotionId);
     boolean existsByCustomer_CustomerIdAndPromotion_PromotionId(String customerId, String promotionId);
     int countByCustomer_CustomerIdAndPromotion_PromotionIdAndStatus(String customerId, String promotionId, CustomerPromotionStatus status);
+
+    // Thống kê theo promotion
+    int countByPromotion_PromotionId(String promotionId);
+    int countByPromotion_PromotionIdAndStatus(String promotionId, CustomerPromotionStatus status);
 }

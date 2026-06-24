@@ -124,7 +124,8 @@ const AdminBookingsPage = () => {
     setDriversLoading(true)
     try {
       const res = await driverApi.getAll(0, 50)
-      const data = res?.result?.content || res?.result || []
+      // driverApi.getAll already unwraps r.data?.result, so res is the Page object directly
+      const data = res?.content || (Array.isArray(res) ? res : [])
       setAvailableDrivers(data)
     } catch (e) {
       console.error(e)

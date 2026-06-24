@@ -71,11 +71,11 @@ public interface DriverRepository extends JpaRepository<Driver,String> {
     );
 
     @Query("SELECT d FROM Driver d WHERE "+
-            "(:search IS NULL OR LOWER(d.driverName) LIKE :search " +
+            "LOWER(d.driverName) LIKE :search " +
             "OR d.phone LIKE :search "+
             "OR LOWER(d.email) LIKE :search " +
             "OR d.citizenId LIKE :search " +
-            "OR d.licensePlate LIKE :search)"
+            "OR d.licensePlate LIKE :search"
     )
     Page<Driver>  searchDrivers( @Param("search") String search, Pageable pageable);
 

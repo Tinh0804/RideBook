@@ -70,8 +70,19 @@ public class PromotionService {
 
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public List<PromotionResponse> getAllPromotions() {
+        Timestamp now = Timestamp.from(Instant.now());
         return promotionRepository.findAll()
-                .stream().map(promotionMapper::toPromotionResponse)
+                .stream()
+                .map(p -> {
+                    PromotionResponse resp = promotionMapper.toPromotionResponse(p);
+                    // Append computed statistics
+                    int usedCount  = customerPromotionRepository.countByPromotion_PromotionIdAndStatus(p.getPromotionId(), CustomerPromotionStatus.USED);
+                    int savedCount = customerPromotionRepository.countByPromotion_PromotionIdAndStatus(p.getPromotionId(), CustomerPromotionStatus.SAVED);
+                    resp.setUsedCount(usedCount);
+                    resp.setSavedCount(savedCount);
+                    resp.setIsExpired(p.getEndTime() != null && p.getEndTime().before(now));
+                    return resp;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -102,7 +113,8 @@ public class PromotionService {
             promotion.setMinTripValue(request.getMinTripValue());
         if (request.getUsageLimitPerUser() != null)
             promotion.setUsageLimitPerUser(request.getUsageLimitPerUser());
-
+        if (request.getPromotionImage() != null)
+            promotion.setPromotionImage(request.getPromotionImage());
         if (request.getIsActive() != null)
             promotion.setIsActive(request.getIsActive());
 

@@ -96,12 +96,13 @@ public class DriverService {
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public Page<DriverDetailResponse> searchDrivers(int page, int size ,String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("driverName").ascending());
-        if (search != null && !search.trim().isEmpty()) {
-            search = "%" + search.trim().toLowerCase() + "%";
+        Page<Driver> drivers;
+        if (search == null || search.trim().isEmpty()) {
+            drivers = driverRepository.findAll(pageable);
         } else {
-            search = null;
+            String searchTerm = "%" + search.trim().toLowerCase() + "%";
+            drivers = driverRepository.searchDrivers(searchTerm, pageable);
         }
-        Page<Driver> drivers = driverRepository.searchDrivers(search, pageable);
         return drivers.map(mapper::toDriverDetailResponse);
     }
 

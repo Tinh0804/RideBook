@@ -48,5 +48,16 @@ export const masterDataApi = {
   createPromotion: (payload) =>
     apiClient.post('/promotions', payload).then((r) => parseApiResponse(PromotionSchema, r.data)),
 
+  // Admin-only methods
+  getAllPromotionsForAdmin: () =>
+    apiClient.get('/promotions').then((r) => parseApiArrayResponse(PromotionSchema, r.data)),
 
+  updatePromotion: (id, payload) =>
+    apiClient.put(`/promotions/${id}`, payload).then((r) => parseApiResponse(PromotionSchema, r.data)),
+
+  deletePromotion: (id) =>
+    apiClient.delete(`/promotions/${id}`).then((r) => r.data),
+
+  togglePromotion: (id) =>
+    apiClient.patch(`/promotions/${id}/toggle`).then((r) => parseApiResponse(PromotionSchema, r.data)),
 }

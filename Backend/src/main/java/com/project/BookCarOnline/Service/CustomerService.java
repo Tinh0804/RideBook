@@ -96,8 +96,13 @@ public class CustomerService {
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public Page<CustomerResponse> getAllCustomers(int page, int size, String search) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("customerName").ascending());
-        String searchTerm = (search == null || search.trim().isEmpty()) ? null : "%" + search.toLowerCase() + "%";
-        Page<Customer> customers = customerRepository.searchCustomers(searchTerm, pageable);
+        Page<Customer> customers;
+        if (search == null || search.trim().isEmpty()) {
+            customers = customerRepository.findAll(pageable);
+        } else {
+            String searchTerm = "%" + search.trim().toLowerCase() + "%";
+            customers = customerRepository.searchCustomers(searchTerm, pageable);
+        }
         return customers.map(mapper::toCustomerResponse);
     }
 

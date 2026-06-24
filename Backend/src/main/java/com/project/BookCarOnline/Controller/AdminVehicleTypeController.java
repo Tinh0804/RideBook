@@ -41,6 +41,11 @@ public class AdminVehicleTypeController {
     }
 
     // Time Slots Settings
+    @PostMapping("/time-slots")
+    public APIResponse<Time> createTimeSlot(@RequestBody Time time) {
+        return APIResponse.<Time>builder().result(vehicleTypeService.createTimeSlot(time)).build();
+    }
+
     @GetMapping("/time-slots")
     public APIResponse<List<Time>> getAllTimeSlots() {
         return APIResponse.<List<Time>>builder().result(vehicleTypeService.getAllTimeSlots()).build();
@@ -51,14 +56,31 @@ public class AdminVehicleTypeController {
         return APIResponse.<Time>builder().result(vehicleTypeService.updateTimeSlot(id, time)).build();
     }
 
+    @DeleteMapping("/time-slots/{id}")
+    public APIResponse<Void> deleteTimeSlot(@PathVariable String id) {
+        vehicleTypeService.deleteTimeSlot(id);
+        return APIResponse.<Void>builder().build();
+    }
+
     // Pricing Settings
+    @PostMapping("/pricing")
+    public APIResponse<VehicleType_Time> createPricing(@RequestBody VehicleType_Time pricing) {
+        return APIResponse.<VehicleType_Time>builder().result(vehicleTypeService.createPricing(pricing)).build();
+    }
+
     @GetMapping("/pricing")
     public APIResponse<List<VehicleType_Time>> getAllPricing() {
         return APIResponse.<List<VehicleType_Time>>builder().result(vehicleTypeService.getAllPricing()).build();
     }
 
-    @PutMapping("/pricing/{id}")
-    public APIResponse<VehicleType_Time> updatePricing(@PathVariable String id, @RequestBody VehicleType_Time pricing) {
-        return APIResponse.<VehicleType_Time>builder().result(vehicleTypeService.updatePricing(id, pricing)).build();
+    @PutMapping("/pricing/{vehicleTypeId}/{timeId}")
+    public APIResponse<VehicleType_Time> updatePricing(@PathVariable String vehicleTypeId, @PathVariable String timeId, @RequestBody VehicleType_Time pricing) {
+        return APIResponse.<VehicleType_Time>builder().result(vehicleTypeService.updatePricing(vehicleTypeId, timeId, pricing)).build();
+    }
+
+    @DeleteMapping("/pricing/{vehicleTypeId}/{timeId}")
+    public APIResponse<Void> deletePricing(@PathVariable String vehicleTypeId, @PathVariable String timeId) {
+        vehicleTypeService.deletePricing(vehicleTypeId, timeId);
+        return APIResponse.<Void>builder().build();
     }
 }

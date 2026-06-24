@@ -39,6 +39,7 @@ public class CreatePromotionRequest {
     Double discountValue;
     Double minTripValue;
     Integer usageLimitPerUser;
+    String promotionImage;
 
     @Builder.Default
     Boolean isActive = true;

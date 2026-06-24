@@ -36,10 +36,13 @@ const DriverHistoryPage      = lazy(() => import('@/pages/driver/DriverHistoryPa
 
 // Admin
 const AdminDashboardPage     = lazy(() => import('@/pages/admin/AdminDashboardPage'))
-const AdminSettingsPage      = lazy(() => import('@/pages/admin/AdminSettingsPage'))
+const AdminVehicleTypesPage  = lazy(() => import('@/pages/admin/AdminVehicleTypesPage'))
+const AdminTimeSlotsPage     = lazy(() => import('@/pages/admin/AdminTimeSlotsPage'))
+const AdminPricingPage       = lazy(() => import('@/pages/admin/AdminPricingPage'))
 const AdminDriversPage       = lazy(() => import('@/pages/admin/AdminDriversPage'))
 const AdminCustomersPage     = lazy(() => import('@/pages/admin/AdminCustomersPage'))
 const AdminBookingsPage      = lazy(() => import('@/pages/admin/AdminBookingsPage'))
+const AdminPromotionsPage    = lazy(() => import('@/pages/admin/AdminPromotionsPage'))
 
 // Payment
 const PaymentCallbackPage    = lazy(() => import('@/pages/customer/PaymentCallbackPage'))
@@ -118,12 +121,15 @@ const AppRoutes = () => (
       {/* ── Admin routes ── */}
       <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
         <Route element={<MainLayout />}>
-          <Route path="admin/dashboard"  element={<AdminDashboardPage />} />
-          <Route path="admin/settings"   element={<AdminSettingsPage />} />
-          <Route path="admin/customers"  element={<AdminCustomersPage />} />
-          <Route path="admin/drivers"    element={<AdminDriversPage />} />
-          <Route path="admin/bookings"   element={<AdminBookingsPage />} />
-          <Route path="admin/*"          element={<AdminDashboardPage />} />
+          <Route path="admin/dashboard"    element={<AdminDashboardPage />} />
+          <Route path="admin/vehicle-types" element={<AdminVehicleTypesPage />} />
+          <Route path="admin/time-slots"   element={<AdminTimeSlotsPage />} />
+          <Route path="admin/pricing"      element={<AdminPricingPage />} />
+          <Route path="admin/customers"    element={<AdminCustomersPage />} />
+          <Route path="admin/drivers"      element={<AdminDriversPage />} />
+          <Route path="admin/bookings"     element={<AdminBookingsPage />} />
+          <Route path="admin/promotions"   element={<AdminPromotionsPage />} />
+          <Route path="admin/*"            element={<AdminDashboardPage />} />
         </Route>
       </Route>
 
