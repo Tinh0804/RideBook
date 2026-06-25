@@ -43,4 +43,7 @@ public class CreatePromotionRequest {
 
     @Builder.Default
     Boolean isActive = true;
+
+    @Builder.Default
+    Boolean isPublic = true;
 }

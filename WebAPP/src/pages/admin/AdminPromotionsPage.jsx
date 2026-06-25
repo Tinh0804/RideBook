@@ -7,6 +7,7 @@ import {
   RiPercentLine, RiMoneyDollarCircleLine, RiSearchLine,
   RiToggleLine, RiToggleFill, RiCalendarLine, RiGroupLine,
   RiCoupon3Line, RiTimeLine, RiCheckLine,
+  RiEyeLine, RiEyeOffLine
 } from 'react-icons/ri'
 import { cn } from '@/utils/cn'
 
@@ -66,6 +67,7 @@ const EMPTY_FORM = {
   startTime: '',
   endTime: '',
   isActive: true,
+  isPublic: true,
   promotionImage: '',
 }
 
@@ -265,24 +267,51 @@ const PromotionForm = ({ initial = EMPTY_FORM, onSubmit, submitting }) => {
         )}
       </div>
 
-      {/* Active toggle */}
-      <div className="flex items-center gap-3 p-3 bg-surface-dark/50 border border-surface-border rounded-xl">
-        <span className="text-sm text-content-muted flex-1">Kích hoạt ngay sau khi tạo</span>
-        <button
-          type="button"
-          onClick={() => set('isActive', !form.isActive)}
-          className={cn(
-            'relative w-11 h-6 rounded-full transition-colors',
-            form.isActive ? 'bg-brand-500' : 'bg-surface-border'
-          )}
-        >
-          <span
+      {/* Active & Public toggles */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center gap-3 p-3 bg-surface-dark/50 border border-surface-border rounded-xl">
+          <div className="flex-1">
+            <span className="text-sm font-medium text-content-main block">Trạng thái</span>
+            <span className="text-xs text-content-muted">Kích hoạt mã</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => set('isActive', !form.isActive)}
             className={cn(
-              'absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform',
-              form.isActive && 'translate-x-5'
+              'relative w-11 h-6 rounded-full transition-colors',
+              form.isActive ? 'bg-brand-500' : 'bg-surface-border'
             )}
-          />
-        </button>
+          >
+            <span
+              className={cn(
+                'absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform',
+                form.isActive && 'translate-x-5'
+              )}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 p-3 bg-surface-dark/50 border border-surface-border rounded-xl">
+          <div className="flex-1">
+            <span className="text-sm font-medium text-content-main block">Hiển thị</span>
+            <span className="text-xs text-content-muted">Công khai (Public)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => set('isPublic', !form.isPublic)}
+            className={cn(
+              'relative w-11 h-6 rounded-full transition-colors',
+              form.isPublic ? 'bg-blue-500' : 'bg-surface-border'
+            )}
+          >
+            <span
+              className={cn(
+                'absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform',
+                form.isPublic && 'translate-x-5'
+              )}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Submit */}
@@ -301,7 +330,7 @@ const PromotionForm = ({ initial = EMPTY_FORM, onSubmit, submitting }) => {
 }
 
 // ─── Promotion Card ───────────────────────────────────────────────────────────
-const PromotionCard = ({ promo, onEdit, onDelete, onToggle }) => {
+const PromotionCard = ({ promo, onEdit, onDelete, onToggle, onToggleVisibility }) => {
   const isPercent = promo.discountType === 'PERCENTAGE'
   const daysLeft = getDaysLeft(promo.endTime)
   const isExpired = promo.isExpired || daysLeft < 0
@@ -369,6 +398,15 @@ const PromotionCard = ({ promo, onEdit, onDelete, onToggle }) => {
             {promo.promotionCode}
           </code>
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => onToggleVisibility(promo.promotionId)}
+              className={cn('p-1.5 rounded-lg transition-colors',
+                promo.isPublic ? 'text-blue-400 hover:bg-blue-500/10' : 'text-content-muted hover:bg-surface-border/40'
+              )}
+              title={promo.isPublic ? 'Đang công khai - Bấm để ẩn' : 'Đang ẩn - Bấm để công khai'}
+            >
+              {promo.isPublic ? <RiEyeLine size={16} /> : <RiEyeOffLine size={16} />}
+            </button>
             <button
               onClick={() => onToggle(promo.promotionId)}
               className={cn('p-1.5 rounded-lg transition-colors',
@@ -525,6 +563,7 @@ const AdminPromotionsPage = () => {
       quantity: promo.quantity ?? '',
       usageLimitPerUser: promo.usageLimitPerUser ?? '',
       applicationCondition: promo.applicationCondition ?? '',
+      isPublic: promo.isPublic ?? true,
       promotionImage: promo.promotionImage ?? '',
       startTime: toLocalDT(promo.startTime),
       endTime: toLocalDT(promo.endTime),
@@ -559,6 +598,16 @@ const AdminPromotionsPage = () => {
       fetchPromotions()
     } catch {
       toast.error('Không thể thay đổi trạng thái')
+    }
+  }
+
+  const handleToggleVisibility = async (id) => {
+    try {
+      await masterDataApi.toggleVisibility(id)
+      toast.success('Đã thay đổi hiển thị (Công khai/Nội bộ)')
+      fetchPromotions()
+    } catch {
+      toast.error('Không thể thay đổi trạng thái hiển thị')
     }
   }
 
@@ -683,6 +732,7 @@ const AdminPromotionsPage = () => {
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onToggle={handleToggle}
+              onToggleVisibility={handleToggleVisibility}
             />
           ))}
         </div>

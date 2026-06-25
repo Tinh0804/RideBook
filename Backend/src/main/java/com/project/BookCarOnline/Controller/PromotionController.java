@@ -106,6 +106,16 @@ public class PromotionController {
                 .build();
     }
 
+    /** PATCH /promotions/{id}/toggle-visibility – Bật/tắt Public/Private (Admin) */
+    @PatchMapping("/{id}/toggle-visibility")
+    public APIResponse<PromotionResponse> toggleVisibility(@PathVariable String id) {
+        return APIResponse.<PromotionResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đã thay đổi trạng thái hiển thị (Public/Private)")
+                .result(promotionService.toggleVisibility(id))
+                .build();
+    }
+
     /** DELETE /promotions/{id} – Xóa (Admin) */
     @DeleteMapping("/{id}")
     public APIResponse<Void> deletePromotion(@PathVariable String id) {

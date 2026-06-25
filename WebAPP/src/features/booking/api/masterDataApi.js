@@ -60,4 +60,7 @@ export const masterDataApi = {
 
   togglePromotion: (id) =>
     apiClient.patch(`/promotions/${id}/toggle`).then((r) => parseApiResponse(PromotionSchema, r.data)),
+
+  toggleVisibility: (id) =>
+    apiClient.patch(`/promotions/${id}/toggle-visibility`).then((r) => parseApiResponse(PromotionSchema, r.data)),
 }

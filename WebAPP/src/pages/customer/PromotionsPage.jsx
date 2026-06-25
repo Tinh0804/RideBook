@@ -23,6 +23,7 @@ const CustomerPromotionsPage = () => {
   const [promotions, setPromotions] = useState([]);
   const [myPromotions, setMyPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [manualCode, setManualCode] = useState('');
 
   const fetchPromotions = useCallback(async () => {
     setLoading(true);
@@ -60,6 +61,13 @@ const CustomerPromotionsPage = () => {
     } catch (error) {
         toast.error(error.response?.data?.message || 'Không thể lưu mã khuyến mãi này');
     }
+  };
+
+  const handleManualSave = async (e) => {
+    e.preventDefault();
+    if (!manualCode.trim()) return;
+    await handleSavePromotion(manualCode.trim().toUpperCase());
+    setManualCode('');
   };
 
   const handleUsePromotion = (code) => {
@@ -266,23 +274,47 @@ const CustomerPromotionsPage = () => {
                 Đăng nhập ngay
               </button>
             </div>
-          ) : myPromotions.length === 0 ? (
-            <div className="text-center py-20 bg-surface/50 backdrop-blur-sm rounded-2xl border border-white/10">
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🎫</span>
-              </div>
-              <p className="text-content-muted text-lg font-medium">Ví Voucher của bạn đang trống.</p>
-              <p className="text-content-muted/70 text-sm mt-1 mb-6">Hãy sang tab Khám phá để lưu mã nhé!</p>
-              <button 
-                onClick={() => setActiveTab('EXPLORE')}
-                className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl transition-colors font-medium shadow-lg shadow-brand-500/20"
-              >
-                Khám phá ngay
-              </button>
-            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myPromotions.map((promo, idx) => renderPromoCard(promo, idx, true))}
+            <div className="space-y-6">
+              {/* Nhập mã thủ công */}
+              <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-2xl border border-white/10 flex items-center justify-center max-w-xl mx-auto">
+                <form onSubmit={handleManualSave} className="flex flex-col sm:flex-row gap-3 w-full">
+                  <input 
+                    type="text" 
+                    placeholder="Nhập mã khuyến mãi (VD: VIP100)"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    className="flex-1 bg-surface-dark border border-white/10 rounded-xl px-4 py-2.5 text-content-main focus:outline-none focus:border-brand-500 uppercase font-mono"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={!manualCode.trim()}
+                    className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-brand-500/20"
+                  >
+                    Lưu mã
+                  </button>
+                </form>
+              </div>
+
+              {myPromotions.length === 0 ? (
+                <div className="text-center py-16 bg-surface/50 backdrop-blur-sm rounded-2xl border border-white/10">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">🎫</span>
+                  </div>
+                  <p className="text-content-muted text-lg font-medium">Ví Voucher của bạn đang trống.</p>
+                  <p className="text-content-muted/70 text-sm mt-1 mb-6">Hãy sang tab Khám phá để lưu mã nhé!</p>
+                  <button 
+                    onClick={() => setActiveTab('EXPLORE')}
+                    className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl transition-colors font-medium shadow-lg shadow-brand-500/20"
+                  >
+                    Khám phá ngay
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {myPromotions.map((promo, idx) => renderPromoCard(promo, idx, true))}
+                </div>
+              )}
             </div>
           )
         )}

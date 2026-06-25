@@ -25,6 +25,7 @@ public class PromotionResponse {
     String applicationCondition;
     Integer quantity;
     Boolean isActive;
+    Boolean isPublic;
     String promotionImage;
 
     // Discount info

@@ -117,6 +117,8 @@ public class PromotionService {
             promotion.setPromotionImage(request.getPromotionImage());
         if (request.getIsActive() != null)
             promotion.setIsActive(request.getIsActive());
+        if (request.getIsPublic() != null)
+            promotion.setIsPublic(request.getIsPublic());
 
         log.info("[Promotion] Admin cập nhật khuyến mãi id={}", promotionId);
         return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
@@ -128,6 +130,16 @@ public class PromotionService {
                 .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
         promotion.setIsActive(!promotion.getIsActive());
         log.info("[Promotion] Toggle isActive={} cho id={}", promotion.getIsActive(), promotionId);
+        return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
+    }
+
+    @Transactional
+    public PromotionResponse toggleVisibility(String promotionId) {
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
+        Boolean newStatus = promotion.getIsPublic() != null ? !promotion.getIsPublic() : false;
+        promotion.setIsPublic(newStatus);
+        log.info("[Promotion] Toggle isPublic={} cho id={}", newStatus, promotionId);
         return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
     }
 

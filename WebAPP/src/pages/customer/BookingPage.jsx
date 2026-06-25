@@ -127,7 +127,10 @@ const BookingPage = () => {
     if (step === 2 && (!pickup || !dropoff)) {
       setStep(1)
     }
-  }, [step, pickup, dropoff])
+    if (step === 3 && !currentBooking) {
+      setStep(1)
+    }
+  }, [step, pickup, dropoff, currentBooking])
 
   useEffect(() => {
     if (step === 2 && customerId) {

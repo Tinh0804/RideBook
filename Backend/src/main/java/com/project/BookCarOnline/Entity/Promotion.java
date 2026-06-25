@@ -49,6 +49,9 @@ public class Promotion {
 
     @Column
      Boolean isActive;
+    @Column
+    @Builder.Default
+     Boolean isPublic = true;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)

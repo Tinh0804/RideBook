@@ -153,11 +153,17 @@ const [avgScore, setAvgScore] = useState(0)   // ← thêm dòng này
   //   }
   // }
 
-  const formatTime = (date) => {
+  const formatTime = (dateInput) => {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return String(dateInput);
     return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
   }
   
-  const formatDate = (date) => {
+  const formatDate = (dateInput) => {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return String(dateInput);
     return date.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' })
   }
   

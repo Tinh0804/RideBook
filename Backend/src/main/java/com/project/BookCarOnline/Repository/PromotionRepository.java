@@ -14,6 +14,6 @@ import java.util.Optional;
 public interface PromotionRepository extends JpaRepository<Promotion, String> {
     Optional<Promotion> findByPromotionCode(String promotionCode);
 
-    @Query("SELECT p FROM Promotion p WHERE p.isActive = true AND p.quantity > 0 AND p.startTime <= :now AND p.endTime >= :now")
+    @Query("SELECT p FROM Promotion p WHERE p.isActive = true AND p.isPublic = true AND p.quantity > 0 AND p.startTime <= :now AND p.endTime >= :now")
     List<Promotion> findActivePromotions(@Param("now") Timestamp now);
 }

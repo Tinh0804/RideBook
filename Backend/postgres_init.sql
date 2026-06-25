@@ -233,6 +233,14 @@ CREATE TABLE chat_message (
     timestamp TIMESTAMP(6)
 );
 
+CREATE TABLE chat_message (
+    id VARCHAR(36) PRIMARY KEY,
+    booking_id VARCHAR(36),
+    sender_id VARCHAR(36),
+    receiver_id VARCHAR(36),
+    content TEXT,
+    timestamp TIMESTAMP
+);
 
 
 -- ============================================================
