@@ -1,5 +1,6 @@
 package com.project.BookCarOnline.DTO.Response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -17,7 +18,9 @@ public class PromotionResponse {
     String promotionCode;
     String promotionName;
     Double discountLimit;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     Timestamp startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     Timestamp endTime;
     String applicationCondition;
     Integer quantity;

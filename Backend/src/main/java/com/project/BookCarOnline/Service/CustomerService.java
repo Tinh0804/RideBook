@@ -7,6 +7,7 @@ import com.project.BookCarOnline.DTO.Response.CustomerResponse;
 import com.project.BookCarOnline.Entity.Account;
 import com.project.BookCarOnline.Entity.Customer;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
+import com.project.BookCarOnline.Entity.Enum.Provider;
 import com.project.BookCarOnline.Entity.Role;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
@@ -63,6 +64,7 @@ public class CustomerService {
                     .userName(request.getUserName())
                     .passWord(passwordEncoder.encode(request.getPassWord()))
                     .roleNo(role)
+                    .provider(Provider.LOCAL)
                     .accountStatus(true)
                     .createdAt(new Date())
                     .build();

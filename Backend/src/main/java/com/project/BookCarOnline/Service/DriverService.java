@@ -6,6 +6,7 @@ import com.project.BookCarOnline.DTO.Response.*;
 import com.project.BookCarOnline.Entity.Account;
 import com.project.BookCarOnline.Entity.Driver;
 import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
+import com.project.BookCarOnline.Entity.Enum.Provider;
 import com.project.BookCarOnline.Entity.Role;
 import com.project.BookCarOnline.Entity.VehicleType;
 import com.project.BookCarOnline.Exception.AppException;
@@ -311,6 +312,7 @@ public class DriverService {
                 .userName(request.getPhone())
                 .passWord(passwordEncoder.encode(request.getPassword()))
                 .roleNo(driverRole)
+                .provider(Provider.LOCAL)
                 .accountStatus(true)
                 .createdAt(new Date())
                 .build();

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/rootStore';
 import { bookingApi } from '@/features/booking/api/bookingApi';
+import { customerApi } from '@/features/customer/api/customerApi';
 import { formatCurrency } from '@/utils/currency';
 import { formatDate } from '@/utils/formatDate';
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config';
@@ -26,19 +27,44 @@ const FILTERS = [
 
 const TripHistoryPage = () => {
   const navigate = useNavigate();
-  const { userProfile } = useAuthStore();
+  const { userProfile, setUserProfile } = useAuthStore();
   const [trips, setTrips] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userProfile?.id) return;
+    const customerId = userProfile?.id || userProfile?.customerId;
+    console.log('[TripHistory] customerId from store:', customerId, 'userProfile:', userProfile);
+    if (!customerId) {
+      console.log('[TripHistory] userProfile missing, calling getMyInfo...');
+      customerApi.getMyInfo()
+        .then((profile) => {
+          console.log('[TripHistory] getMyInfo returned:', profile);
+          setUserProfile(profile);
+          const id = profile?.id || profile?.customerId;
+          if (!id) { 
+            console.warn('[TripHistory] Still no id after getMyInfo');
+            setLoading(false); return; 
+          }
+          return bookingApi.getCustomerHistory(id);
+        })
+        .then((res) => {
+          console.log('[TripHistory] getCustomerHistory fallback result:', res);
+          setTrips(res || []);
+        })
+        .catch((e) => console.error('[TripHistory] Error:', e))
+        .finally(() => setLoading(false));
+      return;
+    }
     bookingApi
-      .getCustomerHistory(userProfile.id)
-      .then((res) => setTrips(res || []))
-      .catch(() => {})
+      .getCustomerHistory(customerId)
+      .then((res) => {
+        console.log('[TripHistory] getCustomerHistory result:', res);
+        setTrips(res || []);
+      })
+      .catch((e) => console.error('[TripHistory] Error:', e))
       .finally(() => setLoading(false));
-  }, [userProfile]);
+  }, [userProfile?.id, userProfile?.customerId, setUserProfile]);
 
   const filteredTrips =
     filter === 'ALL' ? trips : trips.filter((t) => t.bookingStatus === filter);

@@ -10,7 +10,8 @@ export const customerApi = {
   toggleAccountStatus: (customerId) =>
     apiClient.put(`/admin/customers/${customerId}/account-status`).then(r => r.data),
 
-  getMyInfo: () => apiClient.get('/customers/my-info').then(r => r.data),
+  getMyInfo: () => apiClient.get('/customers/my-info').then(r => parseApiResponse(CustomerProfileSchema, r.data)),
+
 
   updateMyInfo: (formData) =>
     apiClient

@@ -62,7 +62,9 @@ const RootRedirect = () => {
   const { isAuth, user } = useAuthStore()
   if (!isAuth) return <Navigate to="/welcome" replace />
   
-  const userRole = user?.role?.roleName?.toUpperCase()
+  const rawRole = user?.role
+  const userRoleStr = typeof rawRole === 'object' ? rawRole?.roleName : rawRole
+  const userRole = userRoleStr?.toUpperCase()
   if (userRole === ROLES.DRIVER) return <Navigate to="/driver/dashboard" replace />
   if (userRole === ROLES.ADMIN)  return <Navigate to="/admin/dashboard"  replace />
   return <Navigate to="/customer/home" replace />

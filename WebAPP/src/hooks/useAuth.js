@@ -17,7 +17,7 @@ export const useAuth = () => {
     const account = data?.account || {}
 
     // AccountSchema transforms role object to string (roleName)
-    const role = account.role || roleNameFallback
+    const role = account.role?.roleName || roleNameFallback
 
     // user: chỉ lưu thông tin account cơ bản
     const userInfo = {

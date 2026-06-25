@@ -171,7 +171,7 @@ const DriverWalletPage = () => {
               const color = TX_COLOR[tx.type] || TX_COLOR.default
               const isIn  = tx.type === TransactionType.DEPOSIT
               return (
-                <div key={tx.id} className="card p-4 flex items-center gap-4">
+                <div key={tx.transactionId} className="card p-4 flex items-center gap-4">
                   <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', color)}>
                     <Icon size={18} />
                   </div>

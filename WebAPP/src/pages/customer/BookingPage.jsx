@@ -922,7 +922,23 @@ const BookingPage = () => {
                 Bạn chưa có mã khuyến mãi nào.
               </div>
             ) : (
-              myPromotions.map(p => {
+              [...myPromotions].sort((a, b) => {
+                const isAEligible = !a.minTripValue || originalPrice >= a.minTripValue
+                const isBEligible = !b.minTripValue || originalPrice >= b.minTripValue
+                
+                if (isAEligible && !isBEligible) return -1
+                if (!isAEligible && isBEligible) return 1
+                
+                const getDiscount = (p) => {
+                  if (p.discountType === 'PERCENTAGE') {
+                    let d = ((p.discountValue || 0) / 100) * originalPrice
+                    return p.discountLimit > 0 ? Math.min(d, p.discountLimit) : d
+                  }
+                  return p.discountLimit || p.discountValue || 0
+                }
+                
+                return getDiscount(b) - getDiscount(a)
+              }).map(p => {
                 const isSelected = selectedPromos.some(s => s.promotionCode === p.promotionCode)
                 const isEligible = !p.minTripValue || originalPrice >= p.minTripValue
                 return (

@@ -9,11 +9,15 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
   const { isAuth, user } = useAuthStore()
   const location = useLocation()
 
+  const rawRole = user?.role
+  const userRoleStr = typeof rawRole === 'object' ? rawRole?.roleName : rawRole
+
   if (!isAuth) {
-    return <Navigate to={`/login/${user?.role?.roleName}`} state={{ from: location }} replace />
+    const roleParam = userRoleStr?.toLowerCase() || 'customer'
+    return <Navigate to={`/login/${roleParam}`} state={{ from: location }} replace />
   }
 
-  const userRole = user?.role?.toUpperCase()
+  const userRole = userRoleStr?.toUpperCase()
 
   if (allowedRoles.length > 0 && userRole && !allowedRoles.includes(userRole)) {
     // Redirect to their own home

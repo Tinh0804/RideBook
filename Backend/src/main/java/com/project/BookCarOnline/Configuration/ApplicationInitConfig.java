@@ -72,7 +72,7 @@ public class ApplicationInitConfig {
                         .passWord(passwordEncoder.encode(ADMIN_PASSWORD))
                         .roleNo(adminRole)
                         .accountStatus(true)
-                        .provider(com.project.BookCarOnline.Entity.Enum.Provider.LOCAL)
+                        .provider(Provider.LOCAL)
                         .build();
 
                 // Lưu Account trước

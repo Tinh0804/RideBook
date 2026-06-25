@@ -60,19 +60,20 @@ public class AuthenticationService {
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
 
-        Account account = accountRepository.findByUserName(request.getUserName()).orElseThrow(()->new AppException(ErrorCode.USER_NOT_EXITED));
+        Account account = accountRepository.findByUserName(request.getUserName()).orElseThrow(()->new AppException(ErrorCode.USERNAME_OR_PASSWORD_INVALID));
 
         if (!encoder.matches(request.getPassWord(), account.getPassWord())) {
-            throw new AppException(ErrorCode.UNAUTHENTACATED);
+            throw new AppException(ErrorCode.USERNAME_OR_PASSWORD_INVALID);
         }
 
 
+        if(!account.getRoleNo().getRoleName().getRoleName().equalsIgnoreCase(request.getRoleName()))
+            throw  new AppException(ErrorCode.ROLE_NOT_FOUND);
+        if(!account.getAccountStatus())
+            throw  new AppException(ErrorCode.ACCOUNT_DISABLED);
 
-        if(!account.getRoleNo().getRoleName().getRoleName().equalsIgnoreCase(request.getRoleName()) || !account.getAccountStatus())
-            throw  new AppException(ErrorCode.ACCOUNT_NOT_FOUND);
-
-       String token = generateToken(account, VALID_DURATION);
-       String refreshToken = generateToken(account, REFRESHABLE_DURATION);
+        String token = generateToken(account, VALID_DURATION);
+        String refreshToken = generateToken(account, REFRESHABLE_DURATION);
         AccountResponse accountResponse = accountMapper.toAccountResponse(account);
         accountResponse.setRole(account.getRoleNo());
         accountResponse.setAccountStatus(account.getAccountStatus());

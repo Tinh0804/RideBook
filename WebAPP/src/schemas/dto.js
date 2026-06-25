@@ -8,10 +8,15 @@ export const createApiResponseSchema = (resultSchema) => z.object({
 })
 
 // ─── Base Entities ───────────────────────────────────────────────────────
+export const RoleSchema = z.object({
+  roleName: z.string().catch(''),
+  description: z.string().nullable().catch(''),
+})
+
 export const AccountSchema = z.object({
   accountId: z.string().catch(''),
   userName: z.string().catch(''),
-  role: z.any().transform(r => typeof r === 'object' ? r?.roleName : r).catch(''),
+  role: RoleSchema.optional().catch({}),
   accountStatus: z.boolean().catch(true),
   createdAt: z.string().nullable().optional().catch(null),
 })
@@ -65,7 +70,7 @@ export const DriverProfileSchema = z.object({
   gender: z.string().nullable().catch(''),
   address: z.string().nullable().catch(''),
   area: z.string().nullable().catch(''),
-  rating: z.number().catch(0),
+  score: z.number().nullable().catch(0),
   currentLat: z.number().nullable().catch(null),
   currentLng: z.number().nullable().catch(null),
   vehicleTypeId: z.string().nullable().catch(''),
@@ -76,6 +81,7 @@ export const DriverProfileSchema = z.object({
   ...data,
   id:   data.driverId,
   name: data.driverName,
+  rating: data.score,
 }))
 
 export const BookingDetailSchema = z.object({
@@ -94,6 +100,7 @@ export const BookingDetailSchema = z.object({
   pickupLng: z.number().nullable().catch(null),
   dropoffLat: z.number().nullable().catch(null),
   dropoffLng: z.number().nullable().catch(null),
+  originalPrice: z.number().catch(0),
   totalPrice: z.number().catch(0),
   bookingTime: z.string().nullable().catch(''),
   pickupTime: z.string().nullable().catch(''),
@@ -208,18 +215,18 @@ export const NotificationSchema = z.object({
 export const PromotionSchema = z.object({
   promotionId: z.string().catch(''),
   promotionCode: z.string().catch(''),
-  promotionName: z.string().nullable().catch(''),
+  promotionName: z.string().catch(''),
   discountLimit: z.number().nullable().catch(0),
-  discountValue: z.number().nullable().catch(0),
-  discountType: z.string().nullable().catch(''),
-  minTripValue: z.number().nullable().catch(0),
   startTime: z.string().nullable().catch(''),
   endTime: z.string().nullable().catch(''),
+  applicationCondition: z.string().nullable().catch(''),
   quantity: z.number().nullable().catch(0),
-  usageLimitPerUser: z.number().nullable().catch(null),
-  isActive: z.boolean().nullable().catch(null),
-  applicationCondition: z.string().nullable().catch(null),
-  promotionImage: z.string().nullable().catch(null),
+  isActive: z.boolean().catch(false),
+  promotionImage: z.string().nullable().catch(''),
+  discountType: z.string().nullable().catch(''),
+  discountValue: z.number().nullable().catch(0),
+  minTripValue: z.number().nullable().catch(0),
+  usageLimitPerUser: z.number().nullable().catch(0),
   // Admin stats fields
   usedCount: z.number().nullable().catch(null),
   savedCount: z.number().nullable().catch(null),

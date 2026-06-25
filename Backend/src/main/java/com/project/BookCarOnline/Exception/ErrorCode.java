@@ -25,6 +25,7 @@ public enum ErrorCode {
     ROLE_NOT_EXISTS(402,"Role not exists",HttpStatus.BAD_REQUEST),
     AUTHENTICATION_SERVICE_ERROR(500,"Authentication service error",HttpStatus.INTERNAL_SERVER_ERROR),
     ACCOUNT_NOT_FOUND(404,"Account not found",HttpStatus.NOT_FOUND),
+    ACCOUNT_DISABLED(403,"Account disabled",HttpStatus.FORBIDDEN),
     LOGIN_FAILED(401,"Login failed",HttpStatus.UNAUTHORIZED),
     ACCOUNT_NOT_ACTIVE(403,"Account not active",HttpStatus.FORBIDDEN),
     EXCHANGE_TOKEN_FAIL(403,"Exchange token fail",HttpStatus.FORBIDDEN),
@@ -32,6 +33,7 @@ public enum ErrorCode {
     PROFILE_NOT_FOUND(404,"Profile not found",HttpStatus.NOT_FOUND),
     ACCOUNT_NOT_EXISTS(404,"Account not exists",HttpStatus.NOT_FOUND),
     AVATAR_NOT_FOUND(404,"Avatar not found",HttpStatus.NOT_FOUND),
+    USERNAME_OR_PASSWORD_INVALID(401,"Username or password invalid",HttpStatus.UNAUTHORIZED),
     
     // Driver related errors
     DRIVER_EMAIL_EXISTED(400,"Email tài xế đã tồn tại",HttpStatus.BAD_REQUEST),
