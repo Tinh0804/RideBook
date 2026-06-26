@@ -1,45 +1,46 @@
-name: CD Pipleline
+name: CD Pipeline
 runs-name: ${{ github.actor }}
 on:
   workflow_run: 
     workflows:
-      - CI Pipeline # Triggered when CI Pipeline is completed 
+      - "CI Pipeline" # Đảm bảo tên này trùng khớp với tên file CI build của bạn
     types: 
       - completed 
     branches: ['main','master']
 
-# jobs: 
-#   deploy-backend: 
-#     name: Deploy Backend 
-#     runs-on: ubuntu-latest
-#     if: ${{ github.event.workflow_run.conclusion == 'success' }} # Only runs if CI Pipeline is completed successfully 
-#     steps: 
-#       - name: Deploy to EC2
-#         uses: appleboy/ssh-action@v1
-#         with: 
-#           host: ${{ secrects.SSH_ROOT }}
-#           username: ${{ secrects.SSH_USERNAME}}
-#           key: ${{ secrects.SSH_PRIVATE_KEY }} 
-#           port: 22
-#           script: |
-#             echo "Start Deploying EC2"
-#             cd /home/ubuntu
-#             sudo bash -c 'echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env'
-#             sudo docker compose pull bookcar-backend
-#             sudo docker compose up -d --force-recreate bookcar-backend
-#             sudo docker image prune -f 
-#             echo "Deploy Backend EC2 Successfully"
+jobs: 
+  deploy-backend: 
+    name: Deploy Backend 
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }} 
+    steps: 
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with: 
+          host: ${{ secrets.SSH_ROOT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }} 
+          port: 22
+          script: |
+            echo "Start Deploying EC2"
+            cd /home/ubuntu
+            
+            # Ghi mã định danh phiên bản code và nạp các biến DB từ GitHub sang file .env trên AWS
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
+            echo "DATABASE_URL=${{ secrets.DB_URL }}" >> .env
+            echo "REDIS_CONNECTION=${{ secrets.REDIS_URL }}" >> .env
+            
+            # Thực hiện cập nhật phiên bản ứng dụng mới từ Docker Hub
+            docker-compose pull bookcar-backend
+            docker-compose up -d --force-recreate bookcar-backend
+            docker image prune -f 
+            echo "Deploy Backend EC2 Successfully"
 
-      
-        
   deploy-frontend:
     name: Deploy Frontend
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
     steps:
       - name: Trigger Vercel Deployment
         run: |
           curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
-    
-    
