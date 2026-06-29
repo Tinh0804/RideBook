@@ -11,7 +11,7 @@
 	<groupId>com.project</groupId>
 	<artifactId>BookCarOnline</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 	<name>BookCarOnline</name>
 	<description>Create application book a car online</description>
 	<url/>
