@@ -16,6 +16,8 @@ jobs:
     steps: 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Copy docker-compose to EC2
         uses: appleboy/scp-action@master
