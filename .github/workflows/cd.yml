@@ -1,9 +1,9 @@
 name: CD Pipeline
-runs-name: ${{ github.actor }}
+run-name: ${{ github.actor }}
 on:
   workflow_run: 
     workflows:
-      - "CI Pipeline" # Đảm bảo tên này trùng khớp với tên file CI build của bạn
+      - "CI Pipeline" 
     types: 
       - completed 
     branches: ['main','master']
@@ -14,27 +14,47 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }} 
     steps: 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_ROOT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "Backend/docker-compose.yml"
+          target: "/home/ec2-user/"
+          strip_components: 1
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with: 
           host: ${{ secrets.SSH_ROOT }}
-          username: ${{ secrets.SSH_USERNAME }}
+          username: ${{ secrets.SSH_USERNAME }} 
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
           port: 22
           script: |
             echo "Start Deploying EC2"
-            cd /home/ubuntu
+            # Sửa đường dẫn chuẩn cho Amazon Linux 2023
+            cd /home/ec2-user
             
-            # Ghi mã định danh phiên bản code và nạp các biến DB từ GitHub sang file .env trên AWS
+            # Ghi mã định danh phiên bản code
             echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
-            echo "DATABASE_URL=${{ secrets.DB_URL }}" >> .env
-            echo "REDIS_CONNECTION=${{ secrets.REDIS_URL }}" >> .env
+            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> .env
             
-            # Thực hiện cập nhật phiên bản ứng dụng mới từ Docker Hub
-            docker-compose pull bookcar-backend
-            docker-compose up -d --force-recreate bookcar-backend
+            # Ghi toàn bộ nội dung file .env từ Github Secrets
+            echo "${{ secrets.ENV_PROD }}" >> .env
+            
+            # Khởi động Docker Compose
+            docker compose pull app
+            docker compose up -d --force-recreate app
+            
+            # Dọn dẹp rác hệ thống để tránh đầy ổ cứng
             docker image prune -f 
             echo "Deploy Backend EC2 Successfully"
+
 
   deploy-frontend:
     name: Deploy Frontend
