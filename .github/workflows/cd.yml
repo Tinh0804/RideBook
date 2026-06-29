@@ -6,7 +6,7 @@ on:
       - "CI Pipeline" 
     types: 
       - completed 
-    branches: ['main','master']
+    branches: ['main','master','test']
 
 jobs: 
   deploy-backend: 
