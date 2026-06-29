@@ -14,4 +14,9 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_DATA_REDIS_URL=${REDIS_URL}
       - SPRING_DATA_REDIS_DATABASE=${REDIS_DATABASE}
-    restart: unless-stopped
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
