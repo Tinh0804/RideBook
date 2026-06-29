@@ -49,8 +49,8 @@ jobs:
             echo "${{ secrets.ENV_PROD }}" >> .env
             
             # Khởi động Docker Compose
-            docker compose pull app
-            docker compose up -d --force-recreate app
+            docker compose pull 
+            docker compose up -d --force-recreate 
             
             # Dọn dẹp rác hệ thống để tránh đầy ổ cứng
             docker image prune -f 
