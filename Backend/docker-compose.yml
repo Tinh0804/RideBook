@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   bookcar-backend:
-    image: ${DOCKER_USERNAME:-tinh0804}/bookcar-backend:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME:-tinh08042005}/bookcar-backend:${IMAGE_TAG:-latest}
     container_name: bookcar-backend-v1
     ports:
       - "8080:8080"

@@ -6,7 +6,7 @@ on:
       - "CI Pipeline" 
     types: 
       - completed 
-    branches: ['main','master']
+    branches: ['main','master','test']
 
 jobs: 
   deploy-backend: 
@@ -38,6 +38,7 @@ jobs:
           script: |
             echo "Start Deploying EC2"
             # Sửa đường dẫn chuẩn cho Amazon Linux 2023
+            mkdir -p /home/ec2-user/ridebook
             cd /home/ec2-user/ridebook
             
             # Ghi mã định danh phiên bản code
