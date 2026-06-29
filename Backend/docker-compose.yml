@@ -1,37 +1,17 @@
 version: '3.8'
 
 services:
-  app:
+  bookcar-backend:
     image: ${DOCKER_USERNAME:-tinh0804}/bookcar-backend:${IMAGE_TAG:-latest}
-    container_name: backend
+    container_name: bookcar-backend-v1
     ports:
       - "8080:8080"
     env_file:
       - .env
     environment:
-      - DB_URL=jdbc:postgresql://postgresdb:5432/BookCar
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - postgresdb
-      - redis
-
-  postgresdb:
-    image: postgres:15-alpine
-    container_name: postgres_ridebook
-    environment:
-      - POSTGRES_USER=${DB_USERNAME}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=BookCar
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:alpine
-    container_name: redis_ridebook
-    ports:
-      - "6379:6379"
-
-volumes:
-  postgres_data:
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATA_REDIS_URL=${REDIS_URL}
+      - SPRING_DATA_REDIS_DATABASE=${REDIS_DATABASE}
+    restart: unless-stopped

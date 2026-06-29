@@ -25,7 +25,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           source: "Backend/docker-compose.yml"
-          target: "/home/ec2-user/"
+          target: "/home/ec2-user/ridebook"
           strip_components: 1
 
       - name: Deploy to EC2
@@ -38,7 +38,7 @@ jobs:
           script: |
             echo "Start Deploying EC2"
             # Sửa đường dẫn chuẩn cho Amazon Linux 2023
-            cd /home/ec2-user
+            cd /home/ec2-user/ridebook
             
             # Ghi mã định danh phiên bản code
             echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
