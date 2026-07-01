@@ -1,6 +1,5 @@
 // components/Map/AddressInput.jsx
 import React, { useState, useRef, useEffect } from 'react'
-import axios from 'axios'
 import { RiMapPinLine, RiCrosshairLine, RiLoader4Line, RiCloseLine } from 'react-icons/ri'
 import Input from '@/components/Elements/Input'
 import { cn } from '@/utils/cn'
@@ -23,9 +22,20 @@ const AddressInput = ({
   const containerRef = useRef(null)
   const inputRef = useRef(null)
   const debounceRef = useRef(null)
-  const isInternalChangeRef = useRef(false) // Track internal changes
+  const isInternalChangeRef = useRef(false)
+  
+  const autocompleteService = useRef(null)
+  const geocoder = useRef(null)
+  const sessionToken = useRef(null)
 
-  // Update query if value prop changes externally (only for external changes)
+  useEffect(() => {
+    if (window.google && !autocompleteService.current) {
+      autocompleteService.current = new window.google.maps.places.AutocompleteService()
+      geocoder.current = new window.google.maps.Geocoder()
+      sessionToken.current = new window.google.maps.places.AutocompleteSessionToken()
+    }
+  }, [])
+
   useEffect(() => {
     if (!isInternalChangeRef.current && value !== undefined && value !== query) {
       setQuery(value)
@@ -33,7 +43,6 @@ const AddressInput = ({
     isInternalChangeRef.current = false
   }, [value])
 
-  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -44,56 +53,34 @@ const AddressInput = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Fetch address suggestions from Nominatim API
-  const fetchSuggestions = async (searchText) => {
-    if (!searchText.trim()) {
+  const fetchSuggestions = (searchText) => {
+    if (!searchText.trim() || !autocompleteService.current) {
       setSuggestions([])
       return
     }
     
     setLoading(true)
-    try {
-      const response = await axios.get('https://nominatim.openstreetmap.org/search', {
-        params: {
-          format: 'json',
-          q: searchText,
-          countrycodes: 'vn',
-          limit: 5,
-          addressdetails: 1,
-          'accept-language': 'vi'
-        }
-      })
-      
-      setSuggestions(response.data.map(item => ({
-        name: item.display_name,
-        display_name: item.display_name,
-        lat: parseFloat(item.lat),
-        lon: parseFloat(item.lon),
-        address: item.address
-      })))
-    } catch (error) {
-      console.error('Lỗi khi tìm kiếm địa điểm:', error)
-      setSuggestions([])
-    } finally {
+    autocompleteService.current.getPlacePredictions({ 
+      input: searchText,
+      sessionToken: sessionToken.current,
+      componentRestrictions: { country: 'vn' }
+    }, (predictions, status) => {
       setLoading(false)
-    }
+      if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+        setSuggestions(predictions)
+      } else {
+        setSuggestions([])
+      }
+    })
   }
 
-  // Handle input change
   const handleInputChange = (e) => {
     const text = e.target.value
     setQuery(text)
-    
-    // Mark as internal change to avoid external override
     isInternalChangeRef.current = true
-    
-    // Notify parent
     onChange?.(text)
-    
-    // Show dropdown and fetch suggestions
     setShowDropdown(true)
 
-    // Debounce API calls
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       if (text.trim()) {
@@ -104,52 +91,44 @@ const AddressInput = ({
     }, 500)
   }
 
-  // Handle suggestion selection
   const handleSelectSuggestion = (suggestion) => {
-    const selectedName = suggestion.display_name || suggestion.name
+    const selectedName = suggestion.structured_formatting?.main_text || suggestion.description
     
-    // Update internal state
     setQuery(selectedName)
     setShowDropdown(false)
     setSuggestions([])
-    
-    // Mark as internal change
     isInternalChangeRef.current = true
-    
-    // Notify parent
     onChange?.(selectedName)
     
-    // Notify parent with location data
-    if (onLocationDetect) {
-      onLocationDetect({
-        name: selectedName,
-        lat: suggestion.lat,
-        lng: suggestion.lon,
-        address: suggestion.address,
-        isSuggestion: true
+    if (onLocationDetect && geocoder.current) {
+      geocoder.current.geocode({ placeId: suggestion.place_id }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          // Reset session token
+          sessionToken.current = new window.google.maps.places.AutocompleteSessionToken()
+          
+          onLocationDetect({
+            name: selectedName,
+            lat: results[0].geometry.location.lat(),
+            lng: results[0].geometry.location.lng(),
+            address: results[0].formatted_address,
+            isSuggestion: true
+          })
+        }
       })
     }
   }
 
-  // Clear input
   const handleClear = () => {
     setQuery('')
     setSuggestions([])
     setShowDropdown(false)
-    
-    // Mark as internal change
     isInternalChangeRef.current = true
-    
-    // Notify parent
     onChange?.('')
-    
-    // Notify parent that location is cleared
     if (onLocationDetect) {
       onLocationDetect(null)
     }
   }
 
-  // Detect current location
   const detectCurrentLocation = () => {
     setDetectingLocation(true)
     
@@ -160,91 +139,54 @@ const AddressInput = ({
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords
         
-        try {
-          const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
-            params: {
-              format: 'json',
-              lat: latitude,
-              lon: longitude,
-              'accept-language': 'vi',
-              addressdetails: 1
+        if (geocoder.current) {
+          geocoder.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
+              
+              setQuery(addressName)
+              setShowDropdown(false)
+              setSuggestions([])
+              isInternalChangeRef.current = true
+              onChange?.(addressName)
+              
+              if (onLocationDetect) {
+                onLocationDetect({
+                  name: addressName,
+                  lat: latitude,
+                  lng: longitude,
+                  address: results[0].formatted_address,
+                  isCurrentLocation: true
+                })
+              }
+            } else {
+               // Fallback
+               const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+               setQuery(fallbackName)
+               onChange?.(fallbackName)
+               if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
             }
+            setDetectingLocation(false)
           })
-          
-          const data = response.data
-          const addressName = data.display_name || 'Vị trí hiện tại của bạn'
-          
-          // Update internal state
-          setQuery(addressName)
-          setShowDropdown(false)
-          setSuggestions([])
-          
-          // Mark as internal change
-          isInternalChangeRef.current = true
-          
-          // Notify parent
-          onChange?.(addressName)
-          
-          // Notify parent with location data
-          if (onLocationDetect) {
-            onLocationDetect({
-              name: addressName,
-              lat: latitude,
-              lng: longitude,
-              address: data.address,
-              isCurrentLocation: true
-            })
-          }
-        } catch (error) {
-          console.error('Error reverse geocoding:', error)
-          const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
-          
-          setQuery(fallbackName)
-          onChange?.(fallbackName)
-          
-          if (onLocationDetect) {
-            onLocationDetect({
-              name: fallbackName,
-              lat: latitude,
-              lng: longitude,
-              isCurrentLocation: true
-            })
-          }
+        } else {
+            const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+            setQuery(fallbackName)
+            onChange?.(fallbackName)
+            if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
+            setDetectingLocation(false)
         }
-        
-        setDetectingLocation(false)
       },
       (error) => {
         let errorMessage = 'Không thể xác định vị trí'
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Vui lòng cấp quyền truy cập vị trí để sử dụng tính năng này'
-            break
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Không thể lấy thông tin vị trí'
-            break
-          case error.TIMEOUT:
-            errorMessage = 'Yêu cầu định vị quá thời gian'
-            break
-        }
+        if (error.code === error.PERMISSION_DENIED) errorMessage = 'Vui lòng cấp quyền truy cập vị trí để sử dụng tính năng này'
         alert(errorMessage)
         setDetectingLocation(false)
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     )
-  }
-
-  // Format display name for suggestion item
-  const getDisplayName = (suggestion) => {
-    const mainName = suggestion.name?.split(',')[0] || suggestion.display_name?.split(',')[0] || 'Địa điểm'
-    return mainName
   }
 
   return (
@@ -263,21 +205,14 @@ const AddressInput = ({
           onChange={handleInputChange}
           onFocus={() => {
             setShowDropdown(true)
-            if (query && query.trim()) {
-              fetchSuggestions(query)
-            }
+            if (query && query.trim()) fetchSuggestions(query)
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={cn(
-            "w-full",
-            prefixIcon && "pl-10",
-            (query || detectingLocation) && "pr-16"
-          )}
+          className={cn("w-full", prefixIcon && "pl-10", (query || detectingLocation) && "pr-16")}
         />
         
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {/* Clear button */}
           {query && !detectingLocation && (
             <button
               type="button"
@@ -289,7 +224,6 @@ const AddressInput = ({
             </button>
           )}
           
-          {/* Location detection button */}
           <button
             type="button"
             onClick={detectCurrentLocation}
@@ -306,7 +240,6 @@ const AddressInput = ({
         </div>
       </div>
 
-      {/* Suggestions dropdown */}
       {showDropdown && query.trim() !== '' && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-surface-card border border-surface-border rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
           {loading ? (
@@ -315,19 +248,19 @@ const AddressInput = ({
             </div>
           ) : suggestions.length > 0 ? (
             <ul className="py-2">
-              {suggestions.map((suggestion, index) => (
+              {suggestions.map((suggestion) => (
                 <li
-                  key={index}
+                  key={suggestion.place_id}
                   onClick={() => handleSelectSuggestion(suggestion)}
                   className="px-4 py-3 hover:bg-surface-hover cursor-pointer flex gap-3 transition-colors border-b border-surface-border last:border-0"
                 >
                   <RiMapPinLine size={18} className="text-brand-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-content-main line-clamp-1">
-                      {getDisplayName(suggestion)}
+                      {suggestion.structured_formatting?.main_text || suggestion.description}
                     </p>
                     <p className="text-xs text-content-muted line-clamp-1 mt-0.5">
-                      {suggestion.display_name || suggestion.name}
+                      {suggestion.structured_formatting?.secondary_text || ''}
                     </p>
                   </div>
                 </li>

@@ -12,16 +12,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandle {
-//    @ExceptionHandler(value= RuntimeException.class)//Tất cả các exception
-//    public ResponseEntity<APIResponse> handleRuntime(RuntimeException exception) {
-//        APIResponse apiResponse=APIResponse.builder()
-//                .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getStatus())
-//                .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage())
-//                .build();
-//
-//        return ResponseEntity.badRequest().body(apiResponse);
-//    }
+    @ExceptionHandler(value= RuntimeException.class)
+    public ResponseEntity<APIResponse> handleRuntime(RuntimeException exception) {
+        APIResponse apiResponse=APIResponse.builder()
+                .status(ErrorCode.UNCATEGORIZED_EXCEPTION.getStatus())
+                .message(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage() + ": " + exception.getMessage())
+                .build();
 
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+    }
     @ExceptionHandler(value = AppException.class)
     public ResponseEntity<APIResponse> handleAppException(AppException exception) {
         ErrorCode errorCode = exception.getErrorCode();

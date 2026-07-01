@@ -18,7 +18,7 @@ const Input = React.forwardRef(
             ref={ref}
             type={type}
             className={cn(
-              'input-field',
+              'input-field text-ellipsis',
               prefix && 'pl-10',
               suffix && 'pr-10',
               error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
@@ -38,7 +38,7 @@ const Input = React.forwardRef(
         ref={ref}
         type={type}
         className={cn(
-          'input-field',
+          'input-field text-ellipsis',
           error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
           className
         )}

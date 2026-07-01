@@ -13,7 +13,12 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(TOKEN_KEY)
-    if (token) {
+    
+    // Danh sách các public endpoint không cần đính kèm token
+    const publicEndpoints = ['/auth/login', '/auth/refresh-token', '/auth/register', '/auth/oauth2']
+    const isPublic = publicEndpoints.some(endpoint => config.url?.includes(endpoint))
+
+    if (token && !isPublic) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config

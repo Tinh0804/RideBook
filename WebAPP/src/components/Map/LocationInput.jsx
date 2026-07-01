@@ -1,6 +1,8 @@
-// components/LocationInput.jsx (Wrapper nếu cần)
+// components/Map/LocationInput.jsx
+import React, { useState } from 'react'
 import { RiCrosshairLine, RiLoader4Line } from 'react-icons/ri'
 import AddressInput from './AddressInput'
+import { cn } from '@/utils/cn'
 
 const LocationInput = ({ 
   placeholder, 
@@ -22,29 +24,33 @@ const LocationInput = ({
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords
         
-        // Reverse geocoding để lấy tên địa chỉ
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=vi`
-          )
-          const data = await response.json()
-          const addressName = data.display_name || 'Vị trí hiện tại'
-          
-          onChange(addressName)
-          if (onLocationDetect) {
-            onLocationDetect({ lat: latitude, lng: longitude, name: addressName })
-          }
-        } catch (error) {
-          console.error('Error:', error)
-          onChange('Vị trí hiện tại')
-          if (onLocationDetect) {
-            onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
-          }
+        if (window.google) {
+           const geocoder = new window.google.maps.Geocoder()
+           geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+              if (status === 'OK' && results[0]) {
+                 const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
+                 onChange(addressName)
+                 if (onLocationDetect) {
+                   onLocationDetect({ lat: latitude, lng: longitude, name: addressName, address: results[0].formatted_address })
+                 }
+              } else {
+                 onChange('Vị trí hiện tại')
+                 if (onLocationDetect) {
+                   onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
+                 }
+              }
+              setDetecting(false)
+           })
+        } else {
+           onChange('Vị trí hiện tại')
+           if (onLocationDetect) {
+             onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
+           }
+           setDetecting(false)
         }
-        setDetecting(false)
       },
       (error) => {
         alert('Không thể xác định vị trí. Vui lòng kiểm tra quyền truy cập.')
@@ -85,3 +91,5 @@ const LocationInput = ({
     </div>
   )
 }
+
+export default LocationInput

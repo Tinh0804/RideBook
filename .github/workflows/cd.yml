@@ -17,7 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.workflow_run.head_branch }} #tự động nhận code nhánh kích hoạt CD
 
       - name: Copy docker-compose to EC2
         uses: appleboy/scp-action@master
@@ -51,8 +51,8 @@ jobs:
             echo "${{ secrets.ENV_PROD }}" >> .env
             
             # Khởi động Docker Compose
-            docker compose pull 
-            docker compose up -d --force-recreate 
+            docker-compose pull 
+            docker-compose up -d --force-recreate 
             
             # Dọn dẹp rác hệ thống để tránh đầy ổ cứng
             docker image prune -f 

@@ -453,7 +453,10 @@ public class DriverService {
         log.info("Toggling activity status for driver: {}", driverId);
         Driver driver = driverRepository.findById(driverId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
-        driver.setActivityStatus(!driver.getActivityStatus());
+        
+        Boolean currentStatus = driver.getActivityStatus();
+        driver.setActivityStatus(currentStatus == null ? true : !currentStatus);
+        
         driverRepository.save(driver);
         log.info("Driver activity status toggled successfully: {} is now {}", driverId, driver.getActivityStatus());
         return driver.getActivityStatus();
