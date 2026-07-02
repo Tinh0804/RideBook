@@ -34,7 +34,7 @@ public class Booking {
 
     @ManyToOne
     @JoinColumn(name = "payment_id")
-     Payment paymentNo;
+    Payment paymentNo;
 
 
     @ManyToOne
@@ -97,5 +97,10 @@ public class Booking {
 //
 //     @Column(length = 500)
 //     private String review;
+
+    @Version
+    @Column(columnDefinition = "integer DEFAULT 0", nullable = false)
+    @Builder.Default
+    Integer version = 0;
 
 }

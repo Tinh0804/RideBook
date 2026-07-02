@@ -6,6 +6,7 @@ import com.project.BookCarOnline.DTO.Response.PaymentCallbackResponse;
 import com.project.BookCarOnline.DTO.Response.PaymentResponse;
 import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import com.project.BookCarOnline.Entity.Enum.PaymentMethod;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Slf4j
 @Service
@@ -51,8 +53,7 @@ public class VNPayService {
         String orderId = PaymentUtils.generateOrderId(request.getReferenceId());
         String vnpCreateDate = PaymentUtils.getVNPayTimestamp();
 
-        // 🔥 PHẢI dùng TreeMap
-        Map<String, String> vnpParams = new java.util.TreeMap<>();
+        Map<String, String> vnpParams = new TreeMap<>();
 
         long amountInVND = (long) Math.round(request.getAmount() * 100); // Convert to VND (1 USD = 100 VND)
 
@@ -149,7 +150,7 @@ public class VNPayService {
                 .paymentUrl(paymentUrl)
                 .orderId(orderId)
                 .amount(amount)
-                .paymentMethod("VNPAY")
+                .paymentMethod(PaymentMethod.VNPAY.name())
                 .build();
     }
 
@@ -182,11 +183,11 @@ public class VNPayService {
             return PaymentCallbackResponse.builder()
                     .paymentStatus("FAILED")
                     .message("Thiếu chữ ký VNPay")
-                    .paymentMethod("VNPAY")
+                    .paymentMethod(PaymentMethod.VNPAY.name())
                     .build();
         }
 
-        Map<String, String> sortedParams = new java.util.TreeMap<>();
+        Map<String, String> sortedParams = new TreeMap<>();
 
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (entry.getValue() != null
@@ -325,7 +326,7 @@ public class VNPayService {
                 .transactionId(vnpTransactionNo)
                 .amount(Long.parseLong(vnpAmount) / 100)
                 .paymentStatus(paymentStatus)
-                .paymentMethod("VNPAY")
+                .paymentMethod(PaymentMethod.VNPAY.name())
                 .message(message)
                 .paymentTime(vnpPayDate)
                 .build();

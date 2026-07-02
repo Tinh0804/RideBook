@@ -26,6 +26,7 @@ import com.project.BookCarOnline.DTO.Redis.FareQuote;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.project.BookCarOnline.Utils.Constant;
 import jakarta.transaction.Transactional;
@@ -234,7 +235,14 @@ public class BookingService {
         booking.setDriverNo(driver);
         booking.setBookingStatus(BookingStatus.ACCEPTED);
         booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
-        Booking updated = bookingRepository.save(booking);
+        
+        Booking updated;
+        try {
+            updated = bookingRepository.save(booking);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            log.warn("[Booking] Tranh chấp đồng thời: Chuyến {} đã bị nhận bởi tài xế khác", bookingId);
+            throw new AppException(ErrorCode.BOOKING_ALREADY_TAKEN);
+        }
 
         // Thông báo cho khách hàng
         notifyCustomerDriverAssigned(updated, driver);
