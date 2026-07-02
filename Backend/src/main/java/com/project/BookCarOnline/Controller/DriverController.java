@@ -1,7 +1,13 @@
 package com.project.BookCarOnline.Controller;
+import com.project.BookCarOnline.DTO.Redis.DriverLocation;
 import org.springframework.http.MediaType;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
+import com.project.BookCarOnline.DTO.Request.DriverLocationRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
 import com.project.BookCarOnline.DTO.Response.DailyRevenueDTO;
 import com.project.BookCarOnline.DTO.Response.DriverDashboardResponse;
@@ -12,6 +18,7 @@ import com.project.BookCarOnline.Entity.VehicleType;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.RideBookRepository;
+import com.project.BookCarOnline.Service.DriverCacheService;
 import com.project.BookCarOnline.Service.DriverService;
 import com.project.BookCarOnline.Utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -40,6 +47,8 @@ import java.util.List;
 public class DriverController {
     
     DriverService driverService;
+    SimpMessagingTemplate messagingTemplate;
+    DriverCacheService driverCacheService;
 
 
 
@@ -149,5 +158,32 @@ public class DriverController {
     }
 
 
+    @MessageMapping("/driver/location")
+    public void updateDriverLocation(@Payload DriverLocationRequest request) {
+        if (request.getBookingId() == null || request.getLat() == null || request.getLng() == null) {
+            log.warn("Invalid driver location payload received: {}", request);
+            return;
+        }
 
+        log.debug("Driver location update for booking {}: lat={}, lng={}",
+                request.getBookingId(), request.getLat(), request.getLng());
+
+
+        driverCacheService.saveLocation(request.getBookingId(), request.getLat(), request.getLng());
+
+        messagingTemplate.convertAndSend(
+                "/topic/booking/" + request.getBookingId() + "/driver-location",
+                request
+        );
+    }
+
+    @GetMapping("/location/{bookingId}")
+    public APIResponse<DriverLocation> getDriverLocation(@PathVariable String bookingId) {
+        DriverLocation location = driverCacheService.getLocation(bookingId);
+        return APIResponse.<DriverLocation>builder()
+                .status(HttpStatus.OK.value())
+                .message("Driver location")
+                .result(location) 
+                .build();
+    }
 }

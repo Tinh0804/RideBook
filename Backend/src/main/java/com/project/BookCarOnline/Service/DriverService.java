@@ -55,6 +55,7 @@ public class DriverService {
     PasswordEncoder passwordEncoder;
     RideBookRepository rideBookRepository;
     RatingRepository ratingRepository;
+    DriverCacheService driverCacheService;
 
     FirebaseStorageService firebaseStorageService;
 
@@ -458,6 +459,16 @@ public class DriverService {
         driver.setActivityStatus(currentStatus == null ? true : !currentStatus);
         
         driverRepository.save(driver);
+
+        // Đồng bộ Redis GEO: thêm vào bản đồ nếu bật, xóa nếu tắt
+        if (Boolean.TRUE.equals(driver.getActivityStatus())) {
+            if (driver.getCurrentLat() != null && driver.getCurrentLng() != null) {
+                driverCacheService.addDriverLocationGeo(driverId, driver.getCurrentLat(), driver.getCurrentLng());
+            }
+        } else {
+            driverCacheService.removeDriverLocationGeo(driverId);
+        }
+
         log.info("Driver activity status toggled successfully: {} is now {}", driverId, driver.getActivityStatus());
         return driver.getActivityStatus();
     }
@@ -489,6 +500,12 @@ public class DriverService {
         driver.setCurrentLat(lat);
         driver.setCurrentLng(lng);
         driverRepository.save(driver);
+
+        // Đồng bộ lên Redis GEO (chỉ khi tài xế đang online)
+        if (Boolean.TRUE.equals(driver.getActivityStatus())) {
+            driverCacheService.addDriverLocationGeo(driverId, lat, lng);
+        }
+
         log.info("Driver location updated successfully: {} is now at ({}, {})", driverId, lat, lng);
     }
 

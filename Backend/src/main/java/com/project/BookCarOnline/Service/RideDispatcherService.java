@@ -5,6 +5,7 @@ import com.project.BookCarOnline.Entity.BookingRejection;
 import com.project.BookCarOnline.Entity.Driver;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
 import com.project.BookCarOnline.Entity.Enum.RejectionType;
+import com.project.BookCarOnline.Entity.Enum.WaitResult;
 import com.project.BookCarOnline.Repository.BookingRejectionRepository;
 import com.project.BookCarOnline.Repository.DriverRepository;
 import com.project.BookCarOnline.Repository.RideBookRepository;
@@ -32,6 +33,7 @@ public class RideDispatcherService {
     private final BookingRejectionRepository  rejectionRepository;
     private final SimpMessagingTemplate       messagingTemplate;
     private final Constant                    constant;
+    private final DriverCacheService          driverCacheService;
 
 
     @Async
@@ -71,13 +73,13 @@ public class RideDispatcherService {
 
     private boolean dispatchToList(String bookingId, List<Driver> drivers, Set<String> blacklist) {
         for (Driver driver : drivers) {
-            //  Bỏ qua nếu tài xế trong blacklist
+    
             if (!blacklist.isEmpty() && blacklist.contains(driver.getDriverId())) {
                 log.info("[Dispatch] Bỏ qua tài xế {} (đã từ chối/ignore trước đó)", driver.getDriverId());
                 continue;
             }
 
-            // Kiểm tra booking còn PENDING không
+    
             if (isBookingTakenOrCancelled(bookingId)) {
                 log.info("[Dispatch] Booking {} không còn PENDING, dừng dispatch.", bookingId);
                 return true; // Đã được xử lý (nhận hoặc khách hủy)
@@ -89,16 +91,16 @@ public class RideDispatcherService {
             WaitResult result = waitForResponse(bookingId, driver.getDriverId(),
                                                 constant.getDISPATCH_TIMEOUT_SECONDS());
             switch (result) {
-                case ACCEPTED -> {
+                case WaitResult.ACCEPTED -> {
                     notifyCustomerDriverAssigned(bookingId);
                     return true;
                 }
-                case CUSTOMER_CANCELLED -> {
+                case WaitResult.    CUSTOMER_CANCELLED -> {
                     log.info("[Dispatch] Khách hủy booking {} trong lúc tìm tài xế.", bookingId);
                     messagingTemplate.convertAndSend("/topic/driver/" + driver.getDriverId(), "CUSTOMER_CANCELLED:" + bookingId);
                     return true;
                 }
-                case DRIVER_REJECTED -> {
+                case WaitResult.DRIVER_REJECTED -> {
                     blacklist.add(driver.getDriverId());
                     log.info("[Dispatch] Tài xế {} từ chối. Chuyển sang tài xế tiếp theo.", driver.getDriverId());
                 }
@@ -179,6 +181,9 @@ public class RideDispatcherService {
                         .rejectionType(type)
                         .build();
                 rejectionRepository.save(rejection);
+                
+                // === Xóa cache điểm ưu tiên của tài xế ===
+                driverCacheService.evictDriverStats(driverId);
             })
         );
     }
@@ -205,10 +210,5 @@ public class RideDispatcherService {
     }
 
 
-    private enum WaitResult {
-        ACCEPTED,
-        DRIVER_REJECTED,
-        CUSTOMER_CANCELLED,
-        TIMEOUT
-    }
+
 }

@@ -19,6 +19,8 @@ import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
 import com.project.BookCarOnline.Entity.Payment;
+import com.project.BookCarOnline.DTO.Redis.DriverGeoResult;
+import com.project.BookCarOnline.DTO.Redis.DriverStats;
 import com.project.BookCarOnline.DTO.Redis.FareQuote;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,6 +43,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -64,12 +67,12 @@ public class BookingService {
     CustomerPromotionRepository customerPromotionRepository;
 
     RideDispatcherService     dispatcherService;
-    DriverLocationService     driverLocationService;
     VehicleTypeService        vehicleTypeService;
     WalletService             walletService;
-    PricingService pricingService;
+    PricingService            pricingService;
     PaymentTimeoutService     paymentTimeoutService;
     GoogleMapService          googleMapService;
+    DriverCacheService        driverCacheService;
 
     SimpMessagingTemplate     messagingTemplate;
     RedisTemplate<String, Object> redisTemplate;
@@ -196,15 +199,13 @@ public class BookingService {
         dispatchWithPriority(booking, lat, lng, blacklist);
     }
 
-    //  TÀI XẾ TỪ CHỐI CHỦ ĐỘNG (gọi từ BookingController)
+    //  TÀI XẾ TỪ CHỐI CHỦ ĐỘNG 
     @Transactional
     public void rejectBooking(String bookingId, String driverId) {
-        // Kiểm tra booking vẫn còn PENDING
         BookingStatus status = bookingRepository.findBookingStatusByBookingId(bookingId);
         if (status == null || status != BookingStatus.PENDING) {
             throw new AppException(ErrorCode.BOOKING_NOT_FOUND);
         }
-        // Ghi nhận từ chối → dispatcher đang chạy sẽ tự phát hiện qua polling
         dispatcherService.recordRejection(bookingId, driverId);
     }
 
@@ -256,7 +257,7 @@ public class BookingService {
         switch (newStatus) {
             case ARRIVED     -> booking.setPickupTime(now);
             case COMPLETED   -> handleCompleteRide(booking, now);
-            case CANCELLED   -> driverLocationService.clearLocation(bookingId);
+            case CANCELLED   -> driverCacheService.clearLocation(bookingId);
             default          -> {  }
         }
 
@@ -282,7 +283,7 @@ public class BookingService {
                     "CUSTOMER_CANCELLED:" + bookingId);
         }
 
-        driverLocationService.clearLocation(bookingId);
+        driverCacheService.clearLocation(bookingId);
         log.info("[Booking] Đã hủy booking {}", bookingId);
     }
 
@@ -308,7 +309,7 @@ public class BookingService {
                     "DRIVER_CANCELLED:" + bookingId);
         }
 
-        driverLocationService.clearLocation(bookingId);
+        driverCacheService.clearLocation(bookingId);
         log.info("[Booking] Tài xế {} đã hủy booking {}", driverId, bookingId);
     }
  
@@ -377,7 +378,7 @@ public class BookingService {
                     "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
                     "ADMIN_CANCELLED:" + bookingId);
         }
-        driverLocationService.clearLocation(bookingId);
+        driverCacheService.clearLocation(bookingId);
         log.info("[Admin] Đã huỷ booking {}", bookingId);
         return mapToBookingDetailResponse(updated);
     }
@@ -484,7 +485,10 @@ public class BookingService {
         }
 
         driverRepository.updateLastTripTime(drv.getDriverId(), LocalDateTime.now());
-        driverLocationService.clearLocation(booking.getBookingId());
+        driverCacheService.clearLocation(booking.getBookingId());
+
+        // Xóa cache điểm số tài xế để tính lại lần sau
+        driverCacheService.evictDriverStats(drv.getDriverId());
     }
 
     private EstimatePriceResponse buildEstimateForVehicleType(
@@ -537,41 +541,72 @@ public class BookingService {
 
     private void dispatchWithPriority(Booking booking, double lat, double lng,
                                       Set<String> existingBlacklist) {
-        List<Driver> candidates = driverRepository
-                .findTrulyAvailableDriversNearby(lat, lng, constant.getSEARCH_RADIUS_KM(),booking.getVehicleTypeNo().getVehicleTypeId())
-                .stream()
-                .filter(d -> !existingBlacklist.contains(d.getDriverId()))
+
+        String vehicleTypeId = booking.getVehicleTypeNo().getVehicleTypeId();
+        List<DriverGeoResult> nearbyResults =
+                driverCacheService.findNearbyDrivers(lat, lng, constant.getSEARCH_RADIUS_KM());
+
+        if (nearbyResults.isEmpty()) {
+            log.info("[Booking] Không tìm thấy tài xế nào quanh đây cho booking={}", booking.getBookingId());
+            dispatcherService.startDispatching(booking.getBookingId(), List.of());
+            return;
+        }
+
+
+        List<String> driverIds = nearbyResults.stream()
+                .map(DriverGeoResult::getDriverId)
+                .filter(id -> !existingBlacklist.contains(id))
                 .collect(Collectors.toList());
 
+        if (driverIds.isEmpty()) {
+            log.info("[Booking] Tất cả tài xế quanh đây đều trong blacklist cho booking={}", booking.getBookingId());
+            dispatcherService.startDispatching(booking.getBookingId(), List.of());
+            return;
+        }
+
+        Map<String, Double> distanceMap = nearbyResults.stream()
+                .collect(Collectors.toMap(
+                        DriverGeoResult::getDriverId,
+                        DriverGeoResult::getDistanceKm,
+                        (a, b) -> a  // giải quyết trùng key
+                ));
+
+
+        List<Driver> candidates = driverRepository.findAllById(driverIds).stream()
+                .filter(d -> Boolean.TRUE.equals(d.getActivityStatus()))          // Đang online
+                .filter(d -> vehicleTypeId.equals(
+                        d.getVehicleType() != null ? d.getVehicleType().getVehicleTypeId() : null)) // Đúng loại xe
+                .collect(Collectors.toList());
+
+        // === CAFFEINE CACHE: Tính điểm ưu tiên từ RAM thay vì chọc DB ===
         candidates.forEach(d -> {
-            int rejectCount = rejectionRepository.countByDriverIdAndType(d.getDriverId(), RejectionType.REJECTED);
-            int ignoreCount = rejectionRepository.countByDriverIdAndType(d.getDriverId(), RejectionType.IGNORED);
-            double distanceKm = d.getDistance() != null ? d.getDistance() : constant.getSEARCH_RADIUS_KM();
-            d.setScore(calculateScore(d, distanceKm, rejectCount, ignoreCount));
+            double distanceKm = distanceMap.getOrDefault(d.getDriverId(), constant.getSEARCH_RADIUS_KM());
+            d.setDistance(distanceKm);
+            DriverStats stats = driverCacheService.getDriverStats(d.getDriverId());
+            d.setScore(calculateScore(d, distanceKm, stats));
         });
 
         candidates.sort(Comparator.comparingDouble(Driver::getScore).reversed());
 
-        log.info("[Booking] Dispatch booking={} cho {} tài xế", booking.getBookingId(), candidates.size());
+        log.info("[Booking] Dispatch booking={} cho {} tài xế (Redis GEO + Cache)", booking.getBookingId(), candidates.size());
         dispatcherService.startDispatching(booking.getBookingId(), candidates);
     }
 
-    private double calculateScore(Driver driver, double distanceKm, int rejectCount, int ignoreCount) {
+    private double calculateScore(Driver driver, double distanceKm, DriverStats stats) {
         double distanceScore = Math.max(0.0, 1.0 - (distanceKm / constant.getMAX_DISTANCE_KM()));
 
         // Điểm rating trung bình (0–5 → 0.0–1.0)
-        Double avg = ratingRepository.getAverageRatingByDriver(driver.getDriverId());
-        double ratingScore = (avg != null ? avg : 3.0) / 5.0;
+        double ratingScore = stats.getAvgRating() / 5.0;
 
-        //  Điểm "nhàn rỗi"
+        // Điểm "nhàn rỗi"
         long   idleMinutes = getIdleMinutes(driver);
         double idleScore   = Math.min(idleMinutes / constant.getMAX_IDLE_MIN(), 1.0);
 
-        //  Phạt từ chối chủ động (nặng hơn)
-        double rejectPenalty = Math.min(rejectCount * 0.5, 1.0);
+        // Phạt từ chối chủ động (nặng hơn)
+        double rejectPenalty = Math.min(stats.getRejectCount() * 0.5, 1.0);
 
         // Phạt bỏ qua / không phản hồi (nhẹ hơn)
-        double ignorePenalty = Math.min(ignoreCount * 0.2, 1.0);
+        double ignorePenalty = Math.min(stats.getIgnoreCount() * 0.2, 1.0);
 
         return (constant.getW_DISTANCE() * distanceScore)
              + (constant.getW_RATING()   * ratingScore)

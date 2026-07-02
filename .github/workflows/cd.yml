@@ -55,7 +55,7 @@ jobs:
             docker-compose up -d --force-recreate 
             
             # Dọn dẹp rác hệ thống để tránh đầy ổ cứng
-            docker image prune -f 
+            docker-image prune -f 
             echo "Deploy Backend EC2 Successfully"
 
 
