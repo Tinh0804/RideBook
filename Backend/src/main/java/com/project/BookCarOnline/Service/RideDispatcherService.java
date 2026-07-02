@@ -17,9 +17,12 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -35,6 +38,15 @@ public class RideDispatcherService {
     private final Constant                    constant;
     private final DriverCacheService          driverCacheService;
 
+    private final ConcurrentHashMap<String, CompletableFuture<WaitResult>> pendingDispatches = new ConcurrentHashMap<>();
+
+    public void resolveDispatch(String bookingId, WaitResult result) {
+        CompletableFuture<WaitResult> future = pendingDispatches.get(bookingId);
+        if (future != null) {
+            future.complete(result);
+        }
+    }
+
 
     @Async
     public void startDispatching(String bookingId, List<Driver> prioritizedList) {
@@ -49,19 +61,11 @@ public class RideDispatcherService {
         List<Driver> ignoredDrivers = patitionedDrivers.get(true);
         List<Driver> freshDrivers   = patitionedDrivers.get(false);
 
-        if(!freshDrivers.isEmpty()){
-            boolean accepted = dispatchToList(bookingId,freshDrivers,blacklist);
-            if(accepted)
-                return ;
-        }
-        if(!ignoredDrivers.isEmpty()){
-             boolean accepted = dispatchToList(bookingId, ignoredDrivers, Collections.emptySet());
-             if (accepted)
-                 return;
-        }
+        List<Driver> driversToDispatch = new ArrayList<>();
+        driversToDispatch.addAll(freshDrivers);
+        driversToDispatch.addAll(ignoredDrivers);
 
-        log.info("[Dispatch] Không có tài xế nào nhận chuyến {}. Tiến hành hủy tự động.", bookingId);
-        cancelBookingAutomatically(bookingId);
+        dispatchToNextDriver(bookingId, driversToDispatch, 0);
     }
 
 
@@ -69,79 +73,50 @@ public class RideDispatcherService {
     public void recordRejection(String bookingId, String driverId) {
         saveRejection(bookingId, driverId, RejectionType.REJECTED);
         log.info("[Dispatch] Tài xế {} từ chối booking {}", driverId, bookingId);
+        resolveDispatch(bookingId, WaitResult.DRIVER_REJECTED);
     }
 
-    private boolean dispatchToList(String bookingId, List<Driver> drivers, Set<String> blacklist) {
-        for (Driver driver : drivers) {
-    
-            if (!blacklist.isEmpty() && blacklist.contains(driver.getDriverId())) {
-                log.info("[Dispatch] Bỏ qua tài xế {} (đã từ chối/ignore trước đó)", driver.getDriverId());
-                continue;
-            }
-
-    
-            if (isBookingTakenOrCancelled(bookingId)) {
-                log.info("[Dispatch] Booking {} không còn PENDING, dừng dispatch.", bookingId);
-                return true; // Đã được xử lý (nhận hoặc khách hủy)
-            }
-
-            sendRideRequestToDriver(bookingId, driver.getDriverId());
-
-            //  Chờ phản hồi
-            WaitResult result = waitForResponse(bookingId, driver.getDriverId(),
-                                                constant.getDISPATCH_TIMEOUT_SECONDS());
-            switch (result) {
-                case WaitResult.ACCEPTED -> {
-                    notifyCustomerDriverAssigned(bookingId);
-                    return true;
-                }
-                case WaitResult.    CUSTOMER_CANCELLED -> {
-                    log.info("[Dispatch] Khách hủy booking {} trong lúc tìm tài xế.", bookingId);
-                    messagingTemplate.convertAndSend("/topic/driver/" + driver.getDriverId(), "CUSTOMER_CANCELLED:" + bookingId);
-                    return true;
-                }
-                case WaitResult.DRIVER_REJECTED -> {
-                    blacklist.add(driver.getDriverId());
-                    log.info("[Dispatch] Tài xế {} từ chối. Chuyển sang tài xế tiếp theo.", driver.getDriverId());
-                }
-                case TIMEOUT -> {
-                    saveRejection(bookingId, driver.getDriverId(), RejectionType.IGNORED);
-                    blacklist.add(driver.getDriverId());
-                    log.info("[Dispatch] Tài xế {} hết thời gian phản hồi (IGNORED).", driver.getDriverId());
-                }
-            }
-        }
-        return false;
-    }
-
-
-    private WaitResult waitForResponse(String bookingId, String driverId, int timeoutSeconds) {
-        for (int i = 0; i < timeoutSeconds; i++) {
-            try {
-                Thread.sleep(1_000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return WaitResult.TIMEOUT;
-            }
-
-            BookingStatus status = bookingRepository.findBookingStatusByBookingId(bookingId);
-
-            if (BookingStatus.ACCEPTED.equals(status)) {
-                return WaitResult.ACCEPTED;
-            }
-
-            if (BookingStatus.CANCELLED.equals(status)) {
-                return WaitResult.CUSTOMER_CANCELLED;
-            }
-
-            // Tài xế chủ động từ chối sẽ gọi recordRejection() → ghi vào DB
-
-            if (rejectionRepository.existsByBooking_BookingIdAndDriver_DriverId(bookingId, driverId)) {
-                return WaitResult.DRIVER_REJECTED;
-            }
+    private void dispatchToNextDriver(String bookingId, List<Driver> drivers, int index) {
+        if (index >= drivers.size()) {
+            log.info("[Dispatch] Không có tài xế nào nhận chuyến {}. Tiến hành hủy tự động.", bookingId);
+            cancelBookingAutomatically(bookingId);
+            return;
         }
 
-        return WaitResult.TIMEOUT;
+        Driver driver = drivers.get(index);
+
+        if (isBookingTakenOrCancelled(bookingId)) {
+            log.info("[Dispatch] Booking {} không còn PENDING, dừng dispatch.", bookingId);
+            return;
+        }
+
+        sendRideRequestToDriver(bookingId, driver.getDriverId());
+
+        CompletableFuture<WaitResult> future = new CompletableFuture<>();
+        pendingDispatches.put(bookingId, future);
+
+        future.completeOnTimeout(WaitResult.TIMEOUT, constant.getDISPATCH_TIMEOUT_SECONDS(), java.util.concurrent.TimeUnit.SECONDS)
+              .thenAcceptAsync(result -> {
+                  pendingDispatches.remove(bookingId);
+                  switch (result) {
+                      case ACCEPTED -> {
+                          notifyCustomerDriverAssigned(bookingId);
+                      }
+                      case CUSTOMER_CANCELLED -> {
+                          log.info("[Dispatch] Khách hủy booking {} trong lúc tìm tài xế.", bookingId);
+                          messagingTemplate.convertAndSend("/topic/driver/" + driver.getDriverId(), "CUSTOMER_CANCELLED:" + bookingId);
+                      }
+                      case DRIVER_REJECTED -> {
+                          log.info("[Dispatch] Tài xế {} từ chối. Chuyển sang tài xế tiếp theo.", driver.getDriverId());
+                          dispatchToNextDriver(bookingId, drivers, index + 1);
+                      }
+                      case TIMEOUT -> {
+                          saveRejection(bookingId, driver.getDriverId(), RejectionType.IGNORED);
+                          log.info("[Dispatch] Tài xế {} hết thời gian phản hồi (IGNORED).", driver.getDriverId());
+                          dispatchToNextDriver(bookingId, drivers, index + 1);
+                      }
+                  }
+              });
     }
 
     private void sendRideRequestToDriver(String bookingId, String driverId) {

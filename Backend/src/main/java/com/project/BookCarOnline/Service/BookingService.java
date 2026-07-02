@@ -14,6 +14,7 @@ import com.project.BookCarOnline.Entity.VehicleType;
 import com.project.BookCarOnline.Entity.Enum.DiscountType;
 import com.project.BookCarOnline.Entity.Enum.CustomerPromotionStatus;
 import com.project.BookCarOnline.Entity.Enum.RejectionType;
+import com.project.BookCarOnline.Entity.Enum.WaitResult;
 import com.project.BookCarOnline.Entity.CustomerPromotion;
 import com.project.BookCarOnline.Exception.AppException;
 import com.project.BookCarOnline.Exception.ErrorCode;
@@ -237,6 +238,7 @@ public class BookingService {
 
         // Thông báo cho khách hàng
         notifyCustomerDriverAssigned(updated, driver);
+        dispatcherService.resolveDispatch(bookingId, WaitResult.ACCEPTED);
 
         log.info("[Booking] Gán tài xế thành công: booking={}", bookingId);
         return mapToBookingDetailResponse(updated);
@@ -284,6 +286,7 @@ public class BookingService {
         }
 
         driverCacheService.clearLocation(bookingId);
+        dispatcherService.resolveDispatch(bookingId, WaitResult.CUSTOMER_CANCELLED);
         log.info("[Booking] Đã hủy booking {}", bookingId);
     }
 
@@ -379,6 +382,7 @@ public class BookingService {
                     "ADMIN_CANCELLED:" + bookingId);
         }
         driverCacheService.clearLocation(bookingId);
+        dispatcherService.resolveDispatch(bookingId, WaitResult.CUSTOMER_CANCELLED);
         log.info("[Admin] Đã huỷ booking {}", bookingId);
         return mapToBookingDetailResponse(updated);
     }
