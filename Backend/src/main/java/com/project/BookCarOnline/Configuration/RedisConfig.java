@@ -13,6 +13,11 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.project.BookCarOnline.Service.NotificationService;
+import org.springframework.data.redis.listener.PatternTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
+import org.springframework.context.annotation.Lazy;
 
 @Configuration
 @EnableCaching
@@ -45,5 +50,19 @@ public class RedisConfig {
                 .recordStats()                           // Cho phép theo dõi hit/miss rate
         );
         return cacheManager;
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisContainer(RedisConnectionFactory connectionFactory,
+                                                        MessageListenerAdapter listenerAdapter) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.addMessageListener(listenerAdapter, new PatternTopic("websocket_notifications"));
+        return container;
+    }
+
+    @Bean
+    public MessageListenerAdapter listenerAdapter(@Lazy NotificationService notificationService) {
+        return new MessageListenerAdapter(notificationService, "handleMessage");
     }
 }

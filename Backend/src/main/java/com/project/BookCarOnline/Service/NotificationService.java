@@ -10,6 +10,9 @@ import com.project.BookCarOnline.Mapper.NotificationMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.NotificationRepository;
 import com.project.BookCarOnline.Utils.SecurityUtils;
+import com.project.BookCarOnline.DTO.Redis.WebSocketNotificationMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.RedisTemplate;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +35,9 @@ public class NotificationService {
     NotificationMapper notificationMapper;
     SimpMessagingTemplate messagingTemplate;
     FirebaseService firebaseService;
+    RedisTemplate<String, Object> redisTemplate;
+    ObjectMapper objectMapper;
+
     public void sendNotification(String username, String title, String message, Booking booking) {
         Account account = accountRepository.findByUserName(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
@@ -48,8 +54,15 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         NotificationResponse response = notificationMapper.toNotificationResponse(saved);
 
-        // Real-time broadcast
-        messagingTemplate.convertAndSend("/topic/notifications/" + username, response);
+        // Real-time broadcast via Redis PubSub
+        try {
+            WebSocketNotificationMessage redisMsg = new WebSocketNotificationMessage(username, response);
+            String jsonMessage = objectMapper.writeValueAsString(redisMsg);
+            redisTemplate.convertAndSend("websocket_notifications", jsonMessage);
+        } catch (Exception e) {
+            log.error("Failed to publish notification to Redis", e);
+        }
+
         // Firebase Cloud Messaging (Push Notification)
         firebaseService.sendNotificationToToken(account.getFcmToken(), title, message);
     }
@@ -77,5 +90,18 @@ public class NotificationService {
                 .orElseThrow(() -> new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION));
         notification.setRead(true);
         notificationRepository.save(notification);
+    }
+
+    public void handleMessage(String message) {
+        try {
+            WebSocketNotificationMessage notificationMsg = objectMapper.readValue(message, WebSocketNotificationMessage.class);
+            log.info("Received notification from Redis PubSub for user: {}", notificationMsg.getUsername());
+            
+            // Push it to the connected WebSocket client on this node
+            messagingTemplate.convertAndSend("/topic/notifications/" + notificationMsg.getUsername(), notificationMsg.getNotification());
+            
+        } catch (Exception e) {
+            log.error("Error processing Redis notification message", e);
+        }
     }
 }
