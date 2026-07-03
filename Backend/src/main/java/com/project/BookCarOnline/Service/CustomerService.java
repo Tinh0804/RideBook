@@ -47,7 +47,7 @@ public class CustomerService {
     CustomerRepository customerRepository;
     RoleRepository roleRepository;
     CustomerMapper mapper;
-    FirebaseStorageService firebaseStorageService;
+    FirebaseService firebaseService;
 
     PasswordEncoder passwordEncoder;
 
@@ -151,15 +151,15 @@ public class CustomerService {
             customer.setGender(request.getGender());
         }
         if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
-            String oldFilePath = firebaseStorageService.getFilePathFromUrl(customer.getAvatar());
+            String oldFilePath = firebaseService.getFilePathFromUrl(customer.getAvatar());
             if (oldFilePath != null) {
-                firebaseStorageService.deleteFile(oldFilePath);
+                firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             } else {
                 String accountID = SecurityUtils.getCurrentAccountId()
                         .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
                 String folderPath = "users" + "/" + accountID;
-                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
                 customer.setAvatar(fileURL);
             }
 
@@ -177,7 +177,7 @@ public class CustomerService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         if (customer.getAvatar() != null) {
-            firebaseStorageService.deleteFile(customer.getAvatar());
+            firebaseService.deleteFile(customer.getAvatar());
         } else {
             throw new AppException(ErrorCode.AVATAR_NOT_FOUND);
         }

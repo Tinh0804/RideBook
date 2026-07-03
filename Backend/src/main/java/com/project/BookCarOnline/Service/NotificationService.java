@@ -12,9 +12,11 @@ import com.project.BookCarOnline.Repository.NotificationRepository;
 import com.project.BookCarOnline.Utils.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.experimental.FieldDefaults;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -23,12 +25,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class NotificationService {
     NotificationRepository notificationRepository;
     AccountRepository accountRepository;
     NotificationMapper notificationMapper;
     SimpMessagingTemplate messagingTemplate;
-
+    FirebaseService firebaseService;
     public void sendNotification(String username, String title, String message, Booking booking) {
         Account account = accountRepository.findByUserName(username)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
@@ -47,6 +50,17 @@ public class NotificationService {
 
         // Real-time broadcast
         messagingTemplate.convertAndSend("/topic/notifications/" + username, response);
+        // Firebase Cloud Messaging (Push Notification)
+        firebaseService.sendNotificationToToken(account.getFcmToken(), title, message);
+    }
+
+    @Transactional
+    public void registerDeviceToken(String fcmToken, String deviceType) {
+        String accountId = SecurityUtils.getCurrentAccountId().orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTACATED));
+        Account account = accountRepository.findById(accountId).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        account.setFcmToken(fcmToken);
+        accountRepository.save(account);
     }
 
     public List<NotificationResponse> getMyNotifications() {

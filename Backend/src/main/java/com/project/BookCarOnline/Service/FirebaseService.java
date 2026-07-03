@@ -2,6 +2,9 @@ package com.project.BookCarOnline.Service;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.*;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,7 +17,7 @@ import java.util.UUID;
 
 @Service
 @Slf4j
-public class FirebaseStorageService {
+public class FirebaseService {
 
     private Storage storage;
 
@@ -27,17 +30,43 @@ public class FirebaseStorageService {
     @PostConstruct
     private void init() throws IOException {
         InputStream serviceAccount = getClass().getClassLoader().getResourceAsStream(credentialsPath);
-        this.storage = StorageOptions.newBuilder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .build()
-                .getService();
+        if (serviceAccount != null) {
+            this.storage = StorageOptions.newBuilder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .build()
+                    .getService();
+        }
     }
 
-    // 1. Upload file (Dịch từ UploadFileAsync)
+    // 1. FIREBASE CLOUD MESSAGING (PUSH NOTIFICATIONS)
+
+    public void sendNotificationToToken(String fcmToken, String title, String body) {
+        if (fcmToken == null || fcmToken.isEmpty()) {
+            return;
+        }
+
+        try {
+            Message message = Message.builder()
+                    .setToken(fcmToken)
+                    .setNotification(Notification.builder()
+                            .setTitle(title)
+                            .setBody(body)
+                            .build())
+                    .build();
+
+            String response = FirebaseMessaging.getInstance().send(message);
+            log.info("Successfully sent FCM message: {}", response);
+        } catch (Exception e) {
+            log.error("Error sending FCM message to token: {}", fcmToken, e);
+        }
+    }
+
+    // 2. FIREBASE STORAGE (FILE UPLOAD/DOWNLOAD)
+
     public String uploadFile(MultipartFile file, String folderPath, String fileName) throws IOException {
         if (fileName == null || fileName.isEmpty()) {
             String originalName = file.getOriginalFilename();
-            String extension = originalName != null ? originalName.substring(originalName.lastIndexOf(".")) : "";
+            String extension = originalName != null && originalName.contains(".") ? originalName.substring(originalName.lastIndexOf(".")) : "";
             fileName = UUID.randomUUID().toString() + extension;
         }
 
@@ -57,7 +86,6 @@ public class FirebaseStorageService {
         return fullPath;
     }
 
-    // 2. Lấy file (Dịch từ GetFileAsync)
     public byte[] getFile(String filePath) {
         try {
             Blob blob = storage.get(BlobId.of(bucketName, filePath));
@@ -68,13 +96,11 @@ public class FirebaseStorageService {
         }
     }
 
-    // 3. Xóa file (Dịch từ DeleteFileAsync)
     public void deleteFile(String filePath) {
         storage.delete(BlobId.of(bucketName, filePath));
         log.info("Deleted file from Firebase: {}", filePath);
     }
 
-    // 4. Tạo URL công khai (Dịch từ GetPublicUrl)
     public String getPublicUrl(String filePath) {
         // Thay thế "/" bằng "%2F" để URL hoạt động đúng
         String escapedPath = filePath.replace("/", "%2F");

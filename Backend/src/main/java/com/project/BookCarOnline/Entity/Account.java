@@ -55,4 +55,6 @@ public class Account {
     @Column(length = 255)
      String providerId;
 
+    @Column(length = 500)
+     String fcmToken;
 }

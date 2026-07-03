@@ -8,12 +8,10 @@ Dự án là một hệ thống đặt xe công nghệ (tương tự Grab/Gojek)
 
 ## 📸 Demo / Screenshots
 
-*(Dành cho nhà tuyển dụng: Dưới đây là giao diện thực tế của hệ thống. Vui lòng xem video demo chi tiết tại: `[Link YouTube/Drive của bạn]`)*
-
 | 📱 Giao diện Khách hàng | 🚕 Giao diện Tài xế | 💻 Admin Dashboard |
 |:---:|:---:|:---:|
 | ![Customer App](docs/screenshots/customer.png) <br> *Đặt xe & Theo dõi bản đồ* | ![Driver App](docs/screenshots/driver.png) <br> *Nhận chuyến & Doanh thu* | ![Admin App](docs/screenshots/admin.png) <br> *Quản lý & Thống kê* |
-
+Link demo: https://ridebook.tinhlelaptrinh.id.vn/
 ---
 
 ## 🛠️ Công nghệ (Tech Stack)
@@ -104,9 +102,9 @@ Hệ thống có sẵn các tài khoản mặc định (hoặc bạn có thể t
 
 | Vai trò | Username | Password | Tên hiển thị |
 |---------|----------|----------|--------------|
-| **Admin** | `admin` | `admin123` (hoặc `admin`) | Quản trị viên hệ thống |
-| **Customer** | `customer1` | `pass123` | Nguyễn Văn A |
-| **Driver** | `driver1` | `driver123` | Lê Văn C |
+| **Admin** | `admin` | `admin`  | Quản trị viên hệ thống |
+| **Customer** | `0366900822` | `12345` | Nguyễn Văn A |
+| **Driver** | `0366900823` | `12345` | Lê Văn C |
 
 * Mở 2 trình duyệt ẩn danh: một đóng vai trò Khách hàng (Customer) để đặt xe, một đóng vai trò Tài xế (Driver) để nhận chuyến và trải nghiệm luồng realtime.
 

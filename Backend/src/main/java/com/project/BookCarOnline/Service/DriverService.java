@@ -56,8 +56,7 @@ public class DriverService {
     RideBookRepository rideBookRepository;
     RatingRepository ratingRepository;
     DriverCacheService driverCacheService;
-
-    FirebaseStorageService firebaseStorageService;
+    FirebaseService firebaseService;
 
     public DriverDetailResponse getMyInfo() {
         String profileId = SecurityUtils.getCurrentProfileId().orElseThrow(()->new AppException(ErrorCode.PROFILE_NOT_FOUND));
@@ -321,7 +320,7 @@ public class DriverService {
 
         if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
             String folderPath = "drivers/" + account.getAccountId() + "/avatar";
-            String url = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+            String url = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
             driver.setAvatar(url);
         }
 
@@ -367,43 +366,43 @@ public class DriverService {
             }
         }
         if(request.getAvatar()!=null){
-            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getAvatar());
+            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getAvatar());
             if (oldFilePath != null) {
-                firebaseStorageService.deleteFile(oldFilePath);
+                firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
             else {
                 String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
                 String folderPath = "drivers"+ "/" + accountID + "/avatar";
-                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
                 driver.setAvatar(fileURL);
             }
         }
         mapper.updateDriver(driver, request);
 
         if(request.getCitizenIdImage()!=null){
-            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getAvatar());
+            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getAvatar());
             if (oldFilePath != null) {
-                firebaseStorageService.deleteFile(oldFilePath);
+                firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
             else {
                 String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
                 String folderPath = "drivers"+ "/" + accountID + "/citizenId";
-                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
                 driver.setCitizenId(fileURL);
             }
         }
         if(request.getDrivingLicenseImage()!=null){
-            String oldFilePath = firebaseStorageService.getFilePathFromUrl(driver.getDrivingLicense());
+            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getDrivingLicense());
             if (oldFilePath != null) {
-                firebaseStorageService.deleteFile(oldFilePath);
+                firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
             else {
                 String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
                 String folderPath = "drivers"+ "/" + accountID + "/drivingLicense";
-                String fileURL = firebaseStorageService.uploadFile(request.getAvatar(), folderPath, null);
+                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
                 driver.setDrivingLicense(fileURL);
             }
         }
