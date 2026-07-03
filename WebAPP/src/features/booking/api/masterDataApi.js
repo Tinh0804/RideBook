@@ -27,6 +27,9 @@ export const notificationApi = {
 
   markRead: (id) =>
     apiClient.put(`/notifications/${id}/read`).then((r) => parseApiResponse(NotificationSchema, r.data)),
+
+  sendAdminNotification: (payload) =>
+    apiClient.post('/notifications/admin/send', payload).then((r) => r.data),
 }
 
 export const masterDataApi = {

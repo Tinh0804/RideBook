@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, String> {
@@ -18,4 +19,6 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     @Query("SELECT a FROM Account a WHERE a.userName = :userName AND a.passWord = :passWord AND a.roleNo.roleId = :role")
     Optional<Account> login(@Param("userName") String userName, @Param("passWord") String passWord, @Param("role") String role);
     Optional<Account> findByProviderAndProviderId(com.project.BookCarOnline.Entity.Enum.Provider provider, String providerId);
+    
+    List<Account> findByRoleNo_RoleId(String roleId);
 }

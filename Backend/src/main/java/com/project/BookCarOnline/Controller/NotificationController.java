@@ -2,6 +2,7 @@ package com.project.BookCarOnline.Controller;
 
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.DeviceTokenRequest;
+import com.project.BookCarOnline.DTO.Request.NotificationRequest;
 import com.project.BookCarOnline.DTO.Response.NotificationResponse;
 import com.project.BookCarOnline.Service.NotificationService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
 
 import java.util.List;
 
@@ -47,6 +50,16 @@ public class NotificationController {
         return APIResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Đăng ký token thiết bị thành công")
+                .build();
+    }
+
+    @PostMapping("/admin/send")
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public APIResponse<Void> sendAdminNotification(@RequestBody NotificationRequest request) {
+        notificationService.sendAdminNotification(request);
+        return APIResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Gửi thông báo thành công")
                 .build();
     }
 }

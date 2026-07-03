@@ -9,6 +9,9 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Mapper.NotificationMapper;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Repository.NotificationRepository;
+import com.project.BookCarOnline.DTO.Request.NotificationRequest;
+import com.project.BookCarOnline.Entity.Enum.NotificationTargetType;
+import com.project.BookCarOnline.Entity.Enum.PredefinedRole;
 import com.project.BookCarOnline.Utils.SecurityUtils;
 import com.project.BookCarOnline.DTO.Redis.WebSocketNotificationMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +40,56 @@ public class NotificationService {
     FirebaseService firebaseService;
     RedisTemplate<String, Object> redisTemplate;
     ObjectMapper objectMapper;
+
+    public void sendAdminNotification(NotificationRequest request) {
+        List<Account> targetAccounts;
+        switch (request.getTargetType()) {
+            case ALL:
+                targetAccounts = accountRepository.findAll();
+                break;
+            case DRIVER:
+                targetAccounts = accountRepository.findByRoleNo_RoleId(PredefinedRole.RoleName.DRIVER);
+                break;
+            case CUSTOMER:
+                targetAccounts = accountRepository.findByRoleNo_RoleId(PredefinedRole.RoleName.CUSTOMER);
+                break;
+            case SPECIFIC:
+                if (request.getTargetUsername() == null || request.getTargetUsername().trim().isEmpty()) {
+                    throw new AppException(ErrorCode.USER_NOT_EXITED);
+                }
+                Account account = accountRepository.findByUserName(request.getTargetUsername())
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+                targetAccounts = List.of(account);
+                break;
+            default:
+                throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
+
+        for (Account account : targetAccounts) {
+            Notification notification = Notification.builder()
+                    .accountNo(account)
+                    .title(request.getTitle())
+                    .message(request.getMessage())
+                    .sentAt(new Date())
+                    .isRead(false)
+                    .build();
+
+            Notification saved = notificationRepository.save(notification);
+            NotificationResponse response = notificationMapper.toNotificationResponse(saved);
+
+            // Real-time broadcast via Redis PubSub
+            try {
+                WebSocketNotificationMessage redisMsg = new WebSocketNotificationMessage(account.getUserName(), response);
+                String jsonMessage = objectMapper.writeValueAsString(redisMsg);
+                redisTemplate.convertAndSend("websocket_notifications", jsonMessage);
+            } catch (Exception e) {
+                log.error("Failed to publish admin notification to Redis for user {}", account.getUserName(), e);
+            }
+
+            // Firebase Cloud Messaging (Push Notification)
+            firebaseService.sendNotificationToToken(account.getFcmToken(), request.getTitle(), request.getMessage());
+        }
+    }
 
     public void sendNotification(String username, String title, String message, Booking booking) {
         Account account = accountRepository.findByUserName(username)

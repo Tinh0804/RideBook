@@ -43,6 +43,7 @@ const AdminDriversPage       = lazy(() => import('@/pages/admin/AdminDriversPage
 const AdminCustomersPage     = lazy(() => import('@/pages/admin/AdminCustomersPage'))
 const AdminBookingsPage      = lazy(() => import('@/pages/admin/AdminBookingsPage'))
 const AdminPromotionsPage    = lazy(() => import('@/pages/admin/AdminPromotionsPage'))
+const AdminNotificationsPage = lazy(() => import('@/pages/admin/AdminNotificationsPage'))
 
 // Payment
 const PaymentCallbackPage    = lazy(() => import('@/pages/customer/PaymentCallbackPage'))
@@ -131,6 +132,7 @@ const AppRoutes = () => (
           <Route path="admin/drivers"      element={<AdminDriversPage />} />
           <Route path="admin/bookings"     element={<AdminBookingsPage />} />
           <Route path="admin/promotions"   element={<AdminPromotionsPage />} />
+          <Route path="admin/notifications" element={<AdminNotificationsPage />} />
           <Route path="admin/*"            element={<AdminDashboardPage />} />
         </Route>
       </Route>

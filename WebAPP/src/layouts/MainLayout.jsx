@@ -12,8 +12,11 @@ import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/sto
 import { useAuth } from '@/hooks/useAuth'
 import { notificationApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
-import { ROLES, BOOKING_STATUS } from '@/config'
+import { ROLES, BOOKING_STATUS, WS_URL } from '@/config'
 import { cn } from '@/utils/cn'
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
+import { toast } from 'react-hot-toast'
 
 const BASE_CUSTOMER_NAV = [
   { to: '/customer/home',     icon: RiHomeLine,     label: 'Trang chủ' },
@@ -37,6 +40,7 @@ const ADMIN_NAV = [
   { to: '/admin/drivers',        icon: RiCarLine,                 label: 'Tài xế' },
   { to: '/admin/bookings',       icon: RiHistoryLine,             label: 'Chuyến đi' },
   { to: '/admin/promotions',     icon: RiMoneyDollarCircleLine,   label: 'Khuyến mãi' },
+  { to: '/admin/notifications',  icon: RiNotification3Line,       label: 'Gửi thông báo' },
   { to: '/admin/vehicle-types',  icon: RiCarFill,                 label: 'Loại xe' },
   { to: '/admin/time-slots',     icon: RiTimeLine,                label: 'Khung giờ' },
   { to: '/admin/pricing',        icon: RiPriceTag3Line,           label: 'Bảng giá' },
@@ -77,6 +81,44 @@ const MainLayout = () => {
       })
       .catch(() => {})
   }, [setNotifCount])
+
+  // Setup WebSockets STOMP connection for real-time notifications
+  useEffect(() => {
+    if (!user?.userName) return
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS(WS_URL),
+      debug: (str) => {
+        // console.log(str) // Uncomment for STOMP debugging
+      },
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe(`/topic/notifications/${user.userName}`, (msg) => {
+          if (msg.body) {
+            try {
+              const newNotif = JSON.parse(msg.body)
+              // Update state
+              setNotifications(prev => [newNotif, ...prev])
+              setNotifCount(prev => prev + 1)
+              // Show toast
+              toast.success(newNotif.title + '\\n' + newNotif.message, {
+                duration: 5000,
+                icon: '🔔',
+              })
+            } catch (err) {
+              console.error('Error parsing notification:', err)
+            }
+          }
+        })
+      }
+    })
+
+    client.activate()
+
+    return () => {
+      client.deactivate()
+    }
+  }, [user?.userName, setNotifCount])
 
   // Lấy dữ liệu chuyến đi hiện tại từ Backend khi load ứng dụng, thay vì lưu ở Frontend
   useEffect(() => {
