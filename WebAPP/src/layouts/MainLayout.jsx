@@ -17,6 +17,9 @@ import { cn } from '@/utils/cn'
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { toast } from 'react-hot-toast'
+import Modal from '@/components/Elements/Modal'
+import { formatDistanceToNow } from 'date-fns'
+import { vi } from 'date-fns/locale'
 
 const BASE_CUSTOMER_NAV = [
   { to: '/customer/home',     icon: RiHomeLine,     label: 'Trang chủ' },
@@ -55,6 +58,9 @@ const MainLayout = () => {
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [tripLoading, setTripLoading] = useState(true)
+  const [selectedNotif, setSelectedNotif] = useState(null)
+  
+  const navigate = useNavigate()
 
   const role = user?.role?.toUpperCase()
   
@@ -150,6 +156,34 @@ const MainLayout = () => {
       setTripLoading(false)
     }
   }, [user?.customerId, role, setCurrentBooking, clearCurrentBooking, setCurrentTrip, clearCurrentTrip])
+
+  const handleNotificationClick = async (n) => {
+    // 1. Gọi API markRead nếu chưa đọc
+    if (!n.read) {
+      try {
+        await notificationApi.markRead(n.notificationId)
+        setNotifications((prev) =>
+          prev.map((item) => (item.notificationId === n.notificationId ? { ...item, read: true } : item))
+        )
+        setNotifCount((prev) => Math.max(0, prev - 1))
+      } catch (err) {
+        console.error('Lỗi khi cập nhật trạng thái thông báo:', err)
+      }
+    }
+
+    setNotifOpen(false) // Đóng dropdown
+
+    // 2. Xử lý logic click
+    if (n.bookingId) {
+      // Có ID chuyến đi -> Chuyển hướng tới lịch sử
+      if (role === ROLES.CUSTOMER) navigate('/customer/history')
+      else if (role === ROLES.DRIVER) navigate('/driver/history')
+      else navigate('/admin/bookings')
+    } else {
+      // Thông báo hệ thống -> Hiện modal
+      setSelectedNotif(n)
+    }
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-dark">
@@ -274,14 +308,18 @@ const MainLayout = () => {
                   ) : (
                     notifications.slice(0, 8).map((n) => (
                       <div
-                        key={n.id}
+                        key={n.notificationId}
+                        onClick={() => handleNotificationClick(n)}
                         className={cn(
                           'p-4 hover:bg-surface-border/30 cursor-pointer transition-colors',
                           !n.read && 'bg-brand-500/5 border-l-2 border-brand-500'
                         )}
                       >
-                        <p className="text-sm text-content-muted">{n.message || n.content}</p>
-                        <p className="text-xs text-gray-600 mt-1">{n.createdAt}</p>
+                        <p className="text-sm font-semibold text-content-main mb-1">{n.title}</p>
+                        <p className="text-sm text-content-muted line-clamp-2">{n.message}</p>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {formatDistanceToNow(new Date(n.sentAt), { addSuffix: true, locale: vi })} • {new Date(n.sentAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     ))
                   )}
@@ -314,6 +352,27 @@ const MainLayout = () => {
           )}
         </main>
       </div>
+
+      {/* Modal chi tiết thông báo */}
+      <Modal
+        isOpen={!!selectedNotif}
+        onClose={() => setSelectedNotif(null)}
+        title={selectedNotif?.title || 'Thông báo hệ thống'}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-content-main whitespace-pre-wrap leading-relaxed">
+            {selectedNotif?.message}
+          </p>
+          <div className="flex justify-end border-t border-surface-border pt-4 mt-6">
+            <button
+              onClick={() => setSelectedNotif(null)}
+              className="bg-brand-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-brand-600 transition-colors"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

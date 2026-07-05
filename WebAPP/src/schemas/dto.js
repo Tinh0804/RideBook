@@ -206,10 +206,12 @@ export const WalletTransactionSchema = z.object({
 })
 
 export const NotificationSchema = z.object({
-  id: z.string().or(z.number()).catch(''),
-  content: z.string().catch(''),
+  notificationId: z.string().or(z.number()).catch(''),
+  title: z.string().catch(''),
+  message: z.string().catch(''),
   read: z.boolean().catch(false),
-  createdAt: z.string().catch(''),
+  sentAt: z.string().catch(''),
+  bookingId: z.string().nullable().catch(null),
 })
 
 export const PromotionSchema = z.object({

@@ -1,7 +1,20 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { RiUserLine, RiCarFill, RiShieldLine } from 'react-icons/ri'
+import { useEffect } from 'react'
+import { toast } from 'react-hot-toast'
 
 const WelcomePage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('sessionExpired') === 'true') {
+      toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!')
+      // Clear param without reloading
+      navigate('/welcome', { replace: true })
+    }
+  }, [location, navigate])
   return (
     <div className="flex flex-col items-center justify-center space-y-10 animate-slide-up w-full">
       <div className="text-center space-y-3">

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { API_BASE_URL, TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/config'
+import { API_BASE_URL, TOKEN_KEY, REFRESH_TOKEN_KEY, USER_KEY } from '@/config'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -76,7 +76,8 @@ apiClient.interceptors.response.use(
         // Clear auth and redirect to login
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(REFRESH_TOKEN_KEY)
-        window.location.href = '/welcome'
+        localStorage.removeItem(USER_KEY)
+        window.location.href = '/welcome?sessionExpired=true'
         return Promise.reject(err)
       } finally {
         isRefreshing = false
