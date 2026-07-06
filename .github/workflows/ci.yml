@@ -49,7 +49,7 @@ jobs:
           context: ./Backend 
           file: ./Backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/bookcar-backend:${{ github.sha }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/ridebook-backend:${{ github.sha }}
 
   build-frontend:
     name: Build & Test Frontend (React Vite)

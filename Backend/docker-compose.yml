@@ -1,11 +1,9 @@
 version: '3.8'
 
 services:
-  bookcar-backend:
-    image: ${DOCKER_USERNAME:-tinh08042005}/bookcar-backend:${IMAGE_TAG:-latest}
-    container_name: bookcar-backend-v1
-    ports:
-      - "8080:8080"
+  ridebook-backend:
+    image: ${DOCKER_USERNAME:-tinh08042005}/ridebook-backend:${IMAGE_TAG:-latest}
+    container_name: ridebook-backend-v1
     env_file:
       - .env
     environment:
@@ -14,27 +12,35 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_DATA_REDIS_URL=${REDIS_URL}
       - SPRING_DATA_REDIS_DATABASE=${REDIS_DATABASE}
+    networks:
+      - ridebook-network
     deploy:
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 5
         window: 120s
+
   nginx:
     image: nginx:alpine
-    container_name: bookcar-nginx
+    container_name: ridebook-nginx
     ports:
       - "80:80"
-      - "443:443" # <-- Mở thêm cổng HTTPS
+      - "443:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      # Thêm 2 dòng mount chứng chỉ dưới đây:
       - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - ridebook-network
     depends_on:
-      - bookcar-backend
+      - ridebook-backend
     deploy:
       restart_policy:
         condition: on-failure
         delay: 10s
         max_attempts: 5
         window: 120s
+
+networks:
+  ridebook-network:
+    driver: bridge
