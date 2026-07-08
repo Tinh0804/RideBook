@@ -37,9 +37,6 @@ public class Booking {
     Payment paymentNo;
 
 
-    @ManyToOne
-    @JoinColumn(name = "promotion_id")
-     Promotion promotionNo;
 
     @ManyToOne
     @JoinColumn(name = "vehicle_type_id")
