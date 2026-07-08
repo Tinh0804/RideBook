@@ -67,6 +67,7 @@ public enum ErrorCode {
     PROMOTION_OUT_OF_STOCK(400, "Mã khuyến mãi đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
     PROMOTION_NOT_ACTIVE(400, "Mã khuyến mãi hiện không khả dụng", HttpStatus.BAD_REQUEST),
     QUOTE_EXPIRED(400, "Báo giá đã hết hạn hoặc không tồn tại, vui lòng lấy giá mới", HttpStatus.BAD_REQUEST),
+    CUSTOMER_PROMOTION_NOT_FOUND(404, "Khuyến mãi của khách hàng không tồn tại", HttpStatus.NOT_FOUND),
 
     // Vehicle type related errors
     VEHICLE_TYPE_NOT_FOUND(404, "Loại xe không tồn tại", HttpStatus.NOT_FOUND),

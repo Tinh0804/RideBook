@@ -93,7 +93,7 @@ public class DriverController {
                 .result(response)
                 .build();
     }
-    @PutMapping("/status-activity")
+    @PutMapping(value = "/status-activity")
     public APIResponse<Boolean> updateStatusActive(){
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         boolean isActive = driverService.toggleDriverActivityStatus(driverId);
@@ -101,6 +101,18 @@ public class DriverController {
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật trạng thái hoạt động thành công")
                 .result(isActive)
+                .build();
+    }
+
+    @PutMapping(value = "/my-info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public APIResponse<DriverDetailResponse> updateMyInfo(@Valid @ModelAttribute UpdateDriverRequest request) throws IOException {
+        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+        log.info("REST API: PUT /drivers/my-info - Updating driver {}", driverId);
+        DriverDetailResponse driver = driverService.updateDriver(driverId, request, null);
+        return APIResponse.<DriverDetailResponse>builder()
+                .status(HttpStatus.OK.value())
+                .message("Cập nhật thông tin thành công")
+                .result(driver)
                 .build();
     }
 

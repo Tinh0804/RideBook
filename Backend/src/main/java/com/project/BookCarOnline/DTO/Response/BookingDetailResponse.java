@@ -6,6 +6,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.sql.Timestamp;
+import java.util.List;
 
 @Data
 @Builder
@@ -46,7 +47,7 @@ public class BookingDetailResponse {
     Double duration;
     String paymentMethod;
     Boolean paymentStatus;
-    String promotionCode;
+    List<BookingPromotionDTO> appliedPromotions;
     Integer rating;
     String review;
 }

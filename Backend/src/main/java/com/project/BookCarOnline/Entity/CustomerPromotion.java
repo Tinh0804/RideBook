@@ -41,4 +41,8 @@ public class CustomerPromotion {
 
     @Column
     Timestamp usedAt;
+
+    @Column(columnDefinition = "integer DEFAULT 1", nullable = false)
+    @Builder.Default
+    Integer quantity = 1;
 }

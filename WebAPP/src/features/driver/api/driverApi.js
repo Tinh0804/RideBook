@@ -31,6 +31,9 @@ export const driverApi = {
   getMyInfo: () =>
     apiClient.get('/drivers/my-info').then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
+  updateMyInfo: (payload) =>
+    apiClient.put('/drivers/my-info', payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+
   updateDriver: (driverId, payload) =>
     apiClient.put(`/admin/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 

@@ -6,6 +6,7 @@ import com.project.BookCarOnline.DTO.Request.EstimatePriceRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateBookingRequest;
 import com.project.BookCarOnline.DTO.Response.AvailableRideResponse;
 import com.project.BookCarOnline.DTO.Response.BookingDetailResponse;
+import com.project.BookCarOnline.DTO.Response.BookingPromotionDTO;
 import com.project.BookCarOnline.DTO.Response.EstimatePriceResponse;
 import com.project.BookCarOnline.Entity.*;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
@@ -43,14 +44,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.ArrayList;
 
 @Slf4j
 @Service
@@ -58,27 +54,28 @@ import java.util.ArrayList;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class BookingService {
 
-    RideBookRepository        bookingRepository;
-    CustomerRepository        customerRepository;
-    DriverRepository          driverRepository;
-    RatingRepository          ratingRepository;
-    PaymentRepository         paymentRepository;
-    VehicleTypeRepository     vehicleTypeRepository;
+    RideBookRepository bookingRepository;
+    CustomerRepository customerRepository;
+    DriverRepository driverRepository;
+    RatingRepository ratingRepository;
+    PaymentRepository paymentRepository;
+    VehicleTypeRepository vehicleTypeRepository;
     BookingRejectionRepository rejectionRepository;
-    PromotionRepository       promotionRepository;
+    PromotionRepository promotionRepository;
     CustomerPromotionRepository customerPromotionRepository;
+    BookingPromotionRepository bookingPromotionRepository;
 
-    RideDispatcherService     dispatcherService;
-    VehicleTypeService        vehicleTypeService;
-    WalletService             walletService;
-    PricingService            pricingService;
-    PaymentTimeoutService     paymentTimeoutService;
-    GoogleMapService          googleMapService;
-    DriverCacheService        driverCacheService;
+    RideDispatcherService dispatcherService;
+    VehicleTypeService vehicleTypeService;
+    WalletService walletService;
+    PricingService pricingService;
+    PaymentTimeoutService paymentTimeoutService;
+    GoogleMapService googleMapService;
+    DriverCacheService driverCacheService;
 
-    SimpMessagingTemplate     messagingTemplate;
+    SimpMessagingTemplate messagingTemplate;
     RedisTemplate<String, Object> redisTemplate;
-    Constant                  constant;
+    Constant constant;
 
     @NonFinal
     @Value("${app.commission.platform-rate}")
@@ -86,7 +83,7 @@ public class BookingService {
 
     @NonFinal
     @Value("${app.time-to-live.quote}")
-    protected long quoteTtlMillis;
+    protected long quoteTtlSecond;
 
     public List<EstimatePriceResponse> estimatePrice(EstimatePriceRequest request) {
         double distance = calculateDistanceKm(
@@ -97,13 +94,12 @@ public class BookingService {
         List<Promotion> promotions = pricingService.resolvePromotions(request.getPromotionCodes());
 
         List<VehicleType> vehicleTypes = vehicleTypeRepository.findAll();
-        long expiryTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(120);
+        long expiryTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(quoteTtlSecond);
 
         return vehicleTypes.stream()
                 .map(vt -> buildEstimateForVehicleType(vt, distance, promotions, expiryTime))
                 .collect(Collectors.toList());
     }
-
 
     @Transactional
     public BookingDetailResponse createBooking(CreateBookingRequest request) {
@@ -111,18 +107,21 @@ public class BookingService {
         FareQuote quote = validateAndGetQuote(request.getQuoteId());
 
         VehicleType vehicleType = vehicleTypeRepository.findById(quote.getVehicleTypeId())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+                .orElseThrow(() -> new AppException(ErrorCode.VEHICLE_TYPE_NOT_FOUND));
 
         Customer customer = resolveCustomer(request.getCustomerId());
 
-        Promotion validPromotion = null;
+        List<Promotion> validPromotions = new ArrayList<>();
         if (quote.getPromotionIds() != null && !quote.getPromotionIds().isEmpty()) {
             // Áp dụng và trừ số lượt tất cả các mã khuyến mãi
             for (String promoCode : quote.getPromotionIds()) {
                 if (promoCode != null && !promoCode.isBlank()) {
                     try {
-                        validPromotion = pricingService.validateAndConsumePromotion(
+                        Promotion p = pricingService.validateAndConsumePromotion(
                                 promoCode, customer.getCustomerId(), quote.getTotalPrice());
+                        if (p != null) {
+                            validPromotions.add(p);
+                        }
                     } catch (Exception e) {
                         log.warn("[Booking] Không thể áp dụng promo {}: {}", promoCode, e.getMessage());
                     }
@@ -138,8 +137,10 @@ public class BookingService {
                 .build());
 
         // 5. Geocode điểm đón (chỉ dùng khi request không có tọa độ)
-        double pickupLat = request.getPickupLat() != null ? request.getPickupLat() : geocodeLat(request.getPickupLocation());
-        double pickupLng = request.getPickupLng() != null ? request.getPickupLng() : geocodeLng(request.getPickupLocation());
+        double pickupLat = request.getPickupLat() != null ? request.getPickupLat()
+                : geocodeLat(request.getPickupLocation());
+        double pickupLng = request.getPickupLng() != null ? request.getPickupLng()
+                : geocodeLng(request.getPickupLocation());
 
         // 6. Tạo Booking
         Booking booking = Booking.builder()
@@ -157,12 +158,28 @@ public class BookingService {
                 .bookingStatus(BookingStatus.PENDING)
                 .distance(quote.getDistance())
                 .paymentNo(payment)
-                .promotionNo(validPromotion)
                 .build();
         Booking saved = bookingRepository.save(booking);
 
-        if (validPromotion != null) {
-            recordCustomerPromotion(customer, validPromotion);
+        // Lưu lịch sử sử dụng cho TẤT CẢ các mã khuyến mãi được áp dụng và lưu chi tiết BookingPromotion
+        double remainingPrice = quote.getOriginalPrice() != null ? quote.getOriginalPrice() : 0.0;
+        List<BookingPromotion> bookingPromotionsToSave = new ArrayList<>();
+        
+        for (Promotion p : validPromotions) {
+            double discountAmount = pricingService.calculateDiscount(p, remainingPrice);
+            if (discountAmount > 0) {
+                BookingPromotion bp = BookingPromotion.builder()
+                        .booking(saved)
+                        .promotion(p)
+                        .discountAmount(discountAmount)
+                        .build();
+                bookingPromotionsToSave.add(bp);
+                remainingPrice = Math.max(0.0, remainingPrice - discountAmount);
+            }
+            recordCustomerPromotion(customer, p);
+        }
+        if (!bookingPromotionsToSave.isEmpty()) {
+            bookingPromotionRepository.saveAll(bookingPromotionsToSave);
         }
 
         // Xóa quote khỏi Redis (tránh dùng lại)
@@ -201,7 +218,7 @@ public class BookingService {
         dispatchWithPriority(booking, lat, lng, blacklist);
     }
 
-    //  TÀI XẾ TỪ CHỐI CHỦ ĐỘNG 
+    // TÀI XẾ TỪ CHỐI CHỦ ĐỘNG
     @Transactional
     public void rejectBooking(String bookingId, String driverId) {
         BookingStatus status = bookingRepository.findBookingStatusByBookingId(bookingId);
@@ -235,7 +252,7 @@ public class BookingService {
         booking.setDriverNo(driver);
         booking.setBookingStatus(BookingStatus.ACCEPTED);
         booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
-        
+
         Booking updated;
         try {
             updated = bookingRepository.save(booking);
@@ -252,7 +269,6 @@ public class BookingService {
         return mapToBookingDetailResponse(updated);
     }
 
-
     @Transactional
     public BookingDetailResponse updateStatus(String bookingId, BookingStatus newStatus) {
         log.info("[Booking] Cập nhật trạng thái: booking={} → {}", bookingId, newStatus);
@@ -265,10 +281,11 @@ public class BookingService {
         Timestamp now = Timestamp.valueOf(LocalDateTime.now());
 
         switch (newStatus) {
-            case ARRIVED     -> booking.setPickupTime(now);
-            case COMPLETED   -> handleCompleteRide(booking, now);
-            case CANCELLED   -> driverCacheService.clearLocation(bookingId);
-            default          -> {  }
+            case ARRIVED -> booking.setPickupTime(now);
+            case COMPLETED -> handleCompleteRide(booking, now);
+            case CANCELLED -> driverCacheService.clearLocation(bookingId);
+            default -> {
+            }
         }
 
         booking.setBookingStatus(newStatus);
@@ -278,7 +295,6 @@ public class BookingService {
 
         return mapToBookingDetailResponse(updated);
     }
-
 
     @Transactional
     public void cancelBooking(String bookingId) {
@@ -323,7 +339,6 @@ public class BookingService {
         driverCacheService.clearLocation(bookingId);
         log.info("[Booking] Tài xế {} đã hủy booking {}", driverId, bookingId);
     }
- 
 
     public List<BookingDetailResponse> getAllBookings() {
         return bookingRepository.findAll()
@@ -336,22 +351,25 @@ public class BookingService {
         double revenue = 0.0;
         for (Booking b : all) {
             switch (b.getBookingStatus()) {
-                case COMPLETED -> { completed++; revenue += b.getTotalPrice() != null ? b.getTotalPrice() : 0; }
+                case COMPLETED -> {
+                    completed++;
+                    revenue += b.getTotalPrice() != null ? b.getTotalPrice() : 0;
+                }
                 case CANCELLED -> cancelled++;
-                default -> {}
+                default -> {
+                }
             }
         }
 
         return java.util.Map.of(
-            "totalBookings",   (long) all.size(),
-            "completedRides",  completed,
-            "cancelledRides",  cancelled,
-            "totalRevenue",    revenue
-        );
+                "totalBookings", (long) all.size(),
+                "completedRides", completed,
+                "cancelledRides", cancelled,
+                "totalRevenue", revenue);
     }
 
     public Page<BookingDetailResponse> searchBookingsForAdmin(int page, int size, String status, String search,
-                                                              String fromDate, String toDate) {
+            String fromDate, String toDate) {
         Pageable pageable = PageRequest.of(page, size);
         BookingStatus bookingStatus = null;
         if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
@@ -374,7 +392,8 @@ public class BookingService {
         Booking booking = getBookingOrThrow(bookingId);
         Set<BookingStatus> cancellable = Set.of(BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.ARRIVED);
         if (!cancellable.contains(booking.getBookingStatus())) {
-            throw new IllegalStateException("Chỉ có thể huỷ chuyến khi chưa đón khách (trạng thái hiện tại: " + booking.getBookingStatus() + ")");
+            throw new IllegalStateException("Chỉ có thể huỷ chuyến khi chưa đón khách (trạng thái hiện tại: "
+                    + booking.getBookingStatus() + ")");
         }
         booking.setBookingStatus(BookingStatus.CANCELLED);
         Booking updated = bookingRepository.save(booking);
@@ -448,10 +467,13 @@ public class BookingService {
                 .stream().findFirst().map(this::mapToBookingDetailResponse).orElse(null);
     }
 
-    public Page<BookingDetailResponse> getBookingsByDriverPaginated(String driverId, String status, int page, int size) {
-       Pageable pageable = PageRequest.of(page, size);
+    public Page<BookingDetailResponse> getBookingsByDriverPaginated(String driverId, String status, int page,
+            int size) {
+        Pageable pageable = PageRequest.of(page, size);
         if (status != null && !status.isEmpty() && !status.equals("ALL")) {
-            return bookingRepository.findByDriverNo_DriverIdAndBookingStatusOrderByBookingTimeDesc(driverId, BookingStatus.valueOf(status), pageable)
+            return bookingRepository
+                    .findByDriverNo_DriverIdAndBookingStatusOrderByBookingTimeDesc(driverId,
+                            BookingStatus.valueOf(status), pageable)
                     .map(this::mapToBookingDetailResponse);
         }
         return bookingRepository.findByDriverNo_DriverIdOrderByBookingTimeDesc(driverId, pageable)
@@ -481,7 +503,7 @@ public class BookingService {
         booking.setArrivalTime(completedAt);
 
         Payment pmt = booking.getPaymentNo();
-        Driver  drv = booking.getDriverNo();
+        Driver drv = booking.getDriverNo();
 
         if (drv == null || pmt == null) {
             log.warn("[Booking] Thiếu driver/payment khi complete booking {}", booking.getBookingId());
@@ -491,7 +513,7 @@ public class BookingService {
         double commission = booking.getTotalPrice() * platformCommissionRate;
         String typeDeduct = "FEE_BOOKING";
         if (PaymentMethod.CASH == pmt.getPaymentType()) {
-            walletService.deductBalance(drv.getDriverId(), commission,typeDeduct);
+            walletService.deductBalance(drv.getDriverId(), commission, typeDeduct);
         } else {
             walletService.addBalance(drv.getDriverId(), booking.getTotalPrice() - commission);
         }
@@ -507,15 +529,18 @@ public class BookingService {
             VehicleType vehicleType, double distance,
             List<Promotion> promotions, long expiryTime) {
 
-        double basePrice       = vehicleType.getPricePerKm() * distance;
-        double surcharge       = vehicleTypeService.getCurrentSurcharge(vehicleType.getVehicleTypeId());
+        double pricePerKm = vehicleType.getPricePerKm() != null ? vehicleType.getPricePerKm() : 0.0;
+        double basePrice = pricePerKm * distance;
+        
+        String vtId = vehicleType.getVehicleTypeId();
+        double surcharge = (vtId != null) ? vehicleTypeService.getCurrentSurcharge(vtId) : 1.0;
         double surgeMultiplier = 1.0;
-        double rawPrice        = basePrice * surcharge * surgeMultiplier;
+        double rawPrice = basePrice * surcharge * surgeMultiplier;
 
         // Tính tổng discount từ nhiều mã khuyến mãi
-        double discount        = pricingService.calculateTotalDiscount(promotions, rawPrice);
-        double originalPrice   = roundToThousand(rawPrice);
-        double finalPrice      = Math.max(0.0, roundToThousand(originalPrice - discount));
+        double discount = pricingService.calculateTotalDiscount(promotions, rawPrice);
+        double originalPrice = roundToThousand(rawPrice);
+        double finalPrice = Math.max(0.0, roundToThousand(originalPrice - discount));
 
         // Lưu list mã khuyến mãi vào FareQuote
         List<String> promoIds = (promotions != null)
@@ -535,7 +560,7 @@ public class BookingService {
                 .discount(discount)
                 .promotionIds(promoIds)
                 .build();
-        redisTemplate.opsForValue().set("quote:" + quoteId, quote, 120, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set("quote:" + quoteId, quote, quoteTtlSecond, TimeUnit.SECONDS);
 
         return EstimatePriceResponse.builder()
                 .vehicleTypeId(vehicleType.getVehicleTypeId())
@@ -552,18 +577,17 @@ public class BookingService {
     }
 
     private void dispatchWithPriority(Booking booking, double lat, double lng,
-                                      Set<String> existingBlacklist) {
+            Set<String> existingBlacklist) {
 
         String vehicleTypeId = booking.getVehicleTypeNo().getVehicleTypeId();
-        List<DriverGeoResult> nearbyResults =
-                driverCacheService.findNearbyDrivers(lat, lng, constant.getSEARCH_RADIUS_KM());
+        List<DriverGeoResult> nearbyResults = driverCacheService.findNearbyDrivers(lat, lng,
+                constant.getSEARCH_RADIUS_KM());
 
         if (nearbyResults.isEmpty()) {
             log.info("[Booking] Không tìm thấy tài xế nào quanh đây cho booking={}", booking.getBookingId());
             dispatcherService.startDispatching(booking.getBookingId(), List.of());
             return;
         }
-
 
         List<String> driverIds = nearbyResults.stream()
                 .map(DriverGeoResult::getDriverId)
@@ -580,12 +604,11 @@ public class BookingService {
                 .collect(Collectors.toMap(
                         DriverGeoResult::getDriverId,
                         DriverGeoResult::getDistanceKm,
-                        (a, b) -> a  // giải quyết trùng key
+                        (a, b) -> a // giải quyết trùng key
                 ));
 
-
         List<Driver> candidates = driverRepository.findAllById(driverIds).stream()
-                .filter(d -> Boolean.TRUE.equals(d.getActivityStatus()))          // Đang online
+                .filter(d -> Boolean.TRUE.equals(d.getActivityStatus())) // Đang online
                 .filter(d -> vehicleTypeId.equals(
                         d.getVehicleType() != null ? d.getVehicleType().getVehicleTypeId() : null)) // Đúng loại xe
                 .collect(Collectors.toList());
@@ -600,7 +623,8 @@ public class BookingService {
 
         candidates.sort(Comparator.comparingDouble(Driver::getScore).reversed());
 
-        log.info("[Booking] Dispatch booking={} cho {} tài xế (Redis GEO + Cache)", booking.getBookingId(), candidates.size());
+        log.info("[Booking] Dispatch booking={} cho {} tài xế (Redis GEO + Cache)", booking.getBookingId(),
+                candidates.size());
         dispatcherService.startDispatching(booking.getBookingId(), candidates);
     }
 
@@ -611,8 +635,8 @@ public class BookingService {
         double ratingScore = stats.getAvgRating() / 5.0;
 
         // Điểm "nhàn rỗi"
-        long   idleMinutes = getIdleMinutes(driver);
-        double idleScore   = Math.min(idleMinutes / constant.getMAX_IDLE_MIN(), 1.0);
+        long idleMinutes = getIdleMinutes(driver);
+        double idleScore = Math.min(idleMinutes / constant.getMAX_IDLE_MIN(), 1.0);
 
         // Phạt từ chối chủ động (nặng hơn)
         double rejectPenalty = Math.min(stats.getRejectCount() * 0.5, 1.0);
@@ -621,10 +645,10 @@ public class BookingService {
         double ignorePenalty = Math.min(stats.getIgnoreCount() * 0.2, 1.0);
 
         return (constant.getW_DISTANCE() * distanceScore)
-             + (constant.getW_RATING()   * ratingScore)
-             + (constant.getW_IDLE()     * idleScore)
-             - (constant.getW_REJECT()   * rejectPenalty)
-             - (constant.getW_IGNORE()   * ignorePenalty);
+                + (constant.getW_RATING() * ratingScore)
+                + (constant.getW_IDLE() * idleScore)
+                - (constant.getW_REJECT() * rejectPenalty)
+                - (constant.getW_IGNORE() * ignorePenalty);
     }
 
     private FareQuote validateAndGetQuote(String quoteId) {
@@ -645,21 +669,31 @@ public class BookingService {
     }
 
     private Promotion resolvePromotion(String promotionCode) {
-        if (promotionCode == null || promotionCode.isBlank()) return null;
+        if (promotionCode == null || promotionCode.isBlank())
+            return null;
         return promotionRepository.findByPromotionCode(promotionCode).orElse(null);
     }
 
     private void recordCustomerPromotion(Customer customer, Promotion promotion) {
-        CustomerPromotion cp = customerPromotionRepository
+        Optional<CustomerPromotion> existing = customerPromotionRepository
                 .findByCustomer_CustomerIdAndPromotion_PromotionId(
-                        customer.getCustomerId(), promotion.getPromotionId())
-                .orElseGet(() -> CustomerPromotion.builder()
-                        .customer(customer)
-                        .promotion(promotion)
-                        .savedAt(Timestamp.from(Instant.now()))
-                        .build());
-        cp.setStatus(CustomerPromotionStatus.USED);
+                        customer.getCustomerId(), promotion.getPromotionId());
+
+        if (existing.isEmpty()) {
+            throw new AppException(ErrorCode.CUSTOMER_PROMOTION_NOT_FOUND);
+        }
+
+        CustomerPromotion cp = existing.get();
+        int currentQty = cp.getQuantity() != null ? cp.getQuantity() : 0;
+
+        if (currentQty <= 0) {
+            throw new AppException(ErrorCode.PROMOTION_OUT_OF_STOCK);
+        }
+
+        cp.setQuantity(currentQty - 1);
         cp.setUsedAt(Timestamp.from(Instant.now()));
+        cp.setStatus(cp.getQuantity() <= 0 ? CustomerPromotionStatus.USED : CustomerPromotionStatus.SAVED);
+
         customerPromotionRepository.save(cp);
     }
 
@@ -669,11 +703,11 @@ public class BookingService {
 
     private void validateStatusTransition(BookingStatus current, BookingStatus next) {
         boolean valid = switch (next) {
-            case ARRIVED     -> current == BookingStatus.ACCEPTED;
+            case ARRIVED -> current == BookingStatus.ACCEPTED;
             case IN_PROGRESS -> current == BookingStatus.ARRIVED;
-            case COMPLETED   -> current == BookingStatus.IN_PROGRESS;
-            case CANCELLED   -> current == BookingStatus.PENDING || current == BookingStatus.ACCEPTED;
-            default          -> false;
+            case COMPLETED -> current == BookingStatus.IN_PROGRESS;
+            case CANCELLED -> current == BookingStatus.PENDING || current == BookingStatus.ACCEPTED;
+            default -> false;
         };
         if (!valid) {
             throw new IllegalStateException(
@@ -682,7 +716,8 @@ public class BookingService {
     }
 
     private void notifyCustomerDriverAssigned(Booking booking, Driver driver) {
-        if (booking.getCustomerNo() == null) return;
+        if (booking.getCustomerNo() == null)
+            return;
         String payload = "DRIVER_ASSIGNED:" + booking.getBookingId()
                 + ":" + driver.getDriverName()
                 + ":" + driver.getPhone()
@@ -692,7 +727,8 @@ public class BookingService {
     }
 
     private void broadcastStatusToCustomer(Booking booking, BookingStatus status) {
-        if (booking.getCustomerNo() == null) return;
+        if (booking.getCustomerNo() == null)
+            return;
         messagingTemplate.convertAndSend(
                 "/topic/customer/" + booking.getCustomerNo().getCustomerId(),
                 "STATUS_UPDATE:" + booking.getBookingId() + ":" + status.name());
@@ -708,17 +744,23 @@ public class BookingService {
             return 60L;
         return Duration.between(
                 Instant.ofEpochMilli(driver.getLastTripTime().getTime()),
-                Instant.now()
-        ).toMinutes();
+                Instant.now()).toMinutes();
     }
 
     private double roundToThousand(double value) {
         return Math.round(value / 1000.0) * 1000.0;
     }
 
-
-
     private BookingDetailResponse mapToBookingDetailResponse(Booking booking) {
+        List<BookingPromotion> promotions = bookingPromotionRepository.findByBooking_BookingId(booking.getBookingId());
+        List<BookingPromotionDTO> promotionDTOs = promotions.stream()
+                .map(bp -> BookingPromotionDTO.builder()
+                        .promotionCode(bp.getPromotion().getPromotionCode())
+                        .promotionName(bp.getPromotion().getPromotionName())
+                        .discountAmount(bp.getDiscountAmount())
+                        .build())
+                .collect(Collectors.toList());
+
         return BookingDetailResponse.builder()
                 .bookingId(booking.getBookingId())
                 .customerId(booking.getCustomerNo() != null ? booking.getCustomerNo().getCustomerId() : null)
@@ -728,7 +770,8 @@ public class BookingService {
                 .driverName(booking.getDriverNo() != null ? booking.getDriverNo().getDriverName() : null)
                 .driverPhone(booking.getDriverNo() != null ? booking.getDriverNo().getPhone() : null)
                 .vehicleTypeName(booking.getDriverNo() != null && booking.getDriverNo().getVehicleType() != null
-                        ? booking.getDriverNo().getVehicleType().getVehicleTypeName() : null)
+                        ? booking.getDriverNo().getVehicleType().getVehicleTypeName()
+                        : null)
                 .licensePlate(booking.getDriverNo() != null ? booking.getDriverNo().getLicensePlate() : null)
                 .pickupLocation(booking.getPickupLocation())
                 .dropoffLocation(booking.getDropoffLocation())
@@ -745,7 +788,7 @@ public class BookingService {
                 .distance(booking.getDistance())
                 .paymentMethod(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentType().name() : null)
                 .paymentStatus(booking.getPaymentNo() != null ? booking.getPaymentNo().getPaymentStatus() : null)
-                .promotionCode(booking.getPromotionNo() != null ? booking.getPromotionNo().getPromotionId() : null)
+                .appliedPromotions(promotionDTOs)
                 .build();
     }
 
@@ -770,8 +813,8 @@ public class BookingService {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 

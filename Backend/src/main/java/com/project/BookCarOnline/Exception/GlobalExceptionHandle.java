@@ -114,7 +114,7 @@ public class GlobalExceptionHandle {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(APIResponse.builder()
                         .status(500)
-                        .message("Đã xảy ra lỗi: " + exception.getMessage())
+                        .message("Đã xảy ra lỗi: " + exception.getClass().getSimpleName() + " - " + exception.getMessage())
                         .build());
     }
 

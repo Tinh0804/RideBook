@@ -1,6 +1,6 @@
 server:
     servlet:
-        context-path: "/RideBook"
+         context-path: "/RideBook"
 spring:
     main:
         allow-bean-definition-overriding: true
@@ -108,7 +108,7 @@ app:
     time-to-live:
         otp: 300000
         password-reset-token: 3600000
-        quote: 120000
+        quote: 120
     max-login-attempts: 5
 
 frontend:

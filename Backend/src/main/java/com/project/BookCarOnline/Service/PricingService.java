@@ -106,14 +106,12 @@ public class PricingService {
             return null; 
         }
 
-        // Kiểm tra usage limit per user
-        if (promotion.getUsageLimitPerUser() != null && promotion.getUsageLimitPerUser() > 0) {
-            int used = customerPromotionRepository
-                    .countByCustomer_CustomerIdAndPromotion_PromotionIdAndStatus(
-                            customerId, promotion.getPromotionId(), CustomerPromotionStatus.USED);
-            if (used >= promotion.getUsageLimitPerUser()) {
-                return null;
-            }
+        // Kiểm tra số lượng còn lại trong ví (nếu có lưu)
+        CustomerPromotion cp = customerPromotionRepository
+                .findByCustomer_CustomerIdAndPromotion_PromotionId(customerId, promotion.getPromotionId())
+                .orElse(null);
+        if (cp != null && cp.getQuantity() != null && cp.getQuantity() <= 0) {
+            return null;
         }
         
         promotion.setQuantity(promotion.getQuantity() - 1);

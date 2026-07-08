@@ -12,6 +12,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -52,10 +53,10 @@ public class AdminDriverController {
                 .build();
     }
 
-    @PutMapping("/{driverId}")
+    @PutMapping(value = "/{driverId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public APIResponse<DriverDetailResponse> updateDriver(
             @PathVariable String driverId,
-            @Valid @RequestBody UpdateDriverRequest request) throws IOException {
+            @Valid @ModelAttribute UpdateDriverRequest request) throws IOException {
         log.info("REST API: PUT /admin/drivers/{} - Updating driver", driverId);
 
         DriverDetailResponse driver = driverService.updateDriver(driverId, request, null);

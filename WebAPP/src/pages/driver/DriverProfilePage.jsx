@@ -55,7 +55,9 @@ const DriverProfilePage = () => {
       const fd = new FormData()
       Object.entries(form).forEach(([k, v]) => fd.append(k, v))
       if (newFile) fd.append('avatar', newFile)
-      const updated = await driverApi.updateDriver(user?.id, fd)
+      
+      const updated = await driverApi.updateMyInfo(fd)
+      
       setProfile(updated)
       updateUser(updated)
       setEditing(false)
