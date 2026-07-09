@@ -24,9 +24,13 @@ import com.project.BookCarOnline.Entity.Payment;
 import com.project.BookCarOnline.DTO.Redis.DriverGeoResult;
 import com.project.BookCarOnline.DTO.Redis.DriverStats;
 import com.project.BookCarOnline.DTO.Redis.FareQuote;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import com.project.BookCarOnline.Utils.Constant;
@@ -43,7 +47,9 @@ import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
@@ -369,21 +375,69 @@ public class BookingService {
     }
 
     public Page<BookingDetailResponse> searchBookingsForAdmin(int page, int size, String status, String search,
-            String fromDate, String toDate) {
+                                                              String fromDate, String toDate) {
         Pageable pageable = PageRequest.of(page, size);
+
+        // Parse parameters
         BookingStatus bookingStatus = null;
-        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
-            bookingStatus = BookingStatus.valueOf(status);
-        }
         Timestamp from = null, to = null;
-        if (fromDate != null && !fromDate.isBlank()) {
-            from = Timestamp.valueOf(java.time.LocalDate.parse(fromDate).atStartOfDay());
+
+        try {
+            if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+                bookingStatus = BookingStatus.valueOf(status.toUpperCase());
+            }
+            if (fromDate != null && !fromDate.isBlank()) {
+                from = Timestamp.valueOf(LocalDate.parse(fromDate).atStartOfDay());
+            }
+            if (toDate != null && !toDate.isBlank()) {
+                to = Timestamp.valueOf(LocalDate.parse(toDate).plusDays(1).atStartOfDay());
+            }
+        } catch (Exception e) {
+            return Page.empty(pageable);
         }
-        if (toDate != null && !toDate.isBlank()) {
-            to = Timestamp.valueOf(java.time.LocalDate.parse(toDate).plusDays(1).atStartOfDay());
-        }
-        String searchParam = (search != null && !search.isBlank()) ? search.trim() : null;
-        return bookingRepository.searchForAdmin(bookingStatus, searchParam, from, to, pageable)
+
+        // Build specification
+        BookingStatus finalBookingStatus = bookingStatus;
+        Timestamp finalFrom = from;
+        Timestamp finalTo = to;
+        Specification<Booking> spec = (root, query, cb) -> {
+            query.distinct(true);
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Status filter
+            if (finalBookingStatus != null) {
+                predicates.add(cb.equal(root.get("bookingStatus"), finalBookingStatus));
+            }
+
+            // Date filters
+            if (finalFrom != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("bookingTime"), finalFrom));
+            }
+            if (finalTo != null) {
+                predicates.add(cb.lessThan(root.get("bookingTime"), finalTo));
+            }
+
+            // Search filter
+            if (search != null && !search.isBlank()) {
+                String searchPattern = "%" + search.trim().toLowerCase() + "%";
+                String searchExact = "%" + search.trim() + "%";
+
+                Join<Booking, Customer> customerJoin = root.join("customerNo", JoinType.LEFT);
+                Join<Booking, Driver> driverJoin = root.join("driverNo", JoinType.LEFT);
+
+                predicates.add(cb.or(
+                        cb.like(cb.lower(customerJoin.get("customerName")), searchPattern),
+                        cb.like(customerJoin.get("phone"), searchExact),
+                        cb.like(cb.lower(driverJoin.get("driverName")), searchPattern),
+                        cb.like(driverJoin.get("phone"), searchExact),
+                        cb.like(cb.lower(root.get("bookingId").as(String.class)), searchPattern)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return bookingRepository.findAll(spec, pageable)
                 .map(this::mapToBookingDetailResponse);
     }
 

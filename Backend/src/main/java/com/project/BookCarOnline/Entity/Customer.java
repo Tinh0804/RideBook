@@ -21,27 +21,27 @@ public class Customer {
     @Column(nullable = false, unique = true, length = 36)
      String customerId;
 
-    @Column(columnDefinition = "varchar")
+    @Column(columnDefinition = "TEXT")
      String customerName;
 
-    @Column(columnDefinition = "varchar",unique = true, length = 15)
+    @Column(columnDefinition = "VARCHAR",unique = true, length = 15)
      String phone;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
      String address;
 
 //    // Extra fields not in original DB - keep for future use
-    @Column
+    @Column(columnDefinition = "VARCHAR", length = 255)
      String avatar;
 
-    @Column(columnDefinition = "varchar")
+    @Column(columnDefinition = "VARCHAR", length = 150)
      String email;
 
     @Column
     @Temporal(TemporalType.DATE)
     Date birthDate;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
      String gender;
 
     @OneToOne
