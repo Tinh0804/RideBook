@@ -18,7 +18,7 @@ jobs:
         working-directory: ./Backend
     
     steps: 
-      - name: Checkout code # quan trọng phải có
+      - name: Checkout code
         uses: actions/checkout@v4 
 
       - name: Setup Java 21
@@ -28,10 +28,30 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # - name: Run tests (Unit Test & Integration Test)
+      # Cache Maven dependencies
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Cache Docker layers
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # Chỉ chạy test khi có thay đổi code
+      # - name: Run tests
+      #   if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       #   run: mvn test
-      
-      - name: Build with Maven
+
+      - name: Build with Maven (skip tests)
         run: mvn package -DskipTests
 
       - name: Setup Docker Buildx
@@ -43,13 +63,27 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image with Cache
         uses: docker/build-push-action@v5 
         with:
           context: ./Backend 
           file: ./Backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ridebook-backend:${{ github.sha }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/ridebook-backend:${{ github.sha }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/ridebook-backend:latest', secrets.DOCKER_USERNAME) || '' }}
+          cache-from: |
+            type=local,src=/tmp/.buildx-cache
+            type=gha
+          cache-to: |
+            type=local,dest=/tmp/.buildx-cache-new,mode=max
+            type=gha,mode=max
+
+      # Temp fix for cache
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
 
   build-frontend:
     name: Build & Test Frontend (React Vite)
@@ -71,11 +105,44 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './WebAPP/package-lock.json'
       
+      # Cache node_modules
+      - name: Cache Node Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./WebAPP/node_modules
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('./WebAPP/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Cache Vite build
+      - name: Cache Vite build
+        uses: actions/cache@v3
+        with:
+          path: ./WebAPP/dist
+          key: ${{ runner.os }}-vite-${{ hashFiles('./WebAPP/src/**/*') }}-${{ hashFiles('./WebAPP/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vite-
+
       - name: Install dependencies
         run: npm ci 
       
-      # - name: Run tests
-      #   run: npm test 
+      - name: Run tests (if code changed)
+        run: |
+          if [ -n "$(git diff --name-only HEAD^ HEAD | grep 'WebAPP/src')" ]; then
+            npm test
+          else
+            echo "No frontend changes, skipping tests"
+          fi
       
       - name: Build Frontend
         run: npm run build
+
+      # Upload build artifact để CD dùng
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./WebAPP/dist
+          retention-days: 1
