@@ -232,15 +232,16 @@ CREATE TABLE chat_message (
     content TEXT,
     timestamp TIMESTAMP(6)
 );
-
-CREATE TABLE chat_message (
+-- Tạo bảng booking_promotion nếu Hibernate chưa tạo
+CREATE TABLE IF NOT EXISTS booking_promotion (
     id VARCHAR(36) PRIMARY KEY,
-    booking_id VARCHAR(36),
-    sender_id VARCHAR(36),
-    receiver_id VARCHAR(36),
-    content TEXT,
-    timestamp TIMESTAMP
+    booking_id VARCHAR(36) NOT NULL,
+    promotion_id VARCHAR(36) NOT NULL,
+    discount_amount DOUBLE PRECISION,
+    CONSTRAINT fk_booking FOREIGN KEY (booking_id) REFERENCES booking(booking_id),
+    CONSTRAINT fk_promotion FOREIGN KEY (promotion_id) REFERENCES promotion(promotion_id)
 );
+
 
 
 -- ============================================================
@@ -479,5 +480,5 @@ end;
 $$;
 
 
-\df Pr_FindAvailableDriversCloserCustomer
+
 

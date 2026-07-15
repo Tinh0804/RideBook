@@ -460,12 +460,13 @@ public class DriverService {
         driverRepository.save(driver);
 
         // Đồng bộ Redis GEO: thêm vào bản đồ nếu bật, xóa nếu tắt
+        String vehicleTypeId = driver.getVehicleType() != null ? driver.getVehicleType().getVehicleTypeId() : null;
         if (Boolean.TRUE.equals(driver.getActivityStatus())) {
             if (driver.getCurrentLat() != null && driver.getCurrentLng() != null) {
-                driverCacheService.addDriverLocationGeo(driverId, driver.getCurrentLat(), driver.getCurrentLng());
+                driverCacheService.addDriverLocationGeo(driverId, vehicleTypeId, driver.getCurrentLat(), driver.getCurrentLng());
             }
         } else {
-            driverCacheService.removeDriverLocationGeo(driverId);
+            driverCacheService.removeDriverLocationGeo(driverId, vehicleTypeId);
         }
 
         log.info("Driver activity status toggled successfully: {} is now {}", driverId, driver.getActivityStatus());
@@ -501,8 +502,9 @@ public class DriverService {
         driverRepository.save(driver);
 
         // Đồng bộ lên Redis GEO (chỉ khi tài xế đang online)
+        String vehicleTypeId = driver.getVehicleType() != null ? driver.getVehicleType().getVehicleTypeId() : null;
         if (Boolean.TRUE.equals(driver.getActivityStatus())) {
-            driverCacheService.addDriverLocationGeo(driverId, lat, lng);
+            driverCacheService.addDriverLocationGeo(driverId, vehicleTypeId, lat, lng);
         }
 
         log.info("Driver location updated successfully: {} is now at ({}, {})", driverId, lat, lng);

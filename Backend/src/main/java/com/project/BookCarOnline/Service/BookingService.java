@@ -634,7 +634,7 @@ public class BookingService {
             Set<String> existingBlacklist) {
 
         String vehicleTypeId = booking.getVehicleTypeNo().getVehicleTypeId();
-        List<DriverGeoResult> nearbyResults = driverCacheService.findNearbyDrivers(lat, lng,
+        List<DriverGeoResult> nearbyResults = driverCacheService.findNearbyDrivers(vehicleTypeId, lat, lng,
                 constant.getSEARCH_RADIUS_KM());
 
         if (nearbyResults.isEmpty()) {

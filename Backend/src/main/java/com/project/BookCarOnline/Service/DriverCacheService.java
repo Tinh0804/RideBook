@@ -66,17 +66,25 @@ public class DriverCacheService {
 
 
 
-    public void addDriverLocationGeo(String driverId, double lat, double lng) {
-        redisTemplate.opsForGeo().add(GEO_KEY, new Point(lng, lat), driverId);
-        log.debug("[GEO] Cập nhật vị trí tài xế {} → ({}, {})", driverId, lat, lng);
+    private String getGeoKey(String vehicleTypeId) {
+        return GEO_KEY + ":" + vehicleTypeId;
     }
 
-    public void removeDriverLocationGeo(String driverId) {
-        redisTemplate.opsForGeo().remove(GEO_KEY, driverId);
-        log.debug("[GEO] Xóa vị trí tài xế {} khỏi Redis GEO", driverId);
+    public void addDriverLocationGeo(String driverId, String vehicleTypeId, double lat, double lng) {
+        if (vehicleTypeId == null) return;
+        redisTemplate.opsForGeo().add(getGeoKey(vehicleTypeId), new Point(lng, lat), driverId);
+        log.debug("[GEO] Cập nhật vị trí tài xế {} ({}) → ({}, {})", driverId, vehicleTypeId, lat, lng);
     }
 
-    public List<DriverGeoResult> findNearbyDrivers(double lat, double lng, double radiusKm) {
+    public void removeDriverLocationGeo(String driverId, String vehicleTypeId) {
+        if (vehicleTypeId == null) return;
+        redisTemplate.opsForGeo().remove(getGeoKey(vehicleTypeId), driverId);
+        log.debug("[GEO] Xóa vị trí tài xế {} khỏi Redis GEO ({})", driverId, vehicleTypeId);
+    }
+
+    public List<DriverGeoResult> findNearbyDrivers(String vehicleTypeId, double lat, double lng, double radiusKm) {
+        if (vehicleTypeId == null) return Collections.emptyList();
+        
         Circle searchArea = new Circle(
                 new Point(lng, lat),
                 new Distance(radiusKm, Metrics.KILOMETERS)
@@ -89,24 +97,35 @@ public class DriverCacheService {
                 .limit(50);
 
         GeoResults<RedisGeoCommands.GeoLocation<Object>> results =
-                redisTemplate.opsForGeo().radius(GEO_KEY, searchArea, args);
+                redisTemplate.opsForGeo().radius(getGeoKey(vehicleTypeId), searchArea, args);
 
         if (results == null) {
-            log.info("[GEO] Không tìm thấy tài xế nào trong bán kính {}km tại ({}, {})", radiusKm, lat, lng);
+            log.info("[GEO] Không tìm thấy tài xế nào ({}) trong bán kính {}km tại ({}, {})", vehicleTypeId, radiusKm, lat, lng);
             return Collections.emptyList();
         }
 
         List<DriverGeoResult> drivers = new ArrayList<>();
         for (GeoResult<RedisGeoCommands.GeoLocation<Object>> result : results) {
             String driverId = result.getContent().getName().toString();
+            if (Boolean.TRUE.equals(redisTemplate.hasKey("driver:on_hold:" + driverId))) {
+                continue; // Skip drivers that are on hold
+            }
             double distanceKm = result.getDistance().getValue();
             drivers.add(new DriverGeoResult(driverId, distanceKm));
         }
 
-        log.info("[GEO] Tìm thấy {} tài xế trong bán kính {}km tại ({}, {})", drivers.size(), radiusKm, lat, lng);
+        log.info("[GEO] Tìm thấy {} tài xế ({}) trong bán kính {}km tại ({}, {})", drivers.size(), vehicleTypeId, radiusKm, lat, lng);
         return drivers;
     }
 
+
+    public void holdDriver(String driverId, String bookingId) {
+        redisTemplate.opsForValue().set("driver:on_hold:" + driverId, bookingId, 16, TimeUnit.SECONDS);
+    }
+
+    public void releaseDriver(String driverId) {
+        redisTemplate.delete("driver:on_hold:" + driverId);
+    }
 
     @Cacheable(value = "driverStats", key = "#driverId")
     public DriverStats getDriverStats(String driverId) {

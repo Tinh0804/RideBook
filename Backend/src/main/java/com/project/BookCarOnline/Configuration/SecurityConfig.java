@@ -67,6 +67,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable);    // tắt CSRF
 
         http
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(new JWTAuthenticationEntryPoint()))
                 .oauth2ResourceServer(oauth2->
                         oauth2.jwt(
                                         jwtConfigurer -> jwtConfigurer.decoder(jwtDecoder)
@@ -76,7 +77,6 @@ public class SecurityConfig {
                                 .authenticationEntryPoint(new JWTAuthenticationEntryPoint())//được gọi khi chương trình lỗi phân quyền
                 )
                 .oauth2Login(Customizer.withDefaults());
-        ;
         return http.build();
     }
 
@@ -97,7 +97,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // Safari rất khắt khe với CORS khi có Credentials. Việc khai báo đích danh Origin sẽ an toàn hơn dùng Pattern "*".
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000", 
+            "http://127.0.0.1:3000", 
+            "http://localhost:5173", 
+            "http://127.0.0.1:5173",
+            "https://ridebook.tinhlelaptrinh.id.vn" // Thêm domain production của bạn
+        ));
+        configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Giữ lại pattern làm fallback
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "x-auth-token"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));

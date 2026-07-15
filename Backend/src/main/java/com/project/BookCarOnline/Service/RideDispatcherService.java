@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
@@ -91,13 +92,15 @@ public class RideDispatcherService {
         }
 
         sendRideRequestToDriver(bookingId, driver.getDriverId());
+        driverCacheService.holdDriver(driver.getDriverId(), bookingId);
 
         CompletableFuture<WaitResult> future = new CompletableFuture<>();
         pendingDispatches.put(bookingId, future);
 
-        future.completeOnTimeout(WaitResult.TIMEOUT, constant.getDISPATCH_TIMEOUT_SECONDS(), java.util.concurrent.TimeUnit.SECONDS)
+        future.completeOnTimeout(WaitResult.TIMEOUT, constant.getDISPATCH_TIMEOUT_SECONDS(), TimeUnit.SECONDS)
               .thenAcceptAsync(result -> {
                   pendingDispatches.remove(bookingId);
+                  driverCacheService.releaseDriver(driver.getDriverId());
                   switch (result) {
                       case ACCEPTED -> {
                           notifyCustomerDriverAssigned(bookingId);
