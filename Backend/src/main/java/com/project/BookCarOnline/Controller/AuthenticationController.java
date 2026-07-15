@@ -99,9 +99,20 @@ public class AuthenticationController {
                 .build();
     }
 
+    @PutMapping("/change-password")
+    @SecurityRequirement(name = "bearerAuth")
+    public APIResponse<Boolean> changePassword(@Valid @RequestBody com.project.BookCarOnline.DTO.Request.ChangePasswordRequest request) {
+        service.changePassword(request.getOldPassword(), request.getNewPassword());
+        return APIResponse.<Boolean>builder()
+                .result(true)
+                .status(200)
+                .message("Mật khẩu đã được thay đổi thành công")
+                .build();
+    }
+
     @PutMapping("/reset-password")
     public APIResponse<Boolean> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        service.resetPassword(request.getPhone(), request.getNewPassword());
+        service.resetPassword(request.getFirebaseToken(), request.getNewPassword());
         return APIResponse.<Boolean>builder()
                 .result(true)
                 .status(200)

@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -225,9 +227,38 @@ public class AuthenticationService {
         return accountRepository.findByUserName(phone).isPresent();
     }
 
-    public void resetPassword(String phone, String newPassword) {
+    public void resetPassword(String firebaseToken, String newPassword) {
+        try {
+            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(firebaseToken);
+            String phoneNumber = decodedToken.getClaims().get("phone_number").toString();
+            
+            // Firebase trả về định dạng quốc tế +84..., chuyển về 0...
+            if (phoneNumber.startsWith("+84")) {
+                phoneNumber = "0" + phoneNumber.substring(3);
+            }
+            
+            Account account = accountRepository.findByUserName(phoneNumber)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+            
+            account.setPassWord(encoder.encode(newPassword));
+            accountRepository.save(account);
+        } catch (Exception e) {
+            log.error("Lỗi xác thực Firebase OTP: ", e);
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    public void changePassword(String oldPassword, String newPassword) {
+        String phone = SecurityUtils.getCurrentAccountId()
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
         Account account = accountRepository.findByUserName(phone)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        if (!encoder.matches(oldPassword, account.getPassWord())) {
+            throw new AppException(ErrorCode.PASSWORD_INVALID);
+        }
+
         account.setPassWord(encoder.encode(newPassword));
         accountRepository.save(account);
     }

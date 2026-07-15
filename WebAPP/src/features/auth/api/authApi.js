@@ -14,6 +14,9 @@ export const authApi = {
   resetPassword: (payload) =>
     apiClient.put('/auth/reset-password', payload).then((r) => r.data),
 
+  changePassword: (payload) =>
+    apiClient.put('/auth/change-password', payload).then((r) => r.data),
+
   checkPhone: (phone) =>
     apiClient.get(`/auth/check-phone?phone=${phone}`).then((r) => r.data),
 

@@ -11,6 +11,7 @@ import Button from '@/components/Elements/Button'
 import Input from '@/components/Elements/Input'
 import FormField from '@/components/Form/FormField'
 import Spinner from '@/components/Elements/Spinner'
+import ChangePasswordModal from '@/components/Form/ChangePasswordModal'
 import { cn } from '@/utils/cn'
 import { formatCurrency } from '@/utils/currency'
 
@@ -48,6 +49,7 @@ const CustomerProfilePage = () => {
   const [form,     setForm]     = useState({})
   const [preview,  setPreview]  = useState(null)
   const [newFile,  setNewFile]  = useState(null)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -202,9 +204,14 @@ const CustomerProfilePage = () => {
       <div className="flex items-center justify-between">
         <h1 className="section-title">Hồ sơ cá nhân</h1>
         {!editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            <RiEditLine size={16} /> Chỉnh sửa
-          </Button>
+          <div className="flex gap-3">
+            <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>
+              Đổi mật khẩu
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <RiEditLine size={16} /> Chỉnh sửa
+            </Button>
+          </div>
         )}
       </div>
 
@@ -410,6 +417,9 @@ const CustomerProfilePage = () => {
             <RiSaveLine size={16} /> Lưu thay đổi
           </Button>
         </div>
+      )}
+      {showPasswordModal && (
+        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
       )}
     </div>
   )
