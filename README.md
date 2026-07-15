@@ -1,8 +1,43 @@
+<div align="center">
+
 # 🚗 RideBook (BookCar Online)
 
 **Nền tảng đặt xe trực tuyến đa nền tảng kết nối hành khách và tài xế theo thời gian thực.**
 
-Dự án là một hệ thống đặt xe công nghệ (tương tự Grab/Gojek) cung cấp giải pháp toàn diện bao gồm: ứng dụng Web cho Hành khách (đặt xe, theo dõi vị trí) & Tài xế (nhận chuyến, quản lý doanh thu), và ứng dụng Desktop dành cho Quản trị viên điều hành hệ thống. Hệ thống tập trung xử lý điều phối chuyến đi theo thời gian thực (real-time) với độ trễ thấp và tích hợp thanh toán ví điện tử.
+![Java](https://img.shields.io/badge/Java-21-orange)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)
+![React](https://img.shields.io/badge/React-18-blue)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+[🔗 Live Demo](https://ridebook.tinhlelaptrinh.id.vn/) · [📸 Screenshots](#-demo--screenshots) · [🚀 Cài đặt](#-hướng-dẫn-cài-đặt--chạy-thử)
+
+</div>
+
+---
+
+## 📋 Mục lục
+
+- [Giới thiệu](#-giới-thiệu)
+- [Demo / Screenshots](#-demo--screenshots)
+- [Công nghệ sử dụng](#️-công-nghệ-tech-stack)
+- [Điểm nổi bật](#-điểm-nổi-bật-features)
+- [Cấu trúc dự án](#-cấu-trúc-dự-án)
+- [Hướng dẫn cài đặt](#-hướng-dẫn-cài-đặt--chạy-thử)
+- [Tài khoản demo](#-tài-khoản-demo)
+- [Đóng góp](#-đóng-góp-contributing)
+- [Liên hệ](#-liên-hệ)
+
+---
+
+## 📖 Giới thiệu
+
+RideBook là một hệ thống đặt xe công nghệ (tương tự Grab/Gojek) cung cấp giải pháp toàn diện, bao gồm:
+
+- 🧑‍💼 **Web App cho Hành khách** — đặt xe, theo dõi tài xế theo thời gian thực trên bản đồ.
+- 🚕 **Web App cho Tài xế** — nhận chuyến, quản lý doanh thu.
+- 💻 **Desktop App cho Quản trị viên** — điều hành và giám sát toàn hệ thống.
+
+Hệ thống tập trung xử lý điều phối chuyến đi **real-time** với độ trễ thấp và tích hợp thanh toán ví điện tử.
 
 ---
 
@@ -10,103 +45,161 @@ Dự án là một hệ thống đặt xe công nghệ (tương tự Grab/Gojek)
 
 | 📱 Giao diện Khách hàng | 🚕 Giao diện Tài xế | 💻 Admin Dashboard |
 |:---:|:---:|:---:|
-| ![Customer App](docs/screenshots/customer.png) <br> *Đặt xe & Theo dõi bản đồ* | ![Driver App](docs/screenshots/driver.png) <br> *Nhận chuyến & Doanh thu* | ![Admin App](docs/screenshots/admin.png) <br> *Quản lý & Thống kê* |
-Link demo: https://ridebook.tinhlelaptrinh.id.vn/
+| [![Customer App](WebAPP/public/screenshots/customer/DatXe.png)](WebAPP/public/screenshots/customer/) <br> *[Xem thêm ảnh Khách hàng](WebAPP/public/screenshots/customer/)* | [![Driver App](WebAPP/public/screenshots/driver/TongQuan.png)](WebAPP/public/screenshots/driver/) <br> *[Xem thêm ảnh Tài xế](WebAPP/public/screenshots/driver/)* | [![Admin App](WebAPP/public/screenshots/admin/Dashboard.png)](WebAPP/public/screenshots/admin/) <br> *[Xem thêm ảnh Quản trị viên](WebAPP/public/screenshots/admin/)* |
+
+🔗 **Link demo trực tiếp:** [ridebook.tinhlelaptrinh.id.vn](https://ridebook.tinhlelaptrinh.id.vn/)
+
 ---
 
 ## 🛠️ Công nghệ (Tech Stack)
 
 Dự án được xây dựng theo kiến trúc Client-Server với hệ sinh thái công nghệ hiện đại:
 
-**Backend (API Server)**
-* **Framework:** Java 21, Spring Boot 3.5
-* **Bảo mật & Xác thực:** Spring Security, OAuth2 (Google/Facebook Login), JWT (JSON Web Tokens)
-* **Real-time:** Spring WebSocket (STOMP)
-* **Cơ sở dữ liệu (Database):** 
-  * **PostgreSQL:** Lưu trữ dữ liệu quan hệ (người dùng, chuyến đi, giao dịch).
-  * **MongoDB:** Lưu trữ dữ liệu phi cấu trúc (lịch sử chat, logs).
-  * **Redis:** Caching dữ liệu, quản lý session WebSocket, lưu OTP.
-* **Tích hợp bên thứ 3:** Firebase Admin SDK (Cloud Storage), VNPay API, MoMo API, Google Maps API.
+### Backend (API Server)
+| Hạng mục | Công nghệ |
+|---|---|
+| Framework | Java 21, Spring Boot 3.5 |
+| Bảo mật & Xác thực | Spring Security, OAuth2 (Google/Facebook), JWT |
+| Real-time | Spring WebSocket (STOMP) |
+| Database | PostgreSQL (dữ liệu quan hệ), Redis (GEO, pub/sub, khóa phân tán, cache) |
+| Tích hợp bên thứ 3 | Firebase Admin SDK, VNPay API, MoMo API, Google Maps API |
 
-**Frontend (Web App)**
-* **Core:** React 18, Vite 5
-* **State Management:** Zustand 5
-* **Styling & UI:** TailwindCSS 3
-* **Map & Realtime:** Leaflet (React-Leaflet) hiển thị bản đồ, STOMP/SockJS client để nhận event realtime.
-* **Form & Validation:** React Hook Form, Zod.
-* **Charts:** Recharts để vẽ biểu đồ doanh thu.
+### Frontend (Web App)
+| Hạng mục | Công nghệ |
+|---|---|
+| Core | React 18, Vite 5 |
+| State Management | Zustand 5 |
+| Styling & UI | TailwindCSS 3 |
+| Bản đồ & Realtime | Google Maps API , STOMP/SockJS |
+| Form & Validation | React Hook Form, Zod |
+| Biểu đồ | Recharts |
 
-**Desktop App (Admin)**
-* **Công nghệ:** Java 11 (Swing/JavaFX)
-* **Database:** SQL Server (sử dụng MSSQL JDBC)
-* **Báo cáo:** Apache POI (Xuất file Excel), JFreeChart (Biểu đồ).
 
-**DevOps**
-* **Deployment:** Docker & Docker Compose (Container hóa toàn bộ Databases).
-* **Build tool:** Maven, npm.
+### DevOps
+- **Deployment:** Docker & Docker Compose (container hóa toàn bộ database)
+- **Build tool:** Maven, npm
 
 ---
 
 ## ✨ Điểm nổi bật (Features)
 
-* **🚀 Điều phối chuyến đi Real-time (WebSocket):** Hệ thống tự động tìm kiếm và phát sóng (broadcast) yêu cầu đặt xe tới các tài xế gần nhất theo thời gian thực mà không cần reload trang. Xử lý đồng thời trạng thái chuyến xe giữa khách và tài xế.
-* **🔐 Xác thực đa phương thức:** Đăng nhập an toàn qua SĐT/Email bằng JWT Token; tích hợp SSO OAuth2 (Đăng nhập nhanh bằng Google, Facebook).
-* **💬 Live Chat Tốc độ cao:** Tích hợp tính năng nhắn tin trực tiếp giữa khách hàng và tài xế trong ứng dụng (lưu trữ trên MongoDB giúp truy xuất lịch sử cực nhanh).
-* **💳 Hệ thống Ví điện tử & Thanh toán nội bộ:** Xây dựng hệ thống Wallet khép kín. Người dùng nạp tiền qua cổng thanh toán **VNPay** hoặc **MoMo**, tiền cước được tự động trừ và chia hoa hồng (commission) cho nền tảng.
-* **🗺️ Tích hợp Bản đồ Trực quan:** Ứng dụng Google Maps API / Leaflet để gợi ý địa điểm, tính toán khoảng cách/giá tiền và hiển thị xe di chuyển trên bản đồ.
-* **📈 Quản lý Quản trị viên Đa tầng:** Admin có thể theo dõi biến động doanh thu, quản lý hồ sơ đăng ký của tài xế và kiểm soát các loại phương tiện (Vehicle Types) một cách tập trung.
+- 🚀 **Điều phối chuyến đi Real-time (WebSocket):** Tự động tìm kiếm và phát sóng yêu cầu đặt xe tới các tài xế gần nhất theo thời gian thực, không cần reload trang.
+- 🔐 **Xác thực đa phương thức:** Đăng nhập bằng SĐT/Email qua JWT; hỗ trợ SSO OAuth2 (Google, Facebook).
+- 💬 **Live Chat tốc độ cao:** Nhắn tin trực tiếp giữa khách hàng và tài xế, lưu trữ trên PostgreSQL để truy xuất lịch sử nhanh.
+- 💳 **Ví điện tử & Thanh toán nội bộ:** Nạp tiền qua VNPay/MoMo, tự động trừ cước và chia hoa hồng cho nền tảng.
+- 🗺️ **Tích hợp bản đồ trực quan:** Google Maps API  để gợi ý địa điểm, tính khoảng cách/giá tiền, hiển thị xe di chuyển realtime.
+- 📈 **Quản trị đa tầng:** Admin theo dõi doanh thu, chuyến xe, quản lý hồ sơ tài xế và loại phương tiện tập trung.
+
+---
+
+## 📂 Cấu trúc dự án
+
+```
+BookCar/
+├── Backend/          # Spring Boot API (Java 21)
+│   ├── src/
+│   └── docker-compose.yml
+├── WebAPP/            # React Web App (Customer & Driver & Admin)
+│   ├── src/
+│   └── .env.example
+└── docs/
+    └── screenshots/
+```
 
 ---
 
 ## 🚀 Hướng dẫn Cài đặt & Chạy thử
 
-Yêu cầu hệ thống: **Java 21, Node.js 18+, Docker.**
+**Yêu cầu hệ thống:** Java 21, Node.js 18+, Docker.
 
 ### Bước 1: Khởi chạy Cơ sở dữ liệu (Docker)
-Hệ thống sử dụng Docker Compose để khởi chạy đồng thời PostgreSQL, MongoDB, Redis và SQL Server.
+
 ```bash
-git clone <URL_REPOSITOTY_CỦA_BẠN>
+git clone <URL_REPOSITORY_CỦA_BẠN>
 cd BookCar/Backend
 docker-compose up -d
 ```
 
+Lệnh trên sẽ khởi chạy PostgreSQL và Redis.
+
 ### Bước 2: Cấu hình và Khởi động Backend
-1. Tạo một project trên Firebase Console, lấy file service account và lưu vào đường dẫn `Backend/src/main/resources/firebase/firebase-adminsdk.json`.
-2. Kiểm tra file `application.yaml`, đảm bảo các thông số Database (username/password) khớp với cấu hình `docker-compose.yml`.
-3. Chạy Backend bằng Maven:
+
+1. Tạo project trên Firebase Console, tải file service account key và lưu vào:
+   `Backend/src/main/resources/firebase/firebase-adminsdk.json`
+2. Mở `application.yaml`, đảm bảo thông số Database (username/password) khớp với `docker-compose.yml`.
+3. Chạy Backend:
+
 ```bash
 ./mvnw clean install -DskipTests
 ./mvnw spring-boot:run
 ```
-*(Server sẽ chạy tại: `http://localhost:8080/RideBook`)*
+
+✅ Server chạy tại: `http://localhost:8080/RideBook`
 
 ### Bước 3: Cấu hình và Khởi động Frontend
-1. Di chuyển sang thư mục WebAPP và cài đặt dependencies:
+
 ```bash
 cd ../WebAPP
 npm install
-```
-2. Tạo file biến môi trường:
-```bash
 cp .env.example .env
 ```
-*(Mở file `.env` và kiểm tra `VITE_API_BASE_URL=http://localhost:8080/RideBook`)*
-3. Khởi động Web App:
+
+Mở file `.env` và kiểm tra:
+```
+VITE_API_BASE_URL=http://localhost:8080/RideBook
+```
+
+Khởi động Web App:
 ```bash
 npm run dev
 ```
-*(Mở trình duyệt truy cập: `http://localhost:3000`)*
+
+✅ Truy cập tại: `http://localhost:3000`
 
 ### Bước 4: Trải nghiệm
-Hệ thống có sẵn các tài khoản mặc định (hoặc bạn có thể tự đăng ký mới):
+
+Mở **2 trình duyệt ẩn danh**:
+- Một cửa sổ đóng vai **Khách hàng** — đặt xe
+- Một cửa sổ đóng vai **Tài xế** — nhận chuyến
+
+để trải nghiệm đầy đủ luồng realtime.
+
+---
+
+## 🔑 Tài khoản Demo
 
 | Vai trò | Username | Password | Tên hiển thị |
 |---------|----------|----------|--------------|
-| **Admin** | `admin` | `admin`  | Quản trị viên hệ thống |
+| **Admin** | `admin` | `admin` | Quản trị viên hệ thống |
 | **Customer** | `0366900822` | `12345` | Nguyễn Văn A |
 | **Driver** | `0366900823` | `12345` | Lê Văn C |
 
-* Mở 2 trình duyệt ẩn danh: một đóng vai trò Khách hàng (Customer) để đặt xe, một đóng vai trò Tài xế (Driver) để nhận chuyến và trải nghiệm luồng realtime.
+*Bạn cũng có thể tự đăng ký tài khoản mới trực tiếp trên hệ thống.*
 
 ---
-*Dự án được xây dựng với niềm đam mê kiến tạo sản phẩm phần mềm chất lượng, áp dụng các chuẩn thiết kế và công nghệ thực tế nhất!*
+
+## 🤝 Đóng góp (Contributing)
+
+Mọi đóng góp đều được hoan nghênh! Để đóng góp:
+
+1. Fork repository
+2. Tạo branch mới (`git checkout -b feature/ten-tinh-nang`)
+3. Commit thay đổi (`git commit -m 'Thêm tính năng X'`)
+4. Push lên branch (`git push origin feature/ten-tinh-nang`)
+5. Mở Pull Request
+
+---
+
+---
+
+## 📬 Liên hệ
+
+Nếu có thắc mắc hoặc góp ý, vui lòng tạo [Issue](../../issues) trên repository hoặc liên hệ trực tiếp qua email của tác giả.
+
+---
+
+<div align="center">
+
+*Dự án được xây dựng với niềm đam mê kiến tạo sản phẩm phần mềm chất lượng, áp dụng các chuẩn thiết kế và công nghệ thực tế nhất!* ⭐
+
+</div>
