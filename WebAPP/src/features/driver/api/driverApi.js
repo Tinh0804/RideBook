@@ -32,10 +32,17 @@ export const driverApi = {
     apiClient.get('/drivers/my-info').then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   updateMyInfo: (payload) =>
-    apiClient.put('/drivers/my-info', payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.put('/drivers/my-info', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   updateDriver: (driverId, payload) =>
-    apiClient.put(`/admin/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.put(`/admin/drivers/${driverId}`, payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+
+  changeDriverPassword: (driverId, data) =>
+    apiClient.put(`/admin/drivers/${driverId}/password`, data).then(r => r.data),
 
   getAll: (page = 0, size = 20, search = '') =>
     apiClient.get(`/admin/drivers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then((r) => r.data?.result ?? r.data),

@@ -103,7 +103,7 @@ public class SecurityConfig {
             "http://127.0.0.1:3000", 
             "http://localhost:5173", 
             "http://127.0.0.1:5173",
-            "https://ridebook.tinhlelaptrinh.id.vn" // Thêm domain production của bạn
+            "https://ridebook.tinhlelaptrinh.id.vn" // Thêm domain production
         ));
         configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Giữ lại pattern làm fallback
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

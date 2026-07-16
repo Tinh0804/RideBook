@@ -1,13 +1,20 @@
 package com.project.BookCarOnline.Controller;
 
 import com.project.BookCarOnline.DTO.APIResponse;
+import com.project.BookCarOnline.DTO.Request.AdminChangePasswordRequest;
+import com.project.BookCarOnline.DTO.Request.UpdateCustomerRequest;
 import com.project.BookCarOnline.DTO.Response.CustomerResponse;
 import com.project.BookCarOnline.Service.CustomerService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+
+import java.io.IOException;
+
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -48,4 +55,27 @@ public class AdminCustomerController {
                 .message(status ? "Mở khóa tài khoản khách hàng thành công" : "Khóa tài khoản khách hàng thành công")
                 .build();
     }
+
+    @PutMapping(value = "/{customerId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public APIResponse<CustomerResponse> updateCustomerInfo(
+            @PathVariable String customerId,
+            @ModelAttribute UpdateCustomerRequest request) throws IOException {
+        CustomerResponse result = service.updateCustomerByAdmin(customerId, request);
+        return APIResponse.<CustomerResponse>builder()
+                .result(result)
+                .message("Cập nhật thông tin khách hàng thành công")
+                .build();
+    }
+
+    @PutMapping("/{customerId}/password")
+    public APIResponse<Boolean> changeCustomerPassword(
+            @PathVariable String customerId,
+            @Valid @RequestBody AdminChangePasswordRequest request) {
+        service.changePasswordByAdmin(customerId, request.getNewPassword());
+        return APIResponse.<Boolean>builder()
+                .result(true)
+                .message("Đổi mật khẩu khách hàng thành công")
+                .build();
+    }
+
 }

@@ -19,5 +19,4 @@ public class UpdateCustomerRequest {
     
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     Date birthDate;
-
 }

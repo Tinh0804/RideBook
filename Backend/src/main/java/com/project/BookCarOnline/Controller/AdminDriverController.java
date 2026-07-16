@@ -1,6 +1,7 @@
 package com.project.BookCarOnline.Controller;
 
 import com.project.BookCarOnline.DTO.APIResponse;
+import com.project.BookCarOnline.DTO.Request.AdminChangePasswordRequest;
 import com.project.BookCarOnline.DTO.Request.UpdateDriverRequest;
 import com.project.BookCarOnline.DTO.Response.DriverDetailResponse;
 import com.project.BookCarOnline.Service.DriverService;
@@ -88,4 +89,18 @@ public class AdminDriverController {
                 .result(status)
                 .build();
     }
+
+    @PutMapping("/{driverId}/password")
+    public APIResponse<Boolean> changeDriverPassword(
+            @PathVariable String driverId,
+            @Valid @RequestBody AdminChangePasswordRequest request) {
+        log.info("REST API: PUT /admin/drivers/{}/password - Changing driver password", driverId);
+        driverService.changePasswordByAdmin(driverId, request.getNewPassword());
+        return APIResponse.<Boolean>builder()
+                .status(HttpStatus.OK.value())
+                .message("Đổi mật khẩu tài xế thành công")
+                .result(true)
+                .build();
+    }
+
 }

@@ -4,10 +4,13 @@ import { adminApi } from '@/features/admin/api/adminApi'
 import Spinner from '@/components/Elements/Spinner'
 import { 
   RiLockUnlockLine, RiLock2Line, RiMapPinLine, RiSearchLine, 
-  RiEyeLine, RiCloseLine, RiCarLine, RiWallet3Line, RiUserLine 
+  RiEyeLine, RiCloseLine, RiCarLine, RiWallet3Line, RiUserLine,
+  RiEditLine, RiKey2Line 
 } from 'react-icons/ri'
 import { cn } from '@/utils/cn'
 import { WalletStatus, TransactionType } from '@/constants/enums'
+import AdminEditDriverModal from '@/features/admin/components/AdminEditDriverModal'
+import AdminChangePasswordModal from '@/features/admin/components/AdminChangePasswordModal'
 
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null
@@ -41,6 +44,11 @@ const AdminDriversPage = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState(null)
   const [activeTab, setActiveTab] = useState('info') // info, vehicle, wallet
+
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [driverToEdit, setDriverToEdit] = useState(null)
+  const [driverToChangePassword, setDriverToChangePassword] = useState(null)
 
   // Wallet State
   const [wallet, setWallet] = useState(null)
@@ -240,6 +248,26 @@ const AdminDriversPage = () => {
                   </td>
                   <td className="px-5 py-3 text-center">
                     <div className="flex justify-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setDriverToEdit(d)
+                          setEditModalOpen(true)
+                        }}
+                        className="p-2 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-colors"
+                        title="Sửa thông tin"
+                      >
+                        <RiEditLine size={18} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setDriverToChangePassword(d)
+                          setPasswordModalOpen(true)
+                        }}
+                        className="p-2 rounded-lg bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 transition-colors"
+                        title="Đổi mật khẩu"
+                      >
+                        <RiKey2Line size={18} />
+                      </button>
                       <button 
                         onClick={() => openDetail(d)}
                         className="p-2 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors"
@@ -487,6 +515,26 @@ const AdminDriversPage = () => {
           </div>
         )}
       </Modal>
+
+      <AdminEditDriverModal 
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        driver={driverToEdit}
+        vehicleTypes={vehicleTypes}
+        onSubmit={async (formData) => {
+          await driverApi.updateDriver(driverToEdit.driverId, formData)
+          fetchDrivers()
+        }}
+      />
+
+      <AdminChangePasswordModal 
+        open={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        targetName={driverToChangePassword?.driverName || driverToChangePassword?.phone}
+        onSubmit={async (data) => {
+          await driverApi.changeDriverPassword(driverToChangePassword.driverId, data)
+        }}
+      />
     </div>
   )
 }

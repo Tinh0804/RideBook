@@ -10,6 +10,14 @@ export const customerApi = {
   toggleAccountStatus: (customerId) =>
     apiClient.put(`/admin/customers/${customerId}/account-status`).then(r => r.data),
 
+  updateCustomerInfo: (customerId, payload) =>
+    apiClient.put(`/admin/customers/${customerId}`, payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data),
+
+  changeCustomerPassword: (customerId, data) =>
+    apiClient.put(`/admin/customers/${customerId}/password`, data).then(r => r.data),
+
   getMyInfo: () => apiClient.get('/customers/my-info').then(r => parseApiResponse(CustomerProfileSchema, r.data)),
 
 

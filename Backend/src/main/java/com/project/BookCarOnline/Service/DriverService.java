@@ -365,46 +365,40 @@ public class DriverService {
                 throw new AppException(ErrorCode.USER_EXISTED);
             }
         }
-        if(request.getAvatar()!=null){
-            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getAvatar());
+        if(request.getAvatar()!=null && !request.getAvatar().isEmpty()){
+            String oldFilePath = driver.getAvatar() != null ? firebaseService.getFilePathFromUrl(driver.getAvatar()) : null;
             if (oldFilePath != null) {
                 firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
-            else {
-                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-                String folderPath = "drivers"+ "/" + accountID + "/avatar";
-                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
-                driver.setAvatar(fileURL);
-            }
+            String accountID = driver.getAccount().getUserName();
+            String folderPath = "drivers"+ "/" + accountID + "/avatar";
+            String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
+            driver.setAvatar(fileURL);
         }
         mapper.updateDriver(driver, request);
 
-        if(request.getCitizenIdImage()!=null){
-            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getAvatar());
+        if(request.getCitizenIdImage()!=null && !request.getCitizenIdImage().isEmpty()){
+            String oldFilePath = driver.getCitizenId() != null ? firebaseService.getFilePathFromUrl(driver.getCitizenId()) : null;
             if (oldFilePath != null) {
                 firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
-            else {
-                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-                String folderPath = "drivers"+ "/" + accountID + "/citizenId";
-                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
-                driver.setCitizenId(fileURL);
-            }
+            String accountID = driver.getAccount().getUserName();
+            String folderPath = "drivers"+ "/" + accountID + "/citizenId";
+            String fileURL = firebaseService.uploadFile(request.getCitizenIdImage(), folderPath, null);
+            driver.setCitizenId(fileURL);
         }
-        if(request.getDrivingLicenseImage()!=null){
-            String oldFilePath = firebaseService.getFilePathFromUrl(driver.getDrivingLicense());
+        if(request.getDrivingLicenseImage()!=null && !request.getDrivingLicenseImage().isEmpty()){
+            String oldFilePath = driver.getDrivingLicense() != null ? firebaseService.getFilePathFromUrl(driver.getDrivingLicense()) : null;
             if (oldFilePath != null) {
                 firebaseService.deleteFile(oldFilePath);
                 log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
             }
-            else {
-                String accountID = SecurityUtils.getCurrentAccountId().orElseThrow(()->new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
-                String folderPath = "drivers"+ "/" + accountID + "/drivingLicense";
-                String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
-                driver.setDrivingLicense(fileURL);
-            }
+            String accountID = driver.getAccount().getUserName();
+            String folderPath = "drivers"+ "/" + accountID + "/drivingLicense";
+            String fileURL = firebaseService.uploadFile(request.getDrivingLicenseImage(), folderPath, null);
+            driver.setDrivingLicense(fileURL);
         }
 
         // Update driver fields
@@ -535,4 +529,14 @@ public class DriverService {
         String[] parts = address.split(",");
         return parts[parts.length - 1].trim();
     }
+
+    public void changePasswordByAdmin(String driverId, String newPassword) {
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        Account account = driver.getAccount();
+        account.setPassWord(passwordEncoder.encode(newPassword));
+        accountRepository.save(account);
+    }
+
 }

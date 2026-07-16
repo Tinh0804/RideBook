@@ -127,10 +127,7 @@ public class CustomerService {
     }
 
     public CustomerResponse updateMyInfo(UpdateCustomerRequest request) throws IOException {
-        String profileId = SecurityUtils.getCurrentProfileId()
-                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-        Customer customer = customerRepository.findById(profileId)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        Customer customer = getCurrentCustomer();
 
         if (request.getPhone() != null) {
             customer.setPhone(request.getPhone());
@@ -169,7 +166,13 @@ public class CustomerService {
 
         return mapper.toCustomerResponse(customer);
     }
-
+    private Customer getCurrentCustomer(){
+        String profileId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.EXCHANGE_TOKEN_FAIL));
+        Customer customer = customerRepository.findById(profileId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        return customer;
+    }
     public Boolean deleteMyAvatar() throws IOException {
         String profileId = SecurityUtils.getCurrentProfileId()
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
@@ -186,4 +189,49 @@ public class CustomerService {
         return true;
     }
 
+
+    public CustomerResponse updateCustomerByAdmin(String customerId, UpdateCustomerRequest request) throws IOException {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        if (request.getCustomerName() != null && !request.getCustomerName().trim().isEmpty()) {
+            customer.setCustomerName(request.getCustomerName());
+        }
+        if (request.getAddress() != null && !request.getAddress().trim().isEmpty()) {
+            customer.setAddress(request.getAddress());
+        }
+        if (request.getBirthDate() != null) {
+            customer.setBirthDate(request.getBirthDate());
+        }
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            customer.setEmail(request.getEmail());
+        }
+        if (request.getGender() != null) {
+            customer.setGender(request.getGender());
+        }
+        if (request.getAvatar() != null && !request.getAvatar().isEmpty()) {
+            String oldFilePath = customer.getAvatar() != null ? firebaseService.getFilePathFromUrl(customer.getAvatar()) : null;
+            if (oldFilePath != null) {
+                firebaseService.deleteFile(oldFilePath);
+                log.info("Đã xóa ảnh cũ thành công: {}", oldFilePath);
+            }
+            String accountID = customer.getAccount().getUserName();
+            String folderPath = "users" + "/" + accountID;
+            String fileURL = firebaseService.uploadFile(request.getAvatar(), folderPath, null);
+            customer.setAvatar(fileURL);
+        }
+
+        customerRepository.save(customer);
+        return mapper.toCustomerResponse(customer);
+    }
+
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public void changePasswordByAdmin(String customerId, String newPassword) {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+
+        Account account = customer.getAccount();
+        account.setPassWord(passwordEncoder.encode(newPassword));
+        accountRepository.save(account);
+    }
 }
