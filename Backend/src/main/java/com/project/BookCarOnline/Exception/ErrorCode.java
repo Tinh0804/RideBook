@@ -30,6 +30,7 @@ public enum ErrorCode {
     ACCOUNT_NOT_ACTIVE(403,"Account not active",HttpStatus.FORBIDDEN),
     EXCHANGE_TOKEN_FAIL(403,"Exchange token fail",HttpStatus.FORBIDDEN),
     TOKEN_NOT_FOUND(404,"Token not found",HttpStatus.NOT_FOUND),
+    TOKEN_BLACKLISTED(403,"Token blacklisted",HttpStatus.FORBIDDEN),
     PROFILE_NOT_FOUND(404,"Profile not found",HttpStatus.NOT_FOUND),
     ACCOUNT_NOT_EXISTS(404,"Account not exists",HttpStatus.NOT_FOUND),
     AVATAR_NOT_FOUND(404,"Avatar not found",HttpStatus.NOT_FOUND),

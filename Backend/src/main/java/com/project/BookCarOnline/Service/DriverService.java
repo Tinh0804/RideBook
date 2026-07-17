@@ -23,6 +23,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import com.project.BookCarOnline.Entity.Booking;
 import com.project.BookCarOnline.Entity.Enum.BookingStatus;
+import com.project.BookCarOnline.Entity.Enum.PaymentMethod;
 import com.project.BookCarOnline.Entity.Rating;
 import com.project.BookCarOnline.Repository.RideBookRepository;
 import com.project.BookCarOnline.Repository.RatingRepository;
@@ -242,7 +243,7 @@ public class DriverService {
         for (Booking b : trips) {
             double price = b.getTotalPrice() != null ? b.getTotalPrice() : 0.0;
             grossRevenue += price;
-            if (b.getPaymentNo() != null && com.project.BookCarOnline.Entity.Enum.PaymentMethod.CASH == b.getPaymentNo().getPaymentType()) {
+            if (b.getPaymentNo() != null && PaymentMethod.CASH == b.getPaymentNo().getPaymentType()) {
                 cashIncome += price;
             } else {
                 onlineIncome += price;
@@ -257,7 +258,7 @@ public class DriverService {
         double questEarned = isQuestCompleted ? QUEST_REWARD : 0.0;
         double finalIncome = netIncome + questEarned;
 
-        return com.project.BookCarOnline.DTO.Response.DailyRevenueDTO.builder()
+        return  DailyRevenueDTO.builder()
                 .date(targetDate.toString())
                 .grossRevenue(grossRevenue)
                 .netIncome(netIncome)

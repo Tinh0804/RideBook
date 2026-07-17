@@ -23,9 +23,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Đây là điểm kết nối (URL) để Frontend (Mobile/Web) kết nối vào
+        // 1. ENDPOINT CHO MOBILE APP
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Cho phép mọi nguồn (CORS)
-                .withSockJS(); // Hỗ trợ fallback nếu trình duyệt không hỗ trợ WS thuần
+                .setAllowedOriginPatterns("*");
+
+        // 2. ENDPOINT CHO WEB FRONTEND CŨ (Có SockJS fallback)
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 }

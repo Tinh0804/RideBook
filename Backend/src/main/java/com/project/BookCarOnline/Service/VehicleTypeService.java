@@ -11,6 +11,11 @@ import com.project.BookCarOnline.Repository.VehicleType_TimeRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -28,14 +33,17 @@ public class VehicleTypeService {
     TimeRepository timeRepository;
     VehicleType_TimeRepository vehicleTypeTimeRepository;
 
+    @Cacheable("vehicleTypes")
     public List<VehicleType> getAllVehicleTypes() {
         return vehicleTypeRepository.findAll();
     }
 
+    @CacheEvict(value = "vehicleTypes", allEntries = true)
     public VehicleType createVehicleType(VehicleType vehicleType) {
         return vehicleTypeRepository.save(vehicleType);
     }
 
+    @CacheEvict(value = "vehicleTypes", allEntries = true)
     public VehicleType updateVehicleType(String id, VehicleType vehicleType) {
         VehicleType existing = vehicleTypeRepository.findById(id).orElseThrow(() -> new RuntimeException("VehicleType not found"));
         existing.setVehicleTypeName(vehicleType.getVehicleTypeName());
@@ -45,19 +53,26 @@ public class VehicleTypeService {
         return vehicleTypeRepository.save(existing);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "vehicleTypes", allEntries = true),
+        @CacheEvict(value = "vehicleTypeTimes", allEntries = true)
+    })
     public void deleteVehicleType(String id) {
         vehicleTypeTimeRepository.deleteByVehicleType_VehicleTypeId(id);
         vehicleTypeRepository.deleteById(id);
     }
 
+    @CacheEvict(value = "timeSlots", allEntries = true)
     public Time createTimeSlot(Time time) {
         return timeRepository.save(time);
     }
 
+    @Cacheable("timeSlots")
     public List<Time> getAllTimeSlots() {
         return timeRepository.findAll();
     }
 
+    @CacheEvict(value = "timeSlots", allEntries = true)
     public Time updateTimeSlot(String id, Time time) {
         Time existing = timeRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.TIME_NOT_FOUND));
         existing.setStartTime(time.getStartTime());
@@ -66,15 +81,21 @@ public class VehicleTypeService {
         return timeRepository.save(existing);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "timeSlots", allEntries = true),
+        @CacheEvict(value = "vehicleTypeTimes", allEntries = true)
+    })
     public void deleteTimeSlot(String id) {
         vehicleTypeTimeRepository.deleteByTime_TimeId(id);
         timeRepository.deleteById(id);
     }
 
+    @Cacheable("vehicleTypeTimes")
     public List<VehicleType_Time> getAllPricing() {
         return vehicleTypeTimeRepository.findAll();
     }
 
+    @CacheEvict(value = "vehicleTypeTimes", allEntries = true)
     public VehicleType_Time createPricing(VehicleType_Time pricing) {
         // Find existing relations to set them
         VehicleType v = vehicleTypeRepository.findById(pricing.getId().getVehicleTypeId()).orElseThrow();
@@ -84,6 +105,7 @@ public class VehicleTypeService {
         return vehicleTypeTimeRepository.save(pricing);
     }
 
+    @CacheEvict(value = "vehicleTypeTimes", allEntries = true)
     public VehicleType_Time updatePricing(String vehicleTypeId, String timeId, VehicleType_Time pricing) {
         VehicleType_Time existing = vehicleTypeTimeRepository.findByVehicleType_VehicleTypeIdAndTime_TimeId(vehicleTypeId, timeId)
                 .orElseThrow(() -> new RuntimeException("Pricing not found"));
@@ -91,25 +113,24 @@ public class VehicleTypeService {
         return vehicleTypeTimeRepository.save(existing);
     }
 
+    @CacheEvict(value = "vehicleTypeTimes", allEntries = true)
     public void deletePricing(String vehicleTypeId, String timeId) {
         vehicleTypeTimeRepository.deleteByVehicleType_VehicleTypeIdAndTime_TimeId(vehicleTypeId, timeId);
     }
 
-    public double getCurrentSurcharge(String vehicleTypeId) {
-        return this.findTimeByCurrentTime(LocalTime.now() )
-                .flatMap(time -> vehicleTypeTimeRepository
-                        .findByVehicleType_VehicleTypeIdAndTime_TimeId(
-                                vehicleTypeId, time.getTimeId()
-                        )
+    public double getCurrentSurcharge(String vehicleTypeId, List<Time> allTimes, List<VehicleType_Time> allPricings) {
+        LocalTime currentTime = LocalTime.now();
+        
+        return allTimes.stream()
+                .filter(t -> t.getStartTime() != null && !currentTime.isBefore(t.getStartTime()) && 
+                             (t.getEndTime() == null || !currentTime.isAfter(t.getEndTime())))
+                .sorted(Comparator.comparing(Time::getStartTime).reversed())
+                .findFirst()
+                .flatMap(time -> allPricings.stream()
+                        .filter(p -> p.getVehicleType().getVehicleTypeId().equals(vehicleTypeId) && p.getTime().getTimeId().equals(time.getTimeId()))
+                        .findFirst()
                 )
                 .map(VehicleType_Time::getSurcharge)
                 .orElse(1.0);
-    }
-
-    private Optional<Time> findTimeByCurrentTime(LocalTime currentTime) {
-        return timeRepository.findAllValidTimes(currentTime)
-                .stream()
-                .sorted(Comparator.comparing(Time::getStartTime).reversed())
-                .findFirst();
     }
 }

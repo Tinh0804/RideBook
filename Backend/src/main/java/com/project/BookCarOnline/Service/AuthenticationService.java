@@ -15,9 +15,10 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Mapper.AccountMapper;
 import com.project.BookCarOnline.Repository.CustomerRepository;
 import com.project.BookCarOnline.Repository.DriverRepository;
-import com.project.BookCarOnline.Repository.InvalidTokenRepository;
 import com.project.BookCarOnline.Repository.AccountRepository;
 import com.project.BookCarOnline.Utils.SecurityUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import java.util.concurrent.TimeUnit;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -41,7 +42,7 @@ import java.util.*;
 @FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
 public class AuthenticationService {
     AccountRepository accountRepository;
-    InvalidTokenRepository invalidTokenRepository;
+    RedisTemplate<String, Object> redisTemplate;
     CustomerRepository customerRepository;
     DriverRepository driverRepository;
     AccountMapper accountMapper;
@@ -163,8 +164,8 @@ public class AuthenticationService {
         if(!(verified && expiryTime.after(new Date())))
             throw  new AppException(ErrorCode.INVALID_TOKEN);
 
-        if(invalidTokenRepository.existsById(signedJWT.getJWTClaimsSet().getJWTID()))
-            throw  new AppException(ErrorCode.UNAUTHENTACATED);
+        if(Boolean.TRUE.equals(redisTemplate.hasKey("invalid_token:" + signedJWT.getJWTClaimsSet().getJWTID())))
+            throw  new AppException(ErrorCode.TOKEN_BLACKLISTED);
         return  signedJWT;
     }
 
@@ -174,20 +175,15 @@ public class AuthenticationService {
         SignedJWT signedAccess = verifyToken(token, false);
 
 
-        List<InvalidToken> blacklist = new ArrayList<>();
-        blacklist.add(InvalidToken.builder()
-                        .id(signedRefresh.getJWTClaimsSet().getJWTID())
-                        .expiryTime(signedRefresh.getJWTClaimsSet().getExpirationTime())
-                        .reason("Logout Refresh Token")
-                .build());
+        long refreshExpiry = signedRefresh.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        if (refreshExpiry > 0) {
+            redisTemplate.opsForValue().set("invalid_token:" + signedRefresh.getJWTClaimsSet().getJWTID(), "Logout Refresh Token", refreshExpiry, TimeUnit.MILLISECONDS);
+        }
 
-        blacklist.add(InvalidToken.builder()
-                        .id(signedAccess.getJWTClaimsSet().getJWTID())
-                        .expiryTime(signedAccess.getJWTClaimsSet().getExpirationTime())
-                        .reason("Logout Access Token")
-                .build());
-
-        invalidTokenRepository.saveAll(blacklist);
+        long accessExpiry = signedAccess.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        if (accessExpiry > 0) {
+            redisTemplate.opsForValue().set("invalid_token:" + signedAccess.getJWTClaimsSet().getJWTID(), "Logout Access Token", accessExpiry, TimeUnit.MILLISECONDS);
+        }
     }
 
 
@@ -197,21 +193,15 @@ public class AuthenticationService {
         SignedJWT signedRefresh = verifyToken(refreshToken, true);
         SignedJWT signedAccess = verifyToken(token, false);
 
-        List<InvalidToken> blacklist = new ArrayList<>();
+        long accessExpiry = signedAccess.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        if (accessExpiry > 0) {
+            redisTemplate.opsForValue().set("invalid_token:" + signedAccess.getJWTClaimsSet().getJWTID(), "Old Access Token after Refresh", accessExpiry, TimeUnit.MILLISECONDS);
+        }
 
-        blacklist.add(InvalidToken.builder()
-                .id(signedAccess.getJWTClaimsSet().getJWTID())
-                .expiryTime(signedAccess.getJWTClaimsSet().getExpirationTime())
-                .reason("Old Access Token after Refresh")
-                .build());
-
-        blacklist.add(InvalidToken.builder()
-                .id(signedRefresh.getJWTClaimsSet().getJWTID())
-                .expiryTime(signedRefresh.getJWTClaimsSet().getExpirationTime())
-                .reason("Old Refresh Token after Refresh")
-                .build());
-
-        invalidTokenRepository.saveAll(blacklist);
+        long refreshExpiry = signedRefresh.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        if (refreshExpiry > 0) {
+            redisTemplate.opsForValue().set("invalid_token:" + signedRefresh.getJWTClaimsSet().getJWTID(), "Old Refresh Token after Refresh", refreshExpiry, TimeUnit.MILLISECONDS);
+        }
 
         Account account = accountRepository.findById(signedRefresh.getJWTClaimsSet().getSubject())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));

@@ -19,6 +19,8 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +38,7 @@ public class PromotionService {
     PromotionMapper promotionMapper;
     CustomerPromotionRepository customerPromotionRepository;
     CustomerRepository customerRepository;
+    RedisTemplate<String, Object> redisTemplate;
 
     public PromotionResponse createPromotion(CreatePromotionRequest request) {
         if (promotionRepository.findByPromotionCode(request.getPromotionCode()).isPresent()) {
@@ -121,7 +124,9 @@ public class PromotionService {
             promotion.setIsPublic(request.getIsPublic());
 
         log.info("[Promotion] Admin cập nhật khuyến mãi id={}", promotionId);
-        return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
+        Promotion saved = promotionRepository.save(promotion);
+        redisTemplate.delete("promotion:" + saved.getPromotionCode());
+        return promotionMapper.toPromotionResponse(saved);
     }
 
     @Transactional
@@ -130,7 +135,9 @@ public class PromotionService {
                 .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
         promotion.setIsActive(!promotion.getIsActive());
         log.info("[Promotion] Toggle isActive={} cho id={}", promotion.getIsActive(), promotionId);
-        return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
+        Promotion saved = promotionRepository.save(promotion);
+        redisTemplate.delete("promotion:" + saved.getPromotionCode());
+        return promotionMapper.toPromotionResponse(saved);
     }
 
     @Transactional
@@ -140,15 +147,17 @@ public class PromotionService {
         Boolean newStatus = promotion.getIsPublic() != null ? !promotion.getIsPublic() : false;
         promotion.setIsPublic(newStatus);
         log.info("[Promotion] Toggle isPublic={} cho id={}", newStatus, promotionId);
-        return promotionMapper.toPromotionResponse(promotionRepository.save(promotion));
+        Promotion saved = promotionRepository.save(promotion);
+        redisTemplate.delete("promotion:" + saved.getPromotionCode());
+        return promotionMapper.toPromotionResponse(saved);
     }
 
     @Transactional
     public void deletePromotion(String promotionId) {
-        if (!promotionRepository.existsById(promotionId)) {
-            throw new AppException(ErrorCode.PROMOTION_NOT_FOUND);
-        }
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
         promotionRepository.deleteById(promotionId);
+        redisTemplate.delete("promotion:" + promotion.getPromotionCode());
         log.info("[Promotion] Admin xóa khuyến mãi id={}", promotionId);
     }
 

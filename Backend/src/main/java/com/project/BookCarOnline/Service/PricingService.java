@@ -11,6 +11,8 @@ import com.project.BookCarOnline.Repository.CustomerPromotionRepository;
 import com.project.BookCarOnline.Repository.PromotionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -26,6 +29,7 @@ public class PricingService {
 
     private final PromotionRepository           promotionRepository;
     private final CustomerPromotionRepository   customerPromotionRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     public double calculateDiscount(Promotion promotion, double rawPrice) {
         if (promotion == null) return 0.0;
@@ -60,7 +64,18 @@ public class PricingService {
         List<Promotion> result = new ArrayList<>();
         for (String code : promotionCodes) {
             if (code == null || code.isBlank()) continue;
-            promotionRepository.findByPromotionCode(code).ifPresent(result::add);
+            
+            String cacheKey = "promotion:" + code;
+            Promotion promo = (Promotion) redisTemplate.opsForValue().get(cacheKey);
+            if (promo == null) {
+                promo = promotionRepository.findByPromotionCode(code).orElse(null);
+                if (promo != null) {
+                    redisTemplate.opsForValue().set(cacheKey, promo, 1, TimeUnit.HOURS);
+                }
+            }
+            if (promo != null) {
+                result.add(promo);
+            }
         }
         return result;
     }
@@ -116,6 +131,7 @@ public class PricingService {
         
         promotion.setQuantity(promotion.getQuantity() - 1);
         promotionRepository.save(promotion);
+        redisTemplate.delete("promotion:" + promotionCode);
 
         log.info("[Pricing] Áp dụng promotion {} cho customer {}", promotionCode, customerId);
         return promotion;

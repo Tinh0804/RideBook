@@ -29,7 +29,7 @@ public class SecurityConfig {
 
 
     private final String[] AUTH_ENDPOINTS = {"/auth/**","/auth/login","/auth/logout","/auth/refresh-token", "/auth/oauth2/**",
-            "/oauth2/**",};
+            "/oauth2/**","/bookings/estimate-price"};
     private final String[] CUSTOMER_ENDPOINTS = {"/customers/register"};
     private final String[] DRIVER_ENDPOINTS = {"/drivers/register"};
     private final String[] SWAGGER_ENDPOINTS = {

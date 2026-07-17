@@ -99,11 +99,13 @@ public class BookingService {
         // Resolve nhiều mã khuyến mãi
         List<Promotion> promotions = pricingService.resolvePromotions(request.getPromotionCodes());
 
-        List<VehicleType> vehicleTypes = vehicleTypeRepository.findAll();
+        List<VehicleType> vehicleTypes = vehicleTypeService.getAllVehicleTypes();
+        List<Time> times = vehicleTypeService.getAllTimeSlots();
+        List<VehicleType_Time> pricings = vehicleTypeService.getAllPricing();
         long expiryTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(quoteTtlSecond);
 
         return vehicleTypes.stream()
-                .map(vt -> buildEstimateForVehicleType(vt, distance, promotions, expiryTime))
+                .map(vt -> buildEstimateForVehicleType(vt, distance, promotions, expiryTime, times, pricings))
                 .collect(Collectors.toList());
     }
 
@@ -187,7 +189,7 @@ public class BookingService {
         if (!bookingPromotionsToSave.isEmpty()) {
             bookingPromotionRepository.saveAll(bookingPromotionsToSave);
         }
-
+        
         // Xóa quote khỏi Redis (tránh dùng lại)
         redisTemplate.delete("quote:" + request.getQuoteId());
 
@@ -351,7 +353,7 @@ public class BookingService {
                 .stream().map(this::mapToBookingDetailResponse).collect(Collectors.toList());
     }
 
-    public java.util.Map<String, Object> getAdminSummary() {
+    public Map<String, Object> getAdminSummary() {
         List<Booking> all = bookingRepository.findAll();
         long completed = 0, cancelled = 0;
         double revenue = 0.0;
@@ -367,7 +369,7 @@ public class BookingService {
             }
         }
 
-        return java.util.Map.of(
+        return  Map.of(
                 "totalBookings", (long) all.size(),
                 "completedRides", completed,
                 "cancelledRides", cancelled,
@@ -581,14 +583,16 @@ public class BookingService {
 
     private EstimatePriceResponse buildEstimateForVehicleType(
             VehicleType vehicleType, double distance,
-            List<Promotion> promotions, long expiryTime) {
+            List<Promotion> promotions, long expiryTime,
+            List<Time> times,
+            List<VehicleType_Time> pricings) {
 
         double pricePerKm = vehicleType.getPricePerKm() != null ? vehicleType.getPricePerKm() : 0.0;
         double basePrice = pricePerKm * distance;
         
         String vtId = vehicleType.getVehicleTypeId();
-        double surcharge = (vtId != null) ? vehicleTypeService.getCurrentSurcharge(vtId) : 1.0;
-        double surgeMultiplier = 1.0;
+        double surcharge = (vtId != null) ? vehicleTypeService.getCurrentSurcharge(vtId, times, pricings) : 1.0;
+            double surgeMultiplier = 1.0;
         double rawPrice = basePrice * surcharge * surgeMultiplier;
 
         // Tính tổng discount từ nhiều mã khuyến mãi
@@ -665,6 +669,8 @@ public class BookingService {
                 .filter(d -> Boolean.TRUE.equals(d.getActivityStatus())) // Đang online
                 .filter(d -> vehicleTypeId.equals(
                         d.getVehicleType() != null ? d.getVehicleType().getVehicleTypeId() : null)) // Đúng loại xe
+                .filter(d -> !bookingRepository.existsByDriverNo_DriverIdAndBookingStatusIn(
+                        d.getDriverId(), List.of(BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.ARRIVED))) // Không trong chuyến
                 .collect(Collectors.toList());
 
         // === CAFFEINE CACHE: Tính điểm ưu tiên từ RAM thay vì chọc DB ===
