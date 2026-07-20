@@ -1,94 +1,41 @@
-import { Outlet, Link } from 'react-router-dom'
-import { RiCarFill, RiSunLine, RiMoonLine } from 'react-icons/ri'
+import { Outlet, Link, useLocation } from 'react-router-dom'
+import { RiMoonLine, RiRouteLine, RiSunLine } from 'react-icons/ri'
 import { useUIStore } from '@/store/rootStore'
 
 const AuthLayout = () => {
   const { theme, toggleTheme } = useUIStore()
+  const pathname = useLocation().pathname
+  const isLogin = pathname.startsWith('/login/')
+  const isWelcome = pathname === '/welcome'
+  const isSplit = isLogin || isWelcome
 
   return (
-    <div className="min-h-screen flex">
-    {/* Left branding panel */}
-    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-mesh-green">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-950/80 via-brand-900/60 to-surface-dark/90" />
-
-      {/* Decorative circles */}
-      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-brand-500/10 blur-3xl" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-brand-400/8 blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-brand-500/10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full border border-brand-500/15" />
-
-      <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-green">
-            <RiCarFill className="text-white" size={22} />
-          </div>
-          <span className="font-display text-2xl font-bold text-white">BookCar</span>
+    <div className="min-h-[100dvh] bg-surface-dark text-content-main selection:bg-lime-accent/30">
+      <header className="absolute inset-x-0 top-0 z-30 flex h-20 items-center justify-between px-5 sm:px-8 lg:px-12">
+        <Link to="/" className="group flex items-center gap-3" aria-label="BookCar - Trang chủ">
+          <span className={`grid h-10 w-10 place-items-center rounded-[14px] bg-content-main text-surface-dark shadow-sm transition-transform duration-300 group-hover:-rotate-6 ${isSplit ? 'lg:bg-white lg:text-slate-950' : ''} ${isWelcome ? 'bg-white text-slate-950' : ''}`}>
+            <RiRouteLine size={21} aria-hidden="true" />
+          </span>
+          <span className={`font-display text-xl font-bold tracking-[-0.04em] ${isSplit ? 'lg:text-white' : ''} ${isWelcome ? 'text-white' : ''}`}>
+            BookCar<span className="text-lime-accent">/</span>
+          </span>
         </Link>
 
-        {/* Central content */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <p className="text-brand-400 font-mono text-sm tracking-widest uppercase">
-              Di chuyển thông minh
-            </p>
-            <h1 className="font-display text-5xl font-bold text-white leading-tight">
-              Đặt xe nhanh.<br />
-              <span className="text-gradient">An toàn.</span><br />
-              Tiện lợi.
-            </h1>
-          </div>
-          <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-            Nền tảng kết nối hàng nghìn tài xế và khách hàng trên khắp cả nước.
-          </p>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className={`grid h-10 w-10 place-items-center rounded-full border border-surface-border bg-surface-card/80 text-content-muted backdrop-blur transition hover:border-content-main/30 hover:text-content-main active:scale-95 ${isWelcome ? 'border-white/20 bg-slate-950/35 text-white hover:border-white/40 hover:text-white' : ''}`}
+          title="Đổi giao diện"
+          aria-label="Đổi giao diện sáng tối"
+        >
+          {theme === 'dark' ? <RiSunLine size={18} /> : <RiMoonLine size={18} />}
+        </button>
+      </header>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 pt-4">
-            {[
-              { value: '10K+', label: 'Tài xế' },
-              { value: '50K+', label: 'Khách hàng' },
-              { value: '99%',  label: 'Hài lòng' },
-            ].map((s) => (
-              <div key={s.label} className="glass rounded-xl p-4">
-                <div className="font-display text-2xl font-bold text-brand-400">{s.value}</div>
-                <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <p className="text-gray-600 text-sm">
-          © {new Date().getFullYear()} BookCar. All rights reserved.
-        </p>
-      </div>
-    </div>
-
-    {/* Right auth form panel */}
-    <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 relative overflow-y-auto">
-      
-      {/* Theme Toggle Overlay */}
-      <button
-        onClick={toggleTheme}
-        className="absolute top-6 right-6 p-2 rounded-lg text-content-muted hover:text-content-main hover:bg-surface-border transition-colors"
-        title="Đổi giao diện"
-      >
-        {theme === 'dark' ? <RiSunLine size={20} /> : <RiMoonLine size={20} />}
-      </button>
-
-      {/* Mobile logo */}
-      <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-        <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center">
-          <RiCarFill className="text-content-main" size={18} />
-        </div>
-        <span className="font-display text-xl font-bold text-content-main">BookCar</span>
-      </Link>
-
-      <div className="w-full max-w-md animate-slide-up">
+      <main className={isSplit ? 'min-h-[100dvh]' : 'flex min-h-[100dvh] items-center justify-center px-6 pb-20 pt-28'}>
         <Outlet />
-      </div>
+      </main>
     </div>
-  </div>
   )
 }
 

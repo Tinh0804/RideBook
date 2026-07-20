@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { 
   RiCameraLine, RiEditLine, RiSaveLine, RiCloseLine, 
   RiStarLine, RiVipCrownLine, RiWalletLine, RiMedalLine,
-  RiTrophyLine, RiArrowRightLine
+  RiTrophyLine, RiArrowRightLine, RiKeyLine
 } from 'react-icons/ri'
 import { useAuthStore } from '@/store/rootStore'
 import { customerApi } from '@/features/customer/api/customerApi'
@@ -14,22 +14,19 @@ import Spinner from '@/components/Elements/Spinner'
 import ChangePasswordModal from '@/components/Form/ChangePasswordModal'
 import { cn } from '@/utils/cn'
 import { formatCurrency } from '@/utils/currency'
+import { motion } from 'motion/react'
 
-// Mock API call - Thay thế bằng API thực tế
+// Mock API call
 const getLoyaltyInfo = async (customerId) => {
-  // TODO: Gọi API thực tế từ backend
-  // return await loyaltyApi.getCustomerLoyalty(customerId)
-  
-  // Mock data cho demo
   return {
-    tier: 'Platinum', // Bronze, Silver, Gold, Platinum
+    tier: 'Platinum',
     currentPoints: 1250,
     lifetimePoints: 3420,
     totalSpent: 2450000,
     totalRides: 24,
-    nextTierPoints: 5000, // Điểm cần để lên hạng tiếp theo
+    nextTierPoints: 5000,
     tierBenefits: {
-      discountRate: 15, // Giảm giá %
+      discountRate: 15,
       prioritySupport: true,
       freeCancel: true,
       exclusivePromotions: true
@@ -67,7 +64,7 @@ const CustomerProfilePage = () => {
             email: info.email || '',
             avatar: info.avatar || '' , 
             gender: info.gender || '' , 
-            birthDate: info.birthDate ? info.birthDate.split('T')[0] : '', // format to YYYY-MM-DD
+            birthDate: info.birthDate ? info.birthDate.split('T')[0] : '', 
             account: info.account || null
           })
         }
@@ -128,296 +125,267 @@ const CustomerProfilePage = () => {
     })
   }
 
-  // Hàm lấy màu sắc và icon theo hạng
   const getTierInfo = (tier) => {
     switch(tier?.toLowerCase()) {
       case 'platinum':
         return { 
-          color: 'from-gray-300 to-gray-400 dark:from-gray-400 dark:to-gray-500', 
-          bgColor: 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 border border-gray-200 dark:border-gray-600',
-          textColor: 'text-gray-800 dark:text-gray-100',
-          subTextColor: 'text-gray-500 dark:text-gray-400',
-          iconBg: 'bg-white/80 dark:bg-gray-900/50',
-          borderColor: 'border-gray-400 dark:border-gray-500',
-          circleBg: 'bg-black/5 dark:bg-white/10',
-          divider: 'border-gray-300 dark:border-gray-600',
+          bgClass: 'bg-slate-950 text-white border-slate-900',
+          accent: 'text-white',
+          muted: 'text-white/60',
+          progressBg: 'bg-white/20',
+          progressFill: 'bg-white',
           icon: <RiTrophyLine size={24} />,
           label: 'Kim Cương'
         }
       case 'gold':
         return { 
-          color: 'from-yellow-500 to-yellow-600 dark:from-yellow-400 dark:to-yellow-500', 
-          bgColor: 'bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/40 dark:to-amber-800/40 border border-yellow-200 dark:border-yellow-700/50',
-          textColor: 'text-yellow-800 dark:text-yellow-400',
-          subTextColor: 'text-yellow-600 dark:text-yellow-500/80',
-          iconBg: 'bg-white/80 dark:bg-yellow-900/50',
-          borderColor: 'border-yellow-500 dark:border-yellow-600',
-          circleBg: 'bg-yellow-500/10 dark:bg-yellow-400/10',
-          divider: 'border-yellow-200 dark:border-yellow-700/50',
+          bgClass: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-800 dark:text-yellow-500',
+          accent: 'text-yellow-600 dark:text-yellow-400',
+          muted: 'text-yellow-700/60 dark:text-yellow-500/60',
+          progressBg: 'bg-yellow-500/20',
+          progressFill: 'bg-yellow-500',
           icon: <RiVipCrownLine size={24} />,
           label: 'Vàng'
         }
-      case 'silver':
-        return { 
-          color: 'from-gray-400 to-gray-500 dark:from-gray-300 dark:to-gray-400', 
-          bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/80 dark:to-gray-700/80 border border-gray-200 dark:border-gray-600',
-          textColor: 'text-gray-700 dark:text-gray-200',
-          subTextColor: 'text-gray-500 dark:text-gray-400',
-          iconBg: 'bg-white/80 dark:bg-gray-900/50',
-          borderColor: 'border-gray-400 dark:border-gray-500',
-          circleBg: 'bg-black/5 dark:bg-white/10',
-          divider: 'border-gray-200 dark:border-gray-600',
-          icon: <RiMedalLine size={24} />,
-          label: 'Bạc'
-        }
       default:
         return { 
-          color: 'from-amber-600 to-amber-700 dark:from-amber-500 dark:to-amber-600', 
-          bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40 border border-amber-200 dark:border-amber-700/50',
-          textColor: 'text-amber-800 dark:text-amber-400',
-          subTextColor: 'text-amber-600 dark:text-amber-500/80',
-          iconBg: 'bg-white/80 dark:bg-amber-900/50',
-          borderColor: 'border-amber-600 dark:border-amber-500',
-          circleBg: 'bg-amber-500/10 dark:bg-amber-400/10',
-          divider: 'border-amber-200 dark:border-amber-700/50',
+          bgClass: 'bg-surface-card border-surface-border text-content-main',
+          accent: 'text-brand-500',
+          muted: 'text-content-muted',
+          progressBg: 'bg-surface-muted',
+          progressFill: 'bg-brand-500',
           icon: <RiStarLine size={24} />,
-          label: 'Đồng'
+          label: 'Thành viên'
         }
     }
   }
 
   const tierInfo = getTierInfo(loyalty?.tier)
   
-  // Tính phần trăm tiến trình lên hạng tiếp theo
   const progressPercent = loyalty?.nextTierPoints 
     ? (loyalty.lifetimePoints / loyalty.nextTierPoints) * 100 
     : 100
 
   if (loading) return (
-    <div className="flex justify-center py-16"><Spinner size="xl" /></div>
+    <div className="flex h-full items-center justify-center bg-[#e8ece3] dark:bg-surface-dark">
+      <Spinner size="xl" />
+    </div>
   )
 
   const avatarSrc = preview || profile?.avatar
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="section-title">Hồ sơ cá nhân</h1>
-        {!editing && (
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)}>
-              Đổi mật khẩu
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-              <RiEditLine size={16} /> Chỉnh sửa
-            </Button>
+    <div className="h-full overflow-y-auto bg-[#e8ece3] dark:bg-surface-dark pointer-events-auto">
+      <motion.div 
+        initial={{ opacity: 0, x: -18 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto w-full max-w-3xl space-y-8 p-5 pb-12 lg:p-8"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-content-main tracking-tight">Hồ sơ cá nhân</h1>
+            <p className="text-sm text-content-muted mt-1">Quản lý thông tin và trạng thái thành viên</p>
           </div>
-        )}
-      </div>
-
-      {/* Avatar section */}
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-brand-500/20 border-2 border-brand-500/30 overflow-hidden flex items-center justify-center text-4xl font-bold text-brand-400">
-            {avatarSrc
-              ? <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" />
-              : (profile?.customerName?.[0] || user?.userName?.[0] || 'U')
-            } 
-          </div>
-          {editing && (
-            <>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center shadow-glow-green hover:bg-brand-400 transition-colors"
-              >
-                <RiCameraLine size={16} className="text-content-main" />
-              </button>
-              <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={handleFileChange} />
-            </>
+          {!editing && (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(true)} className="rounded-xl border-surface-border font-bold text-content-main hover:border-slate-400">
+                <RiKeyLine size={16} /> Đổi mật khẩu
+              </Button>
+              <Button size="sm" onClick={() => setEditing(true)} className="rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                <RiEditLine size={16} /> Chỉnh sửa
+              </Button>
+            </div>
           )}
         </div>
-        <div className="text-center">
-          <h2 className="font-display text-xl font-bold text-content-main">{profile?.customerName}</h2>
-          <p className="text-content-muted text-sm">{profile?.userName || user?.userName}</p>
-        </div>
-      </div>
 
-      {/* Membership Tier Card */}
-      {loyalty && (
-        <div className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-r p-6 shadow-xl", tierInfo.bgColor)}>
-          <div className={cn("absolute top-0 right-0 w-32 h-32 backdrop-blur-sm rounded-full -mr-16 -mt-16", tierInfo.circleBg)} />
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={cn("w-12 h-12 rounded-full flex items-center justify-center", tierInfo.iconBg, tierInfo.textColor)}>
-                  {tierInfo.icon}
+        {/* Profile Header & Tier */}
+        <div className="grid gap-6 md:grid-cols-[1fr_1.5fr]">
+          {/* Avatar Area */}
+          <div className="rounded-2xl border border-surface-border bg-surface-card p-6 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-24 bg-surface-muted/50" />
+            <div className="relative mb-4 mt-6">
+              <div className="h-28 w-28 rounded-full border-4 border-surface-card bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center text-5xl font-bold text-slate-400 shadow-md">
+                {avatarSrc
+                  ? <img src={avatarSrc} alt="avatar" className="h-full w-full object-cover" />
+                  : (profile?.customerName?.[0] || user?.userName?.[0] || 'U')
+                } 
+              </div>
+              {editing && (
+                <>
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="absolute bottom-1 right-1 grid h-8 w-8 place-items-center rounded-full bg-slate-950 text-white dark:bg-white dark:text-slate-950 shadow-md hover:scale-105 transition-transform"
+                  >
+                    <RiCameraLine size={16} />
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={handleFileChange} />
+                </>
+              )}
+            </div>
+            <h2 className="font-display text-xl font-bold text-content-main">{profile?.customerName}</h2>
+            <p className="text-sm font-mono text-content-muted mt-1">{profile?.userName || user?.userName}</p>
+          </div>
+
+          {/* Membership Tier */}
+          {loyalty && (
+            <div className={cn("relative overflow-hidden rounded-2xl border p-6 shadow-sm flex flex-col justify-between", tierInfo.bgClass)}>
+              <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className={cn("grid h-12 w-12 place-items-center rounded-xl", tierInfo.progressBg)}>
+                    {tierInfo.icon}
+                  </div>
+                  <div>
+                    <p className={cn("text-xs font-bold uppercase tracking-wider", tierInfo.muted)}>Hạng thành viên</p>
+                    <p className="font-display text-2xl font-bold">{tierInfo.label}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className={cn("text-sm", tierInfo.subTextColor)}>Hạng thành viên</p>
-                  <p className={cn("text-2xl font-bold", tierInfo.textColor)}>{tierInfo.label}</p>
+                <div className="text-right">
+                  <p className={cn("text-xs font-bold uppercase tracking-wider", tierInfo.muted)}>Điểm thưởng</p>
+                  <p className="font-display text-2xl font-bold">{loyalty.currentPoints.toLocaleString()}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className={cn("text-sm", tierInfo.subTextColor)}>Điểm thưởng</p>
-                <p className={cn("text-2xl font-bold", tierInfo.textColor)}>{loyalty.currentPoints.toLocaleString()}</p>
+
+              <div className="mt-8 relative z-10">
+                {loyalty.nextTierPoints && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className={tierInfo.muted}>Tiến trình lên hạng</span>
+                      <span className={tierInfo.muted}>{loyalty.lifetimePoints.toLocaleString()} / {loyalty.nextTierPoints.toLocaleString()}</span>
+                    </div>
+                    <div className={cn("h-1.5 w-full rounded-full overflow-hidden", tierInfo.progressBg)}>
+                      <div 
+                        className={cn("h-full rounded-full transition-all duration-1000", tierInfo.progressFill)}
+                        style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-6 flex gap-6 border-t border-current/10 pt-4">
+                  <div>
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", tierInfo.muted)}>Tổng chi tiêu</p>
+                    <p className="text-sm font-bold">{formatCurrency(loyalty.totalSpent)}</p>
+                  </div>
+                  <div>
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", tierInfo.muted)}>Số chuyến</p>
+                    <p className="text-sm font-bold">{loyalty.totalRides}</p>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* Progress to next tier */}
-            {loyalty.nextTierPoints && (
-              <div className="space-y-2 mt-4">
-                <div className="flex justify-between text-xs">
-                  <span className={tierInfo.subTextColor}>Tiến trình lên hạng</span>
-                  <span className={tierInfo.subTextColor}>{loyalty.lifetimePoints.toLocaleString()} / {loyalty.nextTierPoints.toLocaleString()} điểm</span>
-                </div>
-                <div className={cn("h-2 rounded-full overflow-hidden", tierInfo.circleBg)}>
-                  <div 
-                    className={cn("h-full bg-gradient-to-r rounded-full transition-all duration-500", tierInfo.color)}
-                    style={{ width: `${Math.min(progressPercent, 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
+        {/* Profile Fields */}
+        <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
+          <h3 className="font-bold text-lg mb-6">Thông tin chi tiết</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <FormField label="Họ và tên">
+              {editing
+                ? <Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="!rounded-xl !bg-surface-dark !border-surface-border" />
+                : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.customerName || '—'}</p>
+              }
+            </FormField>
 
-            {/* Quick stats */}
-            <div className={cn("grid grid-cols-3 gap-3 mt-6 pt-4 border-t", tierInfo.divider)}>
-              <div className="text-center">
-                <p className={cn("text-xs", tierInfo.subTextColor)}>Tổng chi tiêu</p>
-                <p className={cn("text-sm font-semibold", tierInfo.textColor)}>{formatCurrency(loyalty.totalSpent)}</p>
-              </div>
-              <div className="text-center">
-                <p className={cn("text-xs", tierInfo.subTextColor)}>Số chuyến</p>
-                <p className={cn("text-sm font-semibold", tierInfo.textColor)}>{loyalty.totalRides}</p>
-              </div>
-              <div className="text-center">
-                <p className={cn("text-xs", tierInfo.subTextColor)}>Giảm giá</p>
-                <p className="text-sm font-semibold text-brand-500">-{loyalty.tierBenefits?.discountRate || 0}%</p>
-              </div>
+            <FormField label="Số điện thoại">
+              {editing
+                ? <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="!rounded-xl !bg-surface-dark !border-surface-border" />
+                : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.phone || '—'}</p>
+              }
+            </FormField>
+
+            <FormField label="Email">
+              {editing
+                ? <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="!rounded-xl !bg-surface-dark !border-surface-border" />
+                : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.email || '—'}</p>
+              }
+            </FormField>
+
+            <FormField label="Giới tính">
+              {editing
+                ? (
+                  <select 
+                    className="w-full rounded-xl bg-surface-dark border border-surface-border px-4 py-2.5 text-content-main focus:outline-none focus:border-slate-500"
+                    value={form.gender} 
+                    onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                )
+                : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.gender || '—'}</p>
+              }
+            </FormField>
+
+            <FormField label="Ngày sinh">
+              {editing
+                ? <Input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="!rounded-xl !bg-surface-dark !border-surface-border" />
+                : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.birthDate ? new Date(profile.birthDate).toLocaleDateString('vi-VN') : '—'}</p>
+              }
+            </FormField>
+
+            <div className="col-span-1 md:col-span-2">
+              <FormField label="Địa chỉ">
+                {editing
+                  ? <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="!rounded-xl !bg-surface-dark !border-surface-border" />
+                  : <p className="text-content-main font-bold py-2 border-b border-surface-border/50">{profile?.address || '—'}</p>
+                }
+              </FormField>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Profile fields */}
-      <div className="card p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <FormField label="Họ và tên">
-          {editing
-            ? <Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} placeholder="Nguyễn Văn A" />
-            : <p className="text-content-main font-medium py-2">{profile?.customerName || '—'}</p>
-          }
-        </FormField>
-
-        <FormField label="Số điện thoại">
-          {editing
-            ? <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="0912345678" />
-            : <p className="text-content-main font-medium py-2">{profile?.phone || '—'}</p>
-          }
-        </FormField>
-
-        <FormField label="Email">
-          {editing
-            ? <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@example.com" />
-            : <p className="text-content-main font-medium py-2">{profile?.email || '—'}</p>
-          }
-        </FormField>
-
-        <FormField label="Giới tính">
-          {editing
-            ? (
-              <select 
-                className="input-field"
-                value={form.gender} 
-                onChange={(e) => setForm({ ...form, gender: e.target.value })}
-              >
-                <option value="">Chọn giới tính</option>
-                <option value="Nam">Nam</option>
-                <option value="Nữ">Nữ</option>
-                <option value="Khác">Khác</option>
-              </select>
-            )
-            : <p className="text-content-main font-medium py-2">{profile?.gender || '—'}</p>
-          }
-        </FormField>
-
-        <FormField label="Ngày sinh">
-          {editing
-            ? <Input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
-            : <p className="text-content-main font-medium py-2">{profile?.birthDate ? new Date(profile.birthDate).toLocaleDateString('vi-VN') : '—'}</p>
-          }
-        </FormField>
-
-        <div className="col-span-full">
-          <FormField label="Địa chỉ">
-            {editing
-              ? <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Đường ABC..." />
-              : <p className="text-content-main font-medium py-2">{profile?.address || '—'}</p>
-            }
-          </FormField>
+          {/* Action Buttons */}
+          {editing && (
+            <div className="mt-8 flex gap-3 pt-6 border-t border-surface-border">
+              <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold border-surface-border" onClick={handleCancel}>
+                Hủy thay đổi
+              </Button>
+              <Button className="flex-1 rounded-xl h-12 bg-lime-accent text-slate-950 font-bold hover:bg-[#b8ff59]" onClick={handleSave} loading={saving}>
+                Lưu thông tin
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="col-span-full">
-          <FormField label="Tên đăng nhập">
-            <p className="text-content-muted font-mono text-sm py-2">{profile?.userName || user?.userName}</p>
-          </FormField>
-        </div>
-      </div>
-
-      {/* Tier Benefits Section */}
-      {loyalty && loyalty.tierBenefits && (
-        <div className="card p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <RiVipCrownLine size={20} className="text-yellow-500" />
-            <h3 className="font-semibold text-content-main">Quyền lợi {tierInfo.label}</h3>
+        {/* Benefits Section */}
+        {loyalty?.tierBenefits && (
+          <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <RiVipCrownLine className="text-yellow-500" /> Đặc quyền {tierInfo.label}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {loyalty.tierBenefits.discountRate > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
+                  <span className="text-sm font-bold text-content-main">Giảm {loyalty.tierBenefits.discountRate}% mỗi chuyến</span>
+                </div>
+              )}
+              {loyalty.tierBenefits.prioritySupport && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
+                  <span className="text-sm font-bold text-content-main">Hỗ trợ ưu tiên 24/7</span>
+                </div>
+              )}
+              {loyalty.tierBenefits.freeCancel && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
+                  <span className="text-sm font-bold text-content-main">Miễn phí hủy chuyến</span>
+                </div>
+              )}
+              {loyalty.tierBenefits.exclusivePromotions && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
+                  <span className="text-sm font-bold text-content-main">Khuyến mãi độc quyền</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {loyalty.tierBenefits.discountRate > 0 && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                <span className="text-content-muted">Giảm {loyalty.tierBenefits.discountRate}% mỗi chuyến</span>
-              </div>
-            )}
-            {loyalty.tierBenefits.prioritySupport && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                <span className="text-content-muted">Hỗ trợ ưu tiên 24/7</span>
-              </div>
-            )}
-            {loyalty.tierBenefits.freeCancel && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                <span className="text-content-muted">Miễn phí hủy chuyến</span>
-              </div>
-            )}
-            {loyalty.tierBenefits.exclusivePromotions && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                <span className="text-content-muted">Khuyến mãi độc quyền</span>
-              </div>
-            )}
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            fullWidth
-            onClick={() => window.location.href = '/customer/membership'}
-            className="mt-2"
-          >
-            Xem chi tiết quyền lợi <RiArrowRightLine size={14} />
-          </Button>
-        </div>
-      )}
+        )}
 
-      {/* Action buttons */}
-      {editing && (
-        <div className="flex gap-3">
-          <Button variant="outline" fullWidth onClick={handleCancel}>
-            <RiCloseLine size={16} /> Hủy
-          </Button>
-          <Button fullWidth onClick={handleSave} loading={saving}>
-            <RiSaveLine size={16} /> Lưu thay đổi
-          </Button>
-        </div>
-      )}
+      </motion.div>
       {showPasswordModal && (
         <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
       )}
