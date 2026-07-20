@@ -26,14 +26,13 @@ const STATUS_STEPS = [
 ]
 
 const STATUS_COLOR = {
-  [BOOKING_STATUS.PENDING]:    'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  [BOOKING_STATUS.ACCEPTED]:   'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  [BOOKING_STATUS.ARRIVED]:    'text-brand-400 bg-brand-400/10 border-brand-400/20',
-  [BOOKING_STATUS.IN_PROGRESS]:'text-brand-400 bg-brand-400/10 border-brand-400/20',
-  [BOOKING_STATUS.COMPLETED]:  'text-brand-400 bg-brand-400/10 border-brand-400/20',
-  [BOOKING_STATUS.CANCELLED]:  'text-red-400 bg-red-400/10 border-red-400/20',
+  [BOOKING_STATUS.PENDING]:    'text-amber-600 bg-amber-500/10 border-amber-500/20',
+  [BOOKING_STATUS.ACCEPTED]:   'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
+  [BOOKING_STATUS.ARRIVED]:    'text-blue-600 bg-blue-500/10 border-blue-500/20',
+  [BOOKING_STATUS.IN_PROGRESS]:'text-brand-600 bg-brand-500/10 border-brand-500/20',
+  [BOOKING_STATUS.COMPLETED]:  'text-slate-800 bg-slate-200 border-slate-300 dark:bg-white/10 dark:text-white',
+  [BOOKING_STATUS.CANCELLED]:  'text-red-600 bg-red-500/10 border-red-500/20',
 }
-
 
 const TripTrackingPage = () => {
   const location  = useLocation()
@@ -98,9 +97,6 @@ const TripTrackingPage = () => {
     }
   }, [booking])
 
-  // Driver location is received via WebSocket (see onWsMessage below)
-  // No API polling needed — driver pushes GPS updates through /app/driver/location -> /topic/booking/{bookingId}/driver-location
-
   // Fetch initial driver location from Redis when mounting/reloading
   useEffect(() => {
     if (!bookingId || driverCoord) return
@@ -148,7 +144,6 @@ const TripTrackingPage = () => {
 
   // WebSocket for realtime updates
   const onWsMessage = useCallback((topic, payload) => {
-    // Driver location push from /topic/booking/{bookingId}/driver-location
     if (topic === `/topic/booking/${bookingId}/driver-location`) {
       if (payload?.lat && payload?.lng) {
         setDriverCoord({
@@ -204,10 +199,10 @@ const TripTrackingPage = () => {
   const stepIndex = STATUS_STEPS.indexOf(booking?.bookingStatus)
 
   if (loading) return (
-    <div className="flex items-center justify-center h-full min-h-[60vh]">
+    <div className="flex items-center justify-center h-full min-h-[60vh] bg-[#e8ece3] dark:bg-surface-dark">
       <div className="text-center space-y-4">
         <Spinner size="xl" />
-        <p className="text-content-muted">Đang tải thông tin chuyến đi...</p>
+        <p className="font-bold text-content-main">Đang tải thông tin chuyến đi...</p>
       </div>
     </div>
   )
@@ -215,132 +210,139 @@ const TripTrackingPage = () => {
   if (!booking) return null
 
   return (
-    <div className="-m-6 h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-surface-dark overflow-hidden">
+    <div className="h-full flex flex-col lg:flex-row bg-[#e8ece3] dark:bg-surface-dark overflow-hidden pointer-events-auto">
       {/* Vùng 1: Thông tin chuyến đi */}
-      <div className="w-full lg:w-[450px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-surface-border z-10 shadow-2xl shrink-0">
+      <div className="w-full lg:w-[420px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-[#cdd4c8] dark:border-surface-border z-10 shadow-[8px_0_30px_rgba(0,0,0,0.04)] shrink-0">
         
         {/* Header & Status (Sticky) */}
-        <div className="p-5 border-b border-surface-border bg-surface-card/95 backdrop-blur-md sticky top-0 z-20">
-          <div className="flex items-center justify-between mb-4">
+        <div className="p-6 border-b border-[#cdd4c8] dark:border-surface-border bg-surface-card sticky top-0 z-20">
+          <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="font-display font-bold text-content-main text-xl">Chuyến đi #{booking.bookingId?.slice(-8)}</h1>
-              <p className="text-xs text-content-muted mt-1">Đang theo dõi hành trình</p>
+              <p className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-1">Mã chuyến đi</p>
+              <h1 className="font-mono font-bold text-content-main text-xl tracking-tight">#{booking.bookingId?.slice(-8)}</h1>
             </div>
-            <span className={cn('badge border text-xs px-3 py-1.5 shadow-sm', STATUS_COLOR[booking.bookingStatus] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-2 inline-block" />
+            <span className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border', STATUS_COLOR[booking.bookingStatus] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
               {BOOKING_STATUS_LABEL[booking.bookingStatus] || booking.bookingStatus}
             </span>
           </div>
 
-          {/* Progress steps */}
+          {/* Sleek Progress Bar */}
           {booking.bookingStatus !== BOOKING_STATUS.CANCELLED && (
-            <div className="flex items-center justify-between mt-2">
-              {STATUS_STEPS.slice(0, -1).map((s, i) => (
-                <div key={s} className="flex items-center flex-1">
-                  <div className={cn(
-                    'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-500',
-                    i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-500',
-                  )}>
-                    {i < stepIndex ? <RiCheckLine size={14} /> : i + 1}
-                  </div>
-                  {i < STATUS_STEPS.length - 2 && (
-                    <div className={cn('flex-1 h-1 mx-1.5 rounded-full transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-surface-border')} />
-                  )}
-                </div>
-              ))}
+            <div className="relative mt-2">
+              <div className="absolute top-1/2 left-0 w-full h-1 bg-surface-muted -translate-y-1/2 rounded-full" />
+              <div 
+                className="absolute top-1/2 left-0 h-1 bg-slate-950 dark:bg-white -translate-y-1/2 rounded-full transition-all duration-700 ease-out" 
+                style={{ width: `${(Math.max(0, stepIndex) / (STATUS_STEPS.length - 2)) * 100}%` }}
+              />
+              <div className="relative flex justify-between">
+                {STATUS_STEPS.slice(0, -1).map((s, i) => {
+                  const isCompleted = i <= stepIndex;
+                  const isCurrent = i === stepIndex;
+                  return (
+                    <div 
+                      key={s} 
+                      className={cn(
+                        "w-3.5 h-3.5 rounded-full border-[3px] bg-surface-card transition-all duration-500 z-10 flex items-center justify-center",
+                        isCompleted ? "border-slate-950 dark:border-white" : "border-surface-muted",
+                        isCurrent && "shadow-[0_0_0_4px_rgba(15,23,42,0.1)] dark:shadow-[0_0_0_4px_rgba(255,255,255,0.1)] scale-125"
+                      )}
+                    />
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
 
         {/* Scrollable Info Area */}
-        <div className="p-5 overflow-y-auto no-scrollbar space-y-6 flex-1">
+        <div className="p-6 overflow-y-auto no-scrollbar space-y-6 flex-1">
           {/* Driver info */}
           {booking.driverId ? (
-            <div className="bg-surface rounded-2xl p-5 border border-surface-border shadow-sm space-y-4">
-              <h3 className="font-semibold text-content-main text-sm">Thông tin tài xế</h3>
+            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-5 shadow-sm">
+              <h3 className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-4">Tài xế của bạn</h3>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-brand-500/20 border-2 border-brand-500/40 flex items-center justify-center text-2xl font-bold text-brand-400 overflow-hidden shrink-0 shadow-glow-green">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl font-bold text-slate-400 overflow-hidden shrink-0 shadow-sm border border-surface-border">
                   {booking.driverName?.[0] || <RiUserStarLine />}
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-content-main text-lg">{booking.driverName}</p>
-                  <div className="flex items-center gap-1 text-yellow-400 mt-0.5">
-                    <RiStarLine size={16} />
-                    <span className="text-sm font-medium">5.0</span>
+                  <h3 className="font-display font-bold text-content-main text-lg">{booking.driverName}</h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <RiStarLine size={14} className="text-amber-500" />
+                    <span className="text-sm font-bold text-content-main">5.0</span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-2 bg-surface-dark px-2 py-1 rounded-md inline-flex">
-                    <RiCarLine size={14} className="text-content-muted" />
-                    <span className="text-xs text-content-muted font-medium">{booking.vehicleTypeName} · {booking.licensePlate}</span>
+                  <div className="inline-flex items-center gap-1.5 mt-2 bg-surface-muted px-2.5 py-1 rounded-lg border border-surface-border">
+                    <RiCarLine size={13} className="text-content-muted" />
+                    <span className="font-mono text-xs font-bold text-content-main tracking-wider">
+                      {booking.vehicleTypeName} · {booking.licensePlate}
+                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors" 
-                    title={booking.driverPhone}
+                  <button className="w-10 h-10 rounded-xl bg-slate-950 dark:bg-white flex items-center justify-center text-white dark:text-slate-950 hover:scale-105 transition-transform shadow-md" 
                     onClick={() => window.open(`tel:${booking.driverPhone}`)}
                   >
-                    <RiPhoneLine size={18} />
+                    <RiPhoneLine size={16} />
                   </button>
                   <button
                     onClick={() => setChatOpen(true)}
-                    className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 hover:bg-brand-500/25 flex items-center justify-center text-brand-400 transition-colors shadow-sm"
+                    className="w-10 h-10 rounded-xl bg-lime-accent flex items-center justify-center text-slate-950 hover:bg-[#b8ff59] hover:scale-105 transition-transform shadow-md"
                   >
-                    <RiMessage2Line size={18} />
+                    <RiMessage2Line size={16} />
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-surface rounded-2xl p-6 border border-surface-border text-center flex flex-col items-center justify-center min-h-[140px] shadow-sm">
-              <Spinner className="mb-4" />
-              <p className="text-sm font-medium text-content-main">Đang tìm tài xế phù hợp cho bạn...</p>
-              <p className="text-xs text-content-muted mt-1">Vui lòng đợi trong giây lát</p>
+            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-[#f8faf6] dark:bg-surface-dark p-8 text-center flex flex-col items-center justify-center relative overflow-hidden min-h-[160px]">
+               {/* Animated radar effect for finding driver */}
+               <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+                 <div className="w-40 h-40 border-2 border-brand-500 rounded-full animate-ping" />
+               </div>
+               <Spinner className="mb-4 text-brand-500 relative z-10" size="lg" />
+               <h3 className="font-display font-bold text-lg text-content-main relative z-10">Đang tìm tài xế...</h3>
+               <p className="text-sm text-content-muted mt-1 relative z-10">Hệ thống đang quét các tài xế gần bạn nhất.</p>
             </div>
           )}
 
           {/* Route info */}
-          <div className="bg-surface rounded-2xl p-5 border border-surface-border space-y-4 shadow-sm">
-            <h3 className="font-semibold text-content-main text-sm">Hành trình & Cước phí</h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                  <RiMapPinLine size={18} className="text-brand-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đón</p>
-                  <p className="text-content-main text-sm font-medium mt-0.5">{booking.pickupLocation}</p>
-                </div>
+          <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-5 shadow-sm">
+            <h3 className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-4">Hành trình</h3>
+            <div className="relative pl-6 space-y-6">
+              <div className="absolute left-1.5 top-2 bottom-2 w-0.5 bg-surface-border rounded-full" />
+              
+              <div className="relative">
+                <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-[3px] border-surface-card bg-slate-950 dark:bg-white shadow-sm" />
+                <p className="text-[10px] text-content-muted uppercase font-bold tracking-wider mb-0.5">Điểm đón</p>
+                <p className="text-content-main text-sm font-bold leading-tight">{booking.pickupLocation}</p>
               </div>
-              <div className="w-0.5 h-6 bg-surface-border ml-4" />
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                  <RiMapPin2Line size={18} className="text-red-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đến</p>
-                  <p className="text-content-main text-sm font-medium mt-0.5">{booking.dropoffLocation}</p>
-                </div>
+
+              <div className="relative">
+                <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-[3px] border-surface-card bg-brand-500 shadow-sm" />
+                <p className="text-[10px] text-content-muted uppercase font-bold tracking-wider mb-0.5">Điểm đến</p>
+                <p className="text-content-main text-sm font-bold leading-tight">{booking.dropoffLocation}</p>
               </div>
             </div>
             
-            <div className="border-t border-surface-border pt-4 mt-2 flex justify-between items-center">
-              <span className="text-content-muted font-medium">Tổng thanh toán</span>
-              <span className="font-display font-bold text-brand-400 text-xl">{formatCurrency(booking.totalPrice)}</span>
+            <div className="border-t border-[#cdd4c8] dark:border-surface-border pt-4 mt-6 flex justify-between items-end">
+              <span className="text-[10px] font-bold text-content-muted uppercase tracking-wider">Tổng thanh toán</span>
+              <span className="font-display font-bold text-2xl tracking-tight text-slate-950 dark:text-white">{formatCurrency(booking.totalPrice)}</span>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="space-y-3 pt-4">
+          <div className="space-y-3 pt-2">
             {booking.bookingStatus === BOOKING_STATUS.COMPLETED && (
-              <Button fullWidth size="lg" onClick={handleRateDriver} className="shadow-lg shadow-brand-500/20">
-                <RiStarLine size={18} className="mr-2" /> Đánh giá chuyến đi
+              <Button fullWidth className="h-12 rounded-xl bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-bold" onClick={handleRateDriver}>
+                Đánh giá chuyến đi
               </Button>
             )}
             {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
-              <Button variant="danger" fullWidth onClick={handleCancel} loading={cancelling}>
+              <Button fullWidth className="h-12 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 font-bold border-none" onClick={handleCancel} loading={cancelling}>
                 Hủy chuyến đi
               </Button>
             )}
-            <Button variant="ghost" fullWidth onClick={() => {
+            <Button variant="outline" fullWidth className="h-12 rounded-xl border-[#cdd4c8] dark:border-surface-border font-bold text-content-main hover:border-slate-400" onClick={() => {
               if (booking.bookingStatus === BOOKING_STATUS.COMPLETED || booking.bookingStatus === BOOKING_STATUS.CANCELLED) {
                 clearCurrentBooking()
               }
@@ -353,13 +355,13 @@ const TripTrackingPage = () => {
       </div>
 
       {/* Vùng 2: Bản đồ Realtime */}
-      <div className="flex-1 relative h-[45vh] lg:h-full bg-surface-dark z-0">
+      <div className="flex-1 relative h-[45vh] lg:h-full bg-[#e8ece3] dark:bg-surface-dark z-0">
         <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
         
         {/* Map Overlay Indicator */}
-        <div className="absolute top-4 right-4 z-10 bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full border border-surface-border shadow-lg flex items-center gap-2">
+        <div className="absolute top-4 right-4 z-10 bg-surface-card/95 backdrop-blur-md px-4 py-2 rounded-xl border border-surface-border shadow-md flex items-center gap-2">
           <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
-          <span className="text-xs font-semibold text-content-main">Bản đồ trực tiếp</span>
+          <span className="text-xs font-bold text-content-main">Trực tiếp</span>
         </div>
       </div>
 
