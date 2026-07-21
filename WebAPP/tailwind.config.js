@@ -34,9 +34,9 @@ export default {
         },
       },
       fontFamily: {
-        sans:   ['Outfit', 'sans-serif'],
+        sans:   ['Inter', 'sans-serif'],
         mono:   ['"Space Mono"', 'monospace'],
-        display:['Syne', 'sans-serif'],
+        display:['"Plus Jakarta Sans"', 'sans-serif'],
       },
       animation: {
         'slide-up':    'slideUp 0.4s ease-out',
