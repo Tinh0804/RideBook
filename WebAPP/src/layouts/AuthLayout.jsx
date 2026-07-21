@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { RiMoonLine, RiRouteLine, RiSunLine } from 'react-icons/ri'
+import { RiMoonLine, RiSunLine } from 'react-icons/ri'
 import { useUIStore } from '@/store/rootStore'
 
 const AuthLayout = () => {
@@ -13,9 +13,7 @@ const AuthLayout = () => {
     <div className="min-h-[100dvh] bg-surface-dark text-content-main selection:bg-lime-accent/30">
       <header className="absolute inset-x-0 top-0 z-30 flex h-20 items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link to="/" className="group flex items-center gap-3" aria-label="BookCar - Trang chủ">
-          <span className={`grid h-10 w-10 place-items-center rounded-[14px] bg-content-main text-surface-dark shadow-sm transition-transform duration-300 group-hover:-rotate-6 ${isSplit ? 'lg:bg-white lg:text-slate-950' : ''} ${isWelcome ? 'bg-white text-slate-950' : ''}`}>
-            <RiRouteLine size={21} aria-hidden="true" />
-          </span>
+          <img src="/logo.png" alt="" className="h-10 w-10 rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6" />
           <span className={`font-display text-xl font-bold tracking-[-0.04em] ${isSplit ? 'lg:text-white' : ''} ${isWelcome ? 'text-white' : ''}`}>
             BookCar<span className="text-lime-accent">/</span>
           </span>

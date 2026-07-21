@@ -6,7 +6,7 @@ import {
   RiLogoutBoxLine, RiDashboardLine, RiCarLine,
   RiBarChartLine, RiMapPinLine,
   RiMoneyDollarCircleLine, RiCarFill,
-  RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line, RiRouteLine
+  RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line
 } from 'react-icons/ri'
 import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/store/rootStore'
 import { useAuth } from '@/hooks/useAuth'
@@ -214,9 +214,7 @@ const MainLayout = () => {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 px-6 h-20 shrink-0 overflow-hidden whitespace-nowrap border-b border-gray-100 dark:border-surface-border group" aria-label="BookCar - Trang chủ">
-          <span className="grid h-10 w-10 place-items-center rounded-[14px] bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-sm transition-transform duration-300 group-hover:-rotate-6 shrink-0">
-            <RiRouteLine size={21} aria-hidden="true" />
-          </span>
+          <img src="/logo.png" alt="" className="h-10 w-10 rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6 shrink-0" />
           <AnimatePresence>
             {sidebarOpen && (
               <motion.span 

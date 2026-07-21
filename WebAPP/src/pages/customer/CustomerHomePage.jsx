@@ -225,7 +225,7 @@ const CustomerHomePage = () => {
                           <div className="w-px h-6 bg-gray-300 dark:bg-surface-border my-1" />
                           <div className="w-2 h-2 rounded-full bg-blue-500" />
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-3">{trip.pickupLocation}</p>
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{trip.dropoffLocation}</p>
                         </div>
