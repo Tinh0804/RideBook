@@ -23,6 +23,7 @@ public class BookingDetailResponse {
     String driverName;
     String driverPhone;
     String vehicleTypeName;
+    String vehicleTypeIcon;
     String licensePlate;
     String pickupLocation;
     String dropoffLocation;

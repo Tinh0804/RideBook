@@ -505,6 +505,18 @@ public class DriverService {
         log.info("Driver location updated successfully: {} is now at ({}, {})", driverId, lat, lng);
     }
 
+    public void updateFreeLocation(String driverId, Double lat, Double lng) {
+        // Fast update, only touching Redis GEO, no DB save
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        
+        String vehicleTypeId = driver.getVehicleType() != null ? driver.getVehicleType().getVehicleTypeId() : null;
+        if (Boolean.TRUE.equals(driver.getActivityStatus())) {
+            driverCacheService.addDriverLocationGeo(driverId, vehicleTypeId, lat, lng);
+            log.debug("Free driver {} location updated in Redis GEO: ({}, {})", driverId, lat, lng);
+        }
+    }
+
 
 
     private void validateDriverUniqueness(CreateDriverRequest request) {

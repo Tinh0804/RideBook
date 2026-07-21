@@ -15,19 +15,6 @@
 
 ---
 
-## 📋 Mục lục
-
-- [Giới thiệu](#-giới-thiệu)
-- [Demo / Screenshots](#-demo--screenshots)
-- [Công nghệ sử dụng](#️-công-nghệ-tech-stack)
-- [Điểm nổi bật](#-điểm-nổi-bật-features)
-- [Cấu trúc dự án](#-cấu-trúc-dự-án)
-- [Hướng dẫn cài đặt](#-hướng-dẫn-cài-đặt--chạy-thử)
-- [Tài khoản demo](#-tài-khoản-demo)
-- [Đóng góp](#-đóng-góp-contributing)
-- [Liên hệ](#-liên-hệ)
-
----
 
 ## 📖 Giới thiệu
 
@@ -94,16 +81,38 @@ Dự án được xây dựng theo kiến trúc Client-Server với hệ sinh th
 
 ## 📂 Cấu trúc dự án
 
-```
+```text
 BookCar/
-├── Backend/          # Spring Boot API (Java 21)
-│   ├── src/
-│   └── docker-compose.yml
-├── WebAPP/            # React Web App (Customer & Driver & Admin)
-│   ├── src/
-│   └── .env.example
-└── docs/
-    └── screenshots/
+├── Backend/                # Spring Boot API (Java 21)
+│   ├── src/main/java/.../BookCarOnline/
+│   │   ├── Configuration/  # Cấu hình hệ thống (Security, WebSocket, Redis...)
+│   │   ├── Controller/     # REST APIs tiếp nhận và trả về response cho client
+│   │   ├── DTO/            # Data Transfer Objects định dạng dữ liệu giao tiếp
+│   │   ├── Entity/         # Các thực thể ánh xạ tới bảng trong Database (JPA)
+│   │   ├── Exception/      # Bắt và xử lý lỗi/ngoại lệ toàn cục
+│   │   ├── Mapper/         # Chuyển đổi dữ liệu tự động giữa Entity và DTO
+│   │   ├── Repository/     # Lớp truy xuất, thao tác với CSDL (Spring Data JPA)
+│   │   ├── Service/        # Xử lý các nghiệp vụ (Business logic) của dự án
+│   │   └── Utils/          # Các class/hàm tiện ích dùng chung
+│   ├── docker-compose.yml  # Script khởi tạo nhanh CSDL (PostgreSQL, Redis) bằng Docker
+│   └── pom.xml             # Cấu hình và quản lý các thư viện phụ thuộc (Maven)
+└── WebAPP/                 # React Web App (Customer, Driver & Admin)
+    ├── src/
+    │   ├── components/     # Các thành phần UI có thể tái sử dụng (Button, Input, Map...)
+    │   ├── config/         # File cấu hình biến số, thư viện bên thứ 3
+    │   ├── constants/      # Khai báo các hằng số dùng chung trong dự án
+    │   ├── features/       # Modules logic chia theo từng tính năng chuyên biệt
+    │   ├── hooks/          # Custom React hooks chứa logic có thể tái sử dụng
+    │   ├── layouts/        # Bố cục giao diện chung (Header, Footer, Sidebar...)
+    │   ├── pages/          # Các trang chính tương ứng với giao diện ứng dụng
+    │   ├── routes/         # Cấu hình định tuyến và phân quyền trang (React Router)
+    │   ├── schemas/        # Định nghĩa các rules để validation dữ liệu (Zod)
+    │   ├── services/       # Nơi tập trung xử lý gọi API kết nối với Backend
+    │   ├── store/          # Quản lý trạng thái chung của ứng dụng (Zustand state management)
+    │   └── utils/          # Các hàm hỗ trợ, tiện ích nhỏ (ví dụ: format ngày giờ, tiền tệ...)
+    ├── package.json        # Thông tin dự án và quản lý thư viện phụ thuộc (npm)
+    ├── vite.config.js      # Cấu hình Vite build tool để chạy/đóng gói dự án
+    └── .env.example        # Template lưu trữ các biến môi trường cần thiết
 ```
 
 ---

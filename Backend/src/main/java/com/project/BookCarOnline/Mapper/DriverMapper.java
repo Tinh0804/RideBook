@@ -41,6 +41,7 @@ public interface DriverMapper {
 
     @Mapping(source = "vehicleType.vehicleTypeId", target = "vehicleTypeId")
     @Mapping(source = "vehicleType.vehicleTypeName", target = "vehicleTypeName")
+    @Mapping(source = "vehicleType.icon", target = "vehicleTypeIcon")
     @Mapping(source = "vehicleType.pricePerKm", target = "pricePerKm")
 
     DriverDetailResponse toDriverDetailResponse(Driver driver);
