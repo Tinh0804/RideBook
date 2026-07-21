@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   RiMapPinLine, RiMapPin2Line, RiMessage2Line,
-  RiUserLine, RiPhoneLine, RiCheckLine, RiCarLine, RiCloseLine
+  RiUserLine, RiPhoneLine, RiCheckLine, RiCarLine, RiCloseLine,
+  RiNavigationFill, RiTimeLine
 } from 'react-icons/ri'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { useDriverStore, useAuthStore } from '@/store/rootStore'
@@ -15,7 +16,6 @@ import Spinner from '@/components/Elements/Spinner'
 import ChatDialog from '@/features/chat/components/ChatDialog'
 import Modal from '@/components/Elements/Modal'
 import { cn } from '@/utils/cn'
-import axios from 'axios'
 import InteractiveMap from '@/components/Map/InteractiveMap'
 
 
@@ -76,13 +76,8 @@ const DriverTripFlowPage = () => {
 
   // Live location tracking (No simulation, pure real-time GPS)
   useEffect(() => {
-    if (!currentTrip) return
-    const status = currentTrip.bookingStatus
-
-    if (![BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(status)) {
-      setDriverCoord(null)
-      return
-    }
+    // Only track if online or on an active trip
+    if (!isOnline && !currentTrip) return;
 
     let watchId = null
 
@@ -99,14 +94,18 @@ const DriverTripFlowPage = () => {
           })
 
           // Also keep localStorage as same-device fallback
-          localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
-
-          // Broadcast GPS via WebSocket to customer in real-time
-          sendTripMessageRef.current?.('/app/driver/location', {
-            bookingId: currentTrip.bookingId,
-            lat,
-            lng,
-          })
+          if (currentTrip) {
+            localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
+            
+            if ([BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(currentTrip.bookingStatus)) {
+               // Broadcast GPS via WebSocket to customer in real-time
+               sendTripMessageRef.current?.('/app/driver/location', {
+                 bookingId: currentTrip.bookingId,
+                 lat,
+                 lng,
+               })
+            }
+          }
         },
         (error) => {
           console.error('Lỗi lấy toạ độ GPS tài xế:', error)
@@ -118,7 +117,7 @@ const DriverTripFlowPage = () => {
     return () => {
       if (watchId) navigator.geolocation.clearWatch(watchId)
     }
-  }, [currentTrip?.bookingStatus, currentTrip?.bookingId])
+  }, [currentTrip, isOnline])
 
   // 1. Fetch current trip if any (on mount)
   useEffect(() => {
@@ -271,17 +270,25 @@ const DriverTripFlowPage = () => {
   // RENDER: OFFLINE
   // ==========================================
   if (!isOnline) return (
-    <div className="flex flex-col items-center justify-center py-24 space-y-4">
-      <div className="w-20 h-20 rounded-full bg-surface-border flex items-center justify-center">
-        <RiCarLine size={36} className="text-gray-600" />
+    <div className="h-full flex flex-col items-center justify-center relative overflow-hidden bg-[#e8ece3] dark:bg-surface-dark w-full">
+      <img src="/assets/images/map_bg.jpg" alt="Map" className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 bg-white/40 dark:bg-surface-dark/40 backdrop-blur-[2px] pointer-events-none" />
+      
+      <div className="relative z-10 bg-white/95 dark:bg-surface-card/95 backdrop-blur-md p-8 md:p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-11/12 text-center border border-gray-200 dark:border-surface-border">
+        <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-surface-dark flex items-center justify-center mb-6 shadow-inner">
+          <RiCarLine size={48} className="text-gray-400" />
+        </div>
+        <h2 className="font-display text-2xl font-bold text-gray-900 dark:text-white mb-3">Đang ngoại tuyến</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">
+          Vui lòng bật trạng thái hoạt động trên trang Dashboard để bắt đầu nhận cuốc và kiếm thêm thu nhập.
+        </p>
+        <button 
+          onClick={() => navigate('/driver/dashboard')}
+          className="w-full bg-brand-500 hover:bg-brand-400 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all"
+        >
+          Trở về Dashboard
+        </button>
       </div>
-      <h2 className="font-display text-xl font-bold text-content-main">Bạn đang ngoại tuyến</h2>
-      <p className="text-content-muted text-center max-w-xs">
-        Bật trạng thái hoạt động trên trang Dashboard để nhận chuyến
-      </p>
-      <Button variant="outline" onClick={() => navigate('/driver/dashboard')}>
-        Về Dashboard
-      </Button>
     </div>
   )
 
@@ -290,104 +297,103 @@ const DriverTripFlowPage = () => {
   // ==========================================
   if (!currentTrip) {
     return (
-      <div className="space-y-4 h-[calc(100vh-100px)] flex flex-col animate-fade-in">
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between">
-          <div>
-            <h1 className="section-title">Chờ nhận chuyến</h1>
-            <div className="flex items-center gap-2 text-xs text-brand-400 mt-1">
-              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-              Hệ thống đang tự động quét chuyến...
-            </div>
-          </div>
+      <div className="h-full flex flex-col relative bg-[#e8ece3] dark:bg-surface-dark w-full overflow-hidden">
+        
+        {/* Real Map or Background Map if real not available */}
+        <div className="absolute inset-0 z-0">
+          <InteractiveMap driver={driverCoord} zoom={15} />
+          {/* Overlay to fade bottom for visual hierarchy */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white/90 to-transparent dark:from-surface-dark/90 pointer-events-none" />
         </div>
 
-        {/* Mockup Map */}
-        <div className="flex-1 rounded-2xl overflow-hidden relative border border-brand-500/20 bg-[#0f172a]">
-          {/* Grid background representing map */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{
-            backgroundImage: `linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)`,
-            backgroundSize: '40px 40px'
-          }} />
-          
-          {/* Radar effect */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-[300px] h-[300px] rounded-full border border-brand-500/30 animate-ping absolute opacity-20" />
-            <div className="w-[200px] h-[200px] rounded-full border border-brand-500/50 animate-ping absolute opacity-40 delay-300" />
-            <div className="w-[100px] h-[100px] rounded-full border border-brand-500/80 animate-ping absolute opacity-60 delay-700" />
-            
-            {/* Driver Marker */}
-            <div className="relative z-10 w-12 h-12 rounded-full bg-brand-500/20 border-2 border-brand-400 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)]">
-              <RiCarLine size={24} className="text-content-main" />
+        {/* Top Floating Card */}
+        <div className="absolute top-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-10">
+          <div className="bg-white/95 dark:bg-surface-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 dark:border-surface-border p-4 flex items-center justify-between animate-fade-in-down">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center relative shrink-0">
+                <span className="absolute inset-0 rounded-full border-2 border-brand-500 animate-ping opacity-60"></span>
+                <RiNavigationFill size={24} className="text-brand-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg">Đang tìm chuyến xe...</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Hệ thống đang quét các cuốc xe quanh bạn</p>
+              </div>
             </div>
-          </div>
-          
-          {/* Status Overlay */}
-          <div className="absolute top-4 left-4 bg-surface-dark/90 backdrop-blur-md px-4 py-2 rounded-xl border border-surface-border flex items-center gap-3 shadow-lg">
-            <Spinner size="sm" className="text-brand-400" />
-            <span className="text-sm font-medium text-content-main">Đang tìm chuyến quanh bạn...</span>
           </div>
         </div>
 
         {/* Incoming Trip Popup Modal */}
-        <Modal isOpen={!!incomingTrip} onClose={handleReject} title="Chuyến đi mới!" size="sm" closeOnOverlayClick={false}>
+        <Modal isOpen={!!incomingTrip} onClose={handleReject} title="🚀 Có chuyến mới!" size="sm" closeOnOverlayClick={false}>
           {incomingTrip && (
-            <div className="space-y-5 animate-slide-up">
-              <div className="flex items-start justify-between gap-3">
+            <div className="space-y-6">
+              <div className="flex items-start justify-between gap-3 p-4 bg-gray-50 dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-surface-border">
                 <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Thu nhập dự kiến</div>
                   <div className="flex items-center gap-2">
-                    <span className="font-display text-2xl font-bold text-brand-400">
+                    <span className="font-display text-3xl font-bold text-brand-500">
                       {formatCurrency(incomingTrip.totalPrice || incomingTrip.price)}
                     </span>
-                    {incomingTrip.originalPrice && incomingTrip.originalPrice > (incomingTrip.totalPrice || incomingTrip.price) && (
-                      <span className="text-sm text-content-muted line-through font-medium">
-                        {formatCurrency(incomingTrip.originalPrice)}
-                      </span>
-                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
                     {incomingTrip.paymentMethod && (
                       <span className={cn(
-                        'badge text-[10px] ml-1',
-                        incomingTrip.paymentMethod === 'CASH' ? 'badge-gray' : 'badge-blue',
+                        'px-2 py-1 rounded-md text-[11px] font-bold',
+                        incomingTrip.paymentMethod === 'CASH' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
                       )}>
                         {incomingTrip.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Online'}
                       </span>
                     )}
-                  </div>
-                  <div className="text-xs text-content-muted mt-1">
-                    Khoảng cách: <span className="font-semibold text-content-main">{formatDistance(incomingTrip.distance)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded-md">
+                      {formatDistance(incomingTrip.distance)}
+                    </span>
                   </div>
                 </div>
-                <div className="w-12 h-12 rounded-full border-4 border-brand-500/20 flex items-center justify-center shrink-0 shadow-glow-green">
-                  <span className="text-lg animate-pulse text-brand-400 font-bold">15s</span>
+                <div className="w-16 h-16 rounded-full border-4 border-brand-500/20 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(34,197,94,0.2)] bg-white dark:bg-surface-card">
+                  <span className="text-xl animate-pulse text-brand-500 font-bold">15s</span>
                 </div>
               </div>
 
               {/* Route */}
-              <div className="bg-surface-dark rounded-xl p-3 space-y-2 border border-surface-border">
-                <div className="flex items-start gap-2">
-                  <RiMapPinLine size={16} className="text-brand-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">Đón</p>
-                    <p className="text-sm text-content-main">{incomingTrip.pickupLocation}</p>
+              <div className="relative">
+                <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200 dark:bg-surface-border"></div>
+                <div className="space-y-6 relative z-10">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 flex items-center justify-center shrink-0">
+                      <RiMapPinLine size={20} className="text-brand-500" />
+                    </div>
+                    <div className="pt-1">
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Điểm đón</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{incomingTrip.pickupLocation}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <RiMapPin2Line size={16} className="text-red-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">Đến</p>
-                    <p className="text-sm text-content-main">{incomingTrip.dropoffLocation}</p>
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
+                      <RiMapPin2Line size={20} className="text-red-500" />
+                    </div>
+                    <div className="pt-1">
+                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Điểm đến</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{incomingTrip.dropoffLocation}</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" fullWidth onClick={handleReject} disabled={accepting} className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500">
-                  <RiCloseLine size={18} /> Bỏ qua
-                </Button>
-                <Button fullWidth onClick={handleAccept} loading={accepting} className="bg-brand-500 hover:bg-brand-400 shadow-[0_0_20px_rgba(34,197,94,0.3)] text-content-main">
-                  <RiCheckLine size={18} /> Nhận chuyến
-                </Button>
+              <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-surface-border">
+                <button 
+                  onClick={handleReject} 
+                  disabled={accepting} 
+                  className="flex-1 py-3.5 rounded-xl font-bold border-2 border-red-100 text-red-500 bg-red-50 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+                >
+                  <RiCloseLine size={20} /> Bỏ qua
+                </button>
+                <button 
+                  onClick={handleAccept} 
+                  disabled={accepting} 
+                  className="flex-[2] py-3.5 rounded-xl font-bold bg-brand-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:bg-brand-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {accepting ? <Spinner size="sm" /> : <RiCheckLine size={20} />} Nhận chuyến
+                </button>
               </div>
             </div>
           )}
@@ -405,33 +411,33 @@ const DriverTripFlowPage = () => {
   const currentStep = STATUS_FLOW.find((s) => s.status === currentTrip.bookingStatus)
 
   return (
-    <div className="-m-6 h-[calc(100vh-64px)] flex flex-col lg:flex-row bg-surface-dark overflow-hidden animate-fade-in">
+    <div className="h-full flex flex-col lg:flex-row bg-[#e8ece3] dark:bg-surface-dark overflow-hidden relative">
       {/* Vùng 1: Thông tin chuyến đi */}
-      <div className="w-full lg:w-[450px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-surface-border z-10 shadow-2xl shrink-0 overflow-y-auto no-scrollbar">
-        <div className="p-5 border-b border-surface-border bg-surface-card/95 backdrop-blur-md sticky top-0 z-20">
+      <div className="w-full lg:w-[420px] flex flex-col h-[55vh] lg:h-full bg-white dark:bg-surface-card border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-surface-border z-10 shadow-2xl shrink-0">
+        <div className="p-5 md:p-6 border-b border-gray-100 dark:border-surface-border sticky top-0 z-20 bg-white/95 dark:bg-surface-card/95 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="font-display font-bold text-content-main text-xl">Chuyến đi #{currentTrip.bookingId?.slice(-8)}</h1>
-              <p className="text-xs text-content-muted mt-1">Đang xử lý chuyến đi</p>
+              <h1 className="font-display font-bold text-gray-900 dark:text-white text-xl">Chuyến đi #{currentTrip.bookingId?.slice(-8)}</h1>
+              <p className="text-xs text-gray-500 font-medium mt-1">Đang xử lý chuyến đi</p>
             </div>
-            <span className="badge border text-xs px-3 py-1.5 shadow-sm text-brand-400 bg-brand-400/10 border-brand-400/20">
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse mr-2 inline-block" />
+            <span className="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-500 bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 flex items-center">
+              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse mr-2" />
               {BOOKING_STATUS_LABEL[currentTrip.bookingStatus] || currentTrip.bookingStatus}
             </span>
           </div>
 
           {/* Progress steps */}
-          <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center justify-between mt-2 px-2">
             {STATUS_FLOW.map((s, i) => (
               <div key={s.status} className="flex items-center flex-1">
                 <div className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-500',
-                  i <= stepIndex ? 'bg-brand-500 text-content-main shadow-glow-green' : 'bg-surface-border text-gray-500',
+                  i <= stepIndex ? 'bg-brand-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-100 text-gray-400 dark:bg-surface-dark',
                 )}>
-                  {i < stepIndex ? <RiCheckLine size={14} /> : i + 1}
+                  {i < stepIndex ? <RiCheckLine size={16} /> : i + 1}
                 </div>
                 {i < STATUS_FLOW.length - 1 && (
-                  <div className={cn('flex-1 h-0.5 mx-1 transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-surface-border')} />
+                  <div className={cn('flex-1 h-1 mx-2 rounded-full transition-all duration-700', i < stepIndex ? 'bg-brand-500' : 'bg-gray-100 dark:bg-surface-dark')} />
                 )}
               </div>
             ))}
@@ -439,31 +445,31 @@ const DriverTripFlowPage = () => {
         </div>
 
         {/* Scrollable Info Area */}
-        <div className="p-5 space-y-6 flex-1">
+        <div className="p-5 md:p-6 overflow-y-auto no-scrollbar space-y-6 flex-1 bg-gray-50/50 dark:bg-transparent">
           {/* Customer info */}
           {currentTrip.customerId && (
-            <div className="bg-surface rounded-2xl p-5 border border-surface-border shadow-sm space-y-4">
-              <h3 className="font-semibold text-content-main text-sm">Thông tin khách hàng</h3>
+            <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 uppercase tracking-wider">Khách hàng</h3>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl font-bold text-blue-400 overflow-hidden shrink-0">
+                <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-2xl font-bold text-blue-500 shrink-0">
                   {currentTrip.customerName?.[0] || <RiUserLine size={24} />}
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold text-content-main text-base">{currentTrip.customerName}</p>
-                  <p className="text-xs text-content-muted mt-0.5">{currentTrip.customerPhone}</p>
+                  <p className="font-bold text-gray-900 dark:text-white text-base">{currentTrip.customerName}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{currentTrip.customerPhone}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="w-10 h-10 rounded-xl bg-surface-border hover:bg-surface-muted flex items-center justify-center text-content-muted hover:text-content-main transition-colors"
+                  <button className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-surface-border flex items-center justify-center text-gray-700 dark:text-gray-300 transition-colors"
                     title={currentTrip.customerPhone}
                     onClick={() => window.open(`tel:${currentTrip.customerPhone}`)}
                   >
-                    <RiPhoneLine size={18} />
+                    <RiPhoneLine size={20} />
                   </button>
                   <button
                     onClick={() => setChatOpen(true)}
-                    className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-400 hover:bg-brand-500/25 transition-colors shadow-glow-green"
+                    className="w-12 h-12 rounded-xl bg-brand-50 hover:bg-brand-100 dark:bg-brand-500/10 dark:hover:bg-brand-500/20 border border-brand-100 dark:border-brand-500/20 flex items-center justify-center text-brand-500 transition-colors"
                   >
-                    <RiMessage2Line size={18} />
+                    <RiMessage2Line size={20} />
                   </button>
                 </div>
               </div>
@@ -471,74 +477,89 @@ const DriverTripFlowPage = () => {
           )}
 
           {/* Route info */}
-          <div className="bg-surface rounded-2xl p-5 border border-surface-border space-y-4 shadow-sm">
-            <h3 className="font-semibold text-content-main text-sm">Hành trình & Cước phí</h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                  <RiMapPinLine size={14} className="text-brand-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đón</p>
-                  <p className="text-content-main text-sm font-medium mt-0.5">{currentTrip.pickupLocation}</p>
-                </div>
-              </div>
-              <div className="w-0.5 h-6 bg-surface-border ml-3.5" />
-              <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                  <RiMapPin2Line size={14} className="text-red-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-content-muted uppercase tracking-wider font-semibold">Điểm đến</p>
-                  <p className="text-content-main text-sm font-medium mt-0.5">{currentTrip.dropoffLocation}</p>
-                </div>
-              </div>
+          <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-5 uppercase tracking-wider">Hành trình & Cước phí</h3>
+            
+            <div className="relative mb-6">
+               <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gray-200 dark:bg-surface-border"></div>
+               <div className="space-y-5 relative z-10">
+                 <div className="flex items-start gap-4">
+                   <div className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                     <RiMapPinLine size={14} className="text-brand-500" />
+                   </div>
+                   <div>
+                     <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.pickupLocation}</p>
+                   </div>
+                 </div>
+                 <div className="flex items-start gap-4">
+                   <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                     <RiMapPin2Line size={14} className="text-red-500" />
+                   </div>
+                   <div>
+                     <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.dropoffLocation}</p>
+                   </div>
+                 </div>
+               </div>
             </div>
             
-            <div className="border-t border-surface-border pt-4 mt-2 flex justify-between items-center text-sm">
-              <span className="text-content-muted font-medium">Cước phí</span>
-              <div className="text-right flex items-center gap-2">
-                {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
-                  <span className="text-xs text-content-muted line-through">{formatCurrency(currentTrip.originalPrice)}</span>
-                )}
-                <span className="font-display font-bold text-brand-400 text-lg">{formatCurrency(currentTrip.totalPrice)}</span>
+            <div className="border-t border-gray-100 dark:border-surface-border pt-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-gray-500 font-medium text-sm">Cước phí</span>
+                <div className="text-right flex items-center gap-2">
+                  {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
+                    <span className="text-xs text-gray-400 line-through">{formatCurrency(currentTrip.originalPrice)}</span>
+                  )}
+                  <span className="font-display font-bold text-brand-500 text-xl">{formatCurrency(currentTrip.totalPrice)}</span>
+                </div>
               </div>
-            </div>
-            <div className="flex justify-between text-sm pt-1">
-              <span className="text-content-muted font-medium">Thanh toán</span>
-              <span className="text-content-main font-medium">{currentTrip.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 Trực tuyến'}</span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 font-medium">Thanh toán</span>
+                <span className="text-gray-900 dark:text-white font-bold px-2 py-1 bg-gray-100 dark:bg-surface-dark rounded-md">
+                  {currentTrip.paymentMethod === 'CASH' ? '💵 Tiền mặt' : '💳 Trực tuyến'}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="space-y-3 pt-4">
+          <div className="space-y-3 pt-2">
             {currentStep && (
-              <Button fullWidth size="lg" onClick={handleNextStatus} loading={updating} disabled={cancelingTrip}
-                className={currentStep.next === BOOKING_STATUS.COMPLETED ? 'bg-blue-500 hover:bg-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.3)] shadow-lg' : 'shadow-lg shadow-brand-500/20'}
+              <button 
+                onClick={handleNextStatus} 
+                disabled={updating || cancelingTrip}
+                className={cn(
+                  "w-full py-4 rounded-xl font-bold text-white text-base transition-all flex justify-center items-center gap-2",
+                  currentStep.next === BOOKING_STATUS.COMPLETED 
+                    ? 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]' 
+                    : 'bg-brand-500 hover:bg-brand-600 shadow-[0_0_20px_rgba(34,197,94,0.4)]'
+                )}
               >
+                {updating ? <Spinner size="sm" color="white" /> : null}
                 {currentStep.action}
-              </Button>
+              </button>
             )}
             
             {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
-              <Button fullWidth variant="outline" onClick={handleCancelTrip} loading={cancelingTrip} disabled={updating}
-                className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500"
+              <button 
+                onClick={handleCancelTrip} 
+                disabled={cancelingTrip || updating}
+                className="w-full py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
               >
-                <RiCloseLine size={18} className="mr-1" /> Hủy chuyến
-              </Button>
+                {cancelingTrip ? <Spinner size="sm" /> : <RiCloseLine size={20} />} Hủy chuyến đi
+              </button>
             )}
           </div>
         </div>
       </div>
 
       {/* Vùng 2: Bản đồ Realtime */}
-      <div className="flex-1 relative h-[45vh] lg:h-full bg-surface-dark z-0">
+      <div className="flex-1 relative h-[45vh] lg:h-full bg-[#e8ece3] dark:bg-surface-dark z-0">
         <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
         
         {/* Map Overlay Indicator */}
-        <div className="absolute top-4 right-4 z-10 bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full border border-surface-border shadow-lg flex items-center gap-2">
-          <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
-          <span className="text-xs font-semibold text-content-main">Đường đi trực tiếp</span>
+        <div className="absolute top-6 right-6 z-10 bg-white/90 dark:bg-surface-card/90 backdrop-blur-md px-4 py-2.5 rounded-full border border-gray-100 dark:border-surface-border shadow-lg flex items-center gap-2">
+          <div className="w-2.5 h-2.5 bg-brand-500 rounded-full animate-pulse" />
+          <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">Đường đi trực tiếp</span>
         </div>
       </div>
 
