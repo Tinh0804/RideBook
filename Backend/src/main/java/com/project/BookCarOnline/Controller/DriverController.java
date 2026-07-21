@@ -4,6 +4,7 @@ import org.springframework.http.MediaType;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
@@ -113,6 +114,18 @@ public class DriverController {
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật thông tin thành công")
                 .result(driver)
+                .build();
+    }
+
+    @PutMapping("/location/free")
+    public APIResponse<Void> updateFreeLocation(@RequestBody DriverLocationRequest request) {
+        String driverId = SecurityContextHolder.getContext().getAuthentication().getName();
+        if (request.getLat() != null && request.getLng() != null) {
+            driverService.updateFreeLocation(driverId, request.getLat(), request.getLng());
+        }
+        return APIResponse.<Void>builder()
+                .status(HttpStatus.OK.value())
+                .message("Location updated")
                 .build();
     }
 

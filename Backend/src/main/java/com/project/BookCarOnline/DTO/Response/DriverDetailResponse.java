@@ -43,6 +43,7 @@ public class DriverDetailResponse {
     // Vehicle Type Info
     String vehicleTypeId;
     String vehicleTypeName;
+    String vehicleTypeIcon;
     Double pricePerKm;
 
 
