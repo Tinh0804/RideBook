@@ -6,6 +6,11 @@ import { formatDate } from '@/utils/formatDate';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/utils/cn';
 import { useAuthStore } from '@/store/rootStore';
+import Button from '@/components/Elements/Button';
+import Spinner from '@/components/Elements/Spinner';
+import Input from '@/components/Elements/Input';
+import { motion, AnimatePresence } from 'motion/react';
+import { RiTicketLine, RiArrowRightLine, RiTimeLine, RiFileCopyLine } from 'react-icons/ri';
 
 const PROMO_IMAGES = [
   "https://images.unsplash.com/photo-1542751371-adc2131af163?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -18,7 +23,7 @@ const PROMO_IMAGES = [
 const CustomerPromotionsPage = () => {
   const navigate = useNavigate();
   const { userProfile, isAuth } = useAuthStore();
-  const [activeTab, setActiveTab] = useState('EXPLORE'); // 'EXPLORE' | 'WALLET'
+  const [activeTab, setActiveTab] = useState('EXPLORE'); 
   
   const [promotions, setPromotions] = useState([]);
   const [myPromotions, setMyPromotions] = useState([]);
@@ -50,12 +55,12 @@ const CustomerPromotionsPage = () => {
     const customerId = userProfile?.id || userProfile?.customerId;
     if (!customerId) {
         toast.error('Vui lòng đăng nhập để lưu khuyến mãi');
+        navigate('/login/customer');
         return;
     }
     try {
         await masterDataApi.savePromotion(customerId, code);
         toast.success(`Đã lưu mã ${code} vào Ví Voucher!`);
-        // Tải lại danh sách voucher ngầm (silently)
         const savedPromos = await masterDataApi.getMyPromotions(customerId);
         setMyPromotions(Array.isArray(savedPromos) ? savedPromos : []);
     } catch (error) {
@@ -76,249 +81,278 @@ const CustomerPromotionsPage = () => {
     navigate('/customer/booking');
   };
 
-  // Helper render card
   const renderPromoCard = (promo, idx, isWallet = false) => {
     const isSaved = myPromotions.some(p => p.promotionCode === promo.promotionCode);
     const isExpired = isWallet && (promo.isExpired || !promo.isActive);
 
     return (
-      <div
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
         key={promo.promotionId || promo.promotionCode || idx}
         className={cn(
-          "group bg-surface/60 backdrop-blur-sm rounded-2xl border overflow-hidden flex flex-col transition-all duration-300",
+          "group relative flex flex-col overflow-hidden rounded-2xl border bg-surface-card transition-all duration-300",
           isExpired 
-            ? "border-red-500/30 opacity-70 grayscale-[0.5]" 
-            : "border-white/10 hover:border-brand-500/40 hover:shadow-glow"
+            ? "border-surface-border/50 opacity-60 grayscale-[0.8]" 
+            : "border-surface-border hover:border-slate-400 dark:hover:border-slate-500 shadow-sm hover:shadow-md"
         )}
       >
-        {/* Ảnh với overlay mờ */}
-        <div className="relative h-44 overflow-hidden bg-surface-dark">
+        <div className="relative h-40 overflow-hidden bg-slate-100 dark:bg-slate-900">
           <img
             src={promo.promotionImage || PROMO_IMAGES[idx % PROMO_IMAGES.length]}
             alt={promo.promotionName || "Khuyến mãi"}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
             onError={(e) => { e.target.src = PROMO_IMAGES[0] }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface/90 via-surface/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
           
-          {/* Labels góc phải */}
-          {isExpired ? (
-            <div className="absolute top-3 right-3 bg-red-500/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
-              Đã hết hạn
-            </div>
-          ) : idx === 0 && !isWallet ? (
-            <div className="absolute top-3 right-3 bg-brand-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
-              Mới nhất
-            </div>
-          ) : isSaved && !isWallet ? (
-            <div className="absolute top-3 right-3 bg-green-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
-              Đã lưu
-            </div>
-          ) : null}
-
-          {/* Code */}
-          <div className="absolute bottom-3 left-3 right-3">
-            <div className="text-content-main font-mono font-bold text-lg bg-black/60 backdrop-blur-md inline-block px-3 py-1 rounded-xl border border-white/10">
-              Mã: {promo.promotionCode}
+          <div className="absolute left-4 right-4 top-4 flex justify-between items-start">
+            {isExpired ? (
+              <span className="rounded-md bg-slate-900/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur">
+                Đã hết hạn
+              </span>
+            ) : idx === 0 && !isWallet ? (
+              <span className="rounded-md bg-lime-accent px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-950 shadow-sm">
+                Mới nhất
+              </span>
+            ) : isSaved && !isWallet ? (
+              <span className="rounded-md bg-emerald-500 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm">
+                Đã lưu
+              </span>
+            ) : (
+              <span /> 
+            )}
+            
+            <div className="flex items-center gap-1.5 rounded-lg bg-slate-950/80 px-2.5 py-1 text-white backdrop-blur">
+              <RiTicketLine size={14} className="text-lime-accent" />
+              <span className="font-mono text-xs font-bold tracking-widest">{promo.promotionCode}</span>
             </div>
           </div>
         </div>
 
-        {/* Nội dung */}
-        <div className="p-5 flex flex-col flex-1">
-          <h3 className="text-lg font-bold text-content-main mb-1 line-clamp-1">
-            {promo.promotionName || `Ưu đãi giảm giá`}
+        <div className="flex flex-1 flex-col p-5">
+          <h3 className="mb-2 font-display text-lg font-bold leading-tight text-content-main line-clamp-2">
+            {promo.promotionName || `Ưu đãi giảm giá đặc biệt`}
           </h3>
-          <p className="text-content-muted text-sm mb-4 line-clamp-2 min-h-[40px]">
-            {promo.applicationCondition || `Giảm ${formatCurrency(promo.discountLimit)} cho chuyến đi tiếp theo.`}
+          <p className="mb-5 min-h-[40px] text-sm leading-relaxed text-content-muted line-clamp-2">
+            {promo.applicationCondition || `Giảm ${formatCurrency(promo.discountLimit)} cho chuyến đi của bạn.`}
           </p>
 
-          <div className="mt-auto space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-brand-400 font-bold text-xl">
-                -{promo.discountType === 'PERCENTAGE' && promo.discountValue 
+          <div className="mb-5 mt-auto flex items-end justify-between border-t border-surface-border pt-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-0.5">Giảm giá</p>
+              <p className="font-display text-2xl font-bold text-slate-950 dark:text-white">
+                {promo.discountType === 'PERCENTAGE' && promo.discountValue 
                     ? `${promo.discountValue}%` 
                     : formatCurrency(promo.discountLimit)}
-              </span>
-              <div className="text-right">
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full",
-                  isExpired ? "bg-red-500/10 text-red-400" : "bg-white/5 text-content-muted/70"
-                )}>
-                  {promo.endTime ? `HSD: ${formatDate(promo.endTime)}` : 'Không giới hạn'}
-                </span>
-                {promo.minTripValue > 0 && (
-                  <p className="text-[10px] text-content-muted mt-1">
-                    Đơn tối thiểu {formatCurrency(promo.minTripValue)}
-                  </p>
-                )}
-              </div>
+              </p>
             </div>
-
-            <div className="flex gap-2">
-              {!isWallet ? (
-                <>
-                  <button
-                    onClick={() => handleSavePromotion(promo.promotionCode)}
-                    disabled={isSaved}
-                    className={cn(
-                      "flex-1 font-semibold py-2.5 rounded-xl transition-all duration-200 border",
-                      isSaved 
-                        ? "bg-surface-disabled text-content-muted border-transparent cursor-not-allowed"
-                        : "bg-surface-border hover:bg-white/10 text-content-main border-white/10"
-                    )}
-                  >
-                    {isSaved ? 'Đã lưu' : 'Lưu mã'}
-                  </button>
-                  <button
-                    onClick={() => handleUsePromotion(promo.promotionCode)}
-                    className="flex-1 bg-brand-500/90 hover:bg-brand-500 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-md shadow-brand-500/20"
-                  >
-                    Dùng ngay
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => handleUsePromotion(promo.promotionCode)}
-                  disabled={isExpired}
-                  className={cn(
-                    "w-full font-semibold py-2.5 rounded-xl transition-all duration-200 shadow-md",
-                    isExpired
-                      ? "bg-surface-disabled text-content-muted cursor-not-allowed"
-                      : "bg-brand-500/90 hover:bg-brand-500 text-white shadow-brand-500/20"
-                  )}
-                >
-                  {isExpired ? 'Đã hết hạn' : 'Dùng ngay'}
-                </button>
+            <div className="text-right">
+              <span className="flex items-center justify-end gap-1 text-xs font-semibold text-content-muted">
+                <RiTimeLine size={13} />
+                {promo.endTime ? formatDate(promo.endTime) : 'Vô thời hạn'}
+              </span>
+              {promo.minTripValue > 0 && (
+                <p className="mt-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  Đơn tối thiểu {formatCurrency(promo.minTripValue)}
+                </p>
               )}
             </div>
           </div>
+
+          <div className="flex gap-2">
+            {!isWallet ? (
+              <>
+                <Button
+                  variant={isSaved ? "outline" : "primary"}
+                  onClick={() => handleSavePromotion(promo.promotionCode)}
+                  disabled={isSaved}
+                  className={cn(
+                    "flex-1 rounded-xl h-11 font-bold",
+                    !isSaved && "bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                  )}
+                >
+                  {isSaved ? 'Đã lưu' : 'Lưu mã'}
+                </Button>
+                <Button
+                  onClick={() => handleUsePromotion(promo.promotionCode)}
+                  className="flex-1 rounded-xl h-11 bg-lime-accent text-slate-950 font-bold hover:bg-[#b8ff59]"
+                >
+                  Dùng ngay
+                </Button>
+              </>
+            ) : (
+              <Button
+                fullWidth
+                onClick={() => handleUsePromotion(promo.promotionCode)}
+                disabled={isExpired}
+                className={cn(
+                  "rounded-xl h-11 font-bold",
+                  isExpired 
+                    ? "opacity-50"
+                    : "bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                )}
+              >
+                {isExpired ? 'Đã hết hạn' : 'Sử dụng ngay'}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-surface-dark to-surface pb-12">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-brand-500 rounded-b-3xl border-b border-white/10">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5" />
-        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow-sm">
-            Ưu đãi độc quyền
-          </h1>
-          <p className="text-white/80 mt-2 max-w-lg mx-auto text-sm md:text-base">
-            Lưu mã vào Ví Voucher để không bỏ lỡ các đặc quyền giảm giá!
-          </p>
-        </div>
-      </div>
+    <div className="h-full overflow-y-auto bg-[#e8ece3] dark:bg-surface-dark pointer-events-auto">
+      <motion.div
+        initial={{ opacity: 0, x: -18 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto w-full max-w-5xl space-y-6 p-5 pb-10 lg:p-8"
+      >
+        {/* Sleek Hero Section */}
+        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-6 sm:p-8 text-white shadow-sm">
+          <div className="relative z-10 max-w-[80%]">
+            <p className="mb-3 text-sm font-semibold text-lime-accent uppercase tracking-wider">BookCar Rewards</p>
+            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.04em]">
+              Ưu đãi<br />Độc quyền
+            </h1>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">
+              Khám phá và lưu ngay các mã khuyến mãi tốt nhất dành riêng cho bạn.
+            </p>
+          </div>
+          <span className="absolute -bottom-6 right-2 font-display text-[9rem] font-bold tracking-[-0.08em] text-white/[.04] select-none">
+            %
+          </span>
+        </section>
 
-      <div className="max-w-5xl mx-auto px-4 -mt-6">
-        {/* Tabs Điều hướng */}
-        <div className="bg-surface/80 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 flex shadow-xl max-w-sm mx-auto mb-10 relative z-10">
+        {/* Tab Navigation */}
+        <div className="flex gap-2 border-b border-surface-border">
           <button
-            className={cn(
-              "flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300",
-              activeTab === 'EXPLORE' 
-                ? "bg-brand-500 text-white shadow-md" 
-                : "text-content-muted hover:text-content-main hover:bg-white/5"
-            )}
             onClick={() => setActiveTab('EXPLORE')}
+            className={cn(
+              'px-5 py-3 text-sm font-bold transition-all relative',
+              activeTab === 'EXPLORE'
+                ? 'text-slate-950 dark:text-white'
+                : 'text-content-muted hover:text-content-main'
+            )}
           >
-            Khám phá ưu đãi
+            Khám phá
+            {activeTab === 'EXPLORE' && (
+              <motion.div layoutId="promoTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950 dark:bg-white" />
+            )}
           </button>
           <button
-            className={cn(
-              "flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all duration-300 relative",
-              activeTab === 'WALLET' 
-                ? "bg-brand-500 text-white shadow-md" 
-                : "text-content-muted hover:text-content-main hover:bg-white/5"
-            )}
             onClick={() => setActiveTab('WALLET')}
+            className={cn(
+              'px-5 py-3 text-sm font-bold transition-all relative flex items-center gap-2',
+              activeTab === 'WALLET'
+                ? 'text-slate-950 dark:text-white'
+                : 'text-content-muted hover:text-content-main'
+            )}
           >
             Ví Voucher
             {myPromotions.length > 0 && (
-              <span className="absolute top-1.5 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] text-white">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-950 dark:bg-white text-[10px] text-white dark:text-slate-950">
                 {myPromotions.length}
               </span>
+            )}
+            {activeTab === 'WALLET' && (
+              <motion.div layoutId="promoTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950 dark:bg-white" />
             )}
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content Area */}
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-500" />
+          <div className="flex justify-center py-20">
+            <Spinner size="lg" />
           </div>
-        ) : activeTab === 'EXPLORE' ? (
-          /* Tab Khám phá */
-          promotions.length === 0 ? (
-            <div className="text-center py-16 bg-surface/50 backdrop-blur-sm rounded-2xl border border-white/10">
-              <p className="text-content-muted text-lg">Hiện chưa có chương trình khuyến mãi nào.</p>
-              <p className="text-content-muted/70 text-sm mt-1">Vui lòng quay lại sau nhé!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {promotions.map((promo, idx) => renderPromoCard(promo, idx, false))}
-            </div>
-          )
         ) : (
-          /* Tab Ví Voucher */
-          !isAuth ? (
-            <div className="text-center py-16 bg-surface/50 backdrop-blur-sm rounded-2xl border border-white/10">
-              <p className="text-content-main font-semibold mb-3">Bạn chưa đăng nhập</p>
-              <button 
-                onClick={() => navigate('/login/customer')}
-                className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl transition-colors font-medium"
+          <AnimatePresence mode="wait">
+            {activeTab === 'EXPLORE' && (
+              <motion.div
+                key="explore"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
               >
-                Đăng nhập ngay
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Nhập mã thủ công */}
-              <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-2xl border border-white/10 flex items-center justify-center max-w-xl mx-auto">
-                <form onSubmit={handleManualSave} className="flex flex-col sm:flex-row gap-3 w-full">
-                  <input 
-                    type="text" 
-                    placeholder="Nhập mã khuyến mãi (VD: VIP100)"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    className="flex-1 bg-surface-dark border border-white/10 rounded-xl px-4 py-2.5 text-content-main focus:outline-none focus:border-brand-500 uppercase font-mono"
-                  />
-                  <button 
-                    type="submit"
-                    disabled={!manualCode.trim()}
-                    className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-brand-500/20"
-                  >
-                    Lưu mã
-                  </button>
-                </form>
-              </div>
-
-              {myPromotions.length === 0 ? (
-                <div className="text-center py-16 bg-surface/50 backdrop-blur-sm rounded-2xl border border-white/10">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">🎫</span>
+                {promotions.length === 0 ? (
+                  <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
+                    <p className="font-display text-xl font-bold text-content-main">Chưa có khuyến mãi mới</p>
+                    <p className="mt-2 text-sm text-content-muted">Vui lòng quay lại sau nhé.</p>
                   </div>
-                  <p className="text-content-muted text-lg font-medium">Ví Voucher của bạn đang trống.</p>
-                  <p className="text-content-muted/70 text-sm mt-1 mb-6">Hãy sang tab Khám phá để lưu mã nhé!</p>
-                  <button 
-                    onClick={() => setActiveTab('EXPLORE')}
-                    className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl transition-colors font-medium shadow-lg shadow-brand-500/20"
-                  >
-                    Khám phá ngay
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {myPromotions.map((promo, idx) => renderPromoCard(promo, idx, true))}
-                </div>
-              )}
-            </div>
-          )
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {promotions.map((promo, idx) => renderPromoCard(promo, idx, false))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'WALLET' && (
+              <motion.div
+                key="wallet"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {!isAuth ? (
+                  <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
+                    <p className="font-display text-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
+                    <Button 
+                      onClick={() => navigate('/login/customer')}
+                      className="rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950"
+                    >
+                      Đăng nhập để xem Ví
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Manual Save Form */}
+                    <div className="rounded-2xl border border-surface-border bg-surface-card p-4 shadow-sm flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1 relative">
+                        <RiTicketLine className="absolute left-4 top-1/2 -translate-y-1/2 text-content-muted" />
+                        <Input 
+                          placeholder="Nhập mã khuyến mãi (VD: VIP100)"
+                          value={manualCode}
+                          onChange={(e) => setManualCode(e.target.value)}
+                          className="w-full !pl-10 !rounded-xl !bg-surface-dark !border-surface-border font-mono uppercase"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleManualSave}
+                        disabled={!manualCode.trim()}
+                        className="h-11 rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 sm:w-auto w-full"
+                      >
+                        Thêm vào ví
+                      </Button>
+                    </div>
+
+                    {myPromotions.length === 0 ? (
+                      <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
+                        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-surface-muted text-content-muted">
+                          <RiTicketLine size={32} />
+                        </div>
+                        <p className="font-display text-xl font-bold text-content-main">Ví trống</p>
+                        <p className="mt-2 text-sm text-content-muted">Hãy chuyển sang tab Khám phá để lưu mã nhé.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {myPromotions.map((promo, idx) => renderPromoCard(promo, idx, true))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };
