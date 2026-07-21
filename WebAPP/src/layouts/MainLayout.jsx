@@ -203,9 +203,7 @@ const MainLayout = () => {
           'flex items-center gap-3 px-4 h-16 border-b border-surface-border shrink-0',
           !sidebarOpen && 'justify-center px-0',
         )}>
-          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shrink-0 shadow-glow-green">
-            <RiCarFill className="text-content-main" size={16} />
-          </div>
+          <img src="/logo.png" alt="" className="w-8 h-8 rounded-lg object-cover shrink-0 shadow-glow-green" />
           {sidebarOpen && (
             <span className="font-display text-lg font-bold text-content-main">BookCar</span>
           )}

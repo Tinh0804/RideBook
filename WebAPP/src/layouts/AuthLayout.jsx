@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router-dom'
-import { RiCarFill, RiSunLine, RiMoonLine } from 'react-icons/ri'
+import { RiSunLine, RiMoonLine } from 'react-icons/ri'
 import { useUIStore } from '@/store/rootStore'
 
 const AuthLayout = () => {
@@ -20,9 +20,7 @@ const AuthLayout = () => {
       <div className="relative z-10 flex flex-col justify-between p-12 w-full">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center shadow-glow-green">
-            <RiCarFill className="text-white" size={22} />
-          </div>
+          <img src="/logo.png" alt="" className="w-10 h-10 rounded-xl object-cover shadow-glow-green" />
           <span className="font-display text-2xl font-bold text-white">BookCar</span>
         </Link>
 
@@ -78,9 +76,7 @@ const AuthLayout = () => {
 
       {/* Mobile logo */}
       <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-        <div className="w-9 h-9 rounded-xl bg-brand-500 flex items-center justify-center">
-          <RiCarFill className="text-content-main" size={18} />
-        </div>
+        <img src="/logo.png" alt="" className="w-9 h-9 rounded-xl object-cover" />
         <span className="font-display text-xl font-bold text-content-main">BookCar</span>
       </Link>
 
