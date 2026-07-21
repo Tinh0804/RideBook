@@ -65,9 +65,6 @@ export const driverApi = {
   updateLocation: (driverId, lat, lng) =>
     apiClient.put(`/drivers/${driverId}`, { currentLat: lat, currentLng: lng }).then((r) => r.data),
 
-  updateFreeLocation: (lat, lng) =>
-    apiClient.put('/drivers/location/free', { lat, lng }).then(r => r.data),
-
   // --- Admin Wallet Management ---
   getDriverWallet: (driverId) =>
     apiClient.get(`/admin/wallets/driver/${driverId}`).then((r) => r.data),

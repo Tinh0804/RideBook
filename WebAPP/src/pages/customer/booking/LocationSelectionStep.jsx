@@ -1,9 +1,16 @@
-import React from 'react'
-import { RiMapPinLine, RiMapPin2Line, RiArrowLeftLine } from 'react-icons/ri'
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiFocus3Line,
+  RiMapPin2Line,
+  RiMapPinLine,
+} from 'react-icons/ri'
+import { AnimatePresence, motion } from 'motion/react'
 import Button from '@/components/Elements/Button'
 import AddressInput from '@/components/Map/AddressInput'
 import LocationAutocomplete from '@/components/Elements/LocationAutocomplete'
 import Spinner from '@/components/Elements/Spinner'
+import BookingJourneyProgress from './BookingJourneyProgress'
 
 const LocationSelectionStep = ({
   pickup,
@@ -15,160 +22,162 @@ const LocationSelectionStep = ({
   tempMapLocation,
   mapLoading,
   openMapSelection,
-  handleNextStep
+  handleNextStep,
 }) => {
-
   if (selectingLocationFor) {
+    const isPickup = selectingLocationFor === 'pickup'
+
     return (
-      <>
-        <button 
-          onClick={() => setSelectingLocationFor(null)}
-          className="absolute top-4 left-4 pointer-events-auto z-10 w-10 h-10 bg-surface-card/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-surface-border hover:bg-surface-muted transition-colors"
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 z-20 flex flex-col pointer-events-none"
         >
-          <RiArrowLeftLine size={20} className="text-content-main" />
-        </button>
-        
-        <div className="flex-1 min-h-0 pointer-events-none" />
-        
-        <div className="relative z-10 bg-surface-card rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-surface-border p-6 pointer-events-auto pb-8">
-           <div className="flex items-start gap-4 mb-6">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${selectingLocationFor === 'pickup' ? 'bg-brand-500/20 text-brand-400' : 'bg-red-500/20 text-red-400'}`}>
-                {selectingLocationFor === 'pickup' ? <RiMapPinLine size={24} /> : <RiMapPin2Line size={24} />}
+          <button
+            type="button"
+            onClick={() => setSelectingLocationFor(null)}
+            className="pointer-events-auto absolute left-5 top-5 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/40 bg-white/85 text-slate-950 shadow-lg backdrop-blur active:scale-95"
+            aria-label="Quay lại"
+          >
+            <RiArrowLeftLine size={21} />
+          </button>
+
+          <div className="flex-1" />
+
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+            className="pointer-events-auto rounded-t-3xl border-t border-surface-border bg-surface-card/95 p-5 pb-7 shadow-[0_-16px_50px_rgba(15,23,42,.18)] backdrop-blur-xl sm:p-7"
+          >
+            <div className="mx-auto mb-6 h-1 w-12 rounded-full bg-surface-border" />
+            <div className="mb-6 flex items-center gap-4">
+              <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${isPickup ? 'bg-brand-500 text-white' : 'bg-slate-950 text-white dark:bg-white dark:text-slate-950'}`}>
+                {isPickup ? <RiMapPinLine size={23} /> : <RiMapPin2Line size={23} />}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-content-muted">
+                  {isPickup ? 'Điểm đón trên bản đồ' : 'Điểm đến trên bản đồ'}
+                </p>
+                <p className="mt-1 line-clamp-2 font-bold text-content-main">
+                  {tempMapLocation?.name || 'Di chuyển ghim đến vị trí mong muốn'}
+                </p>
               </div>
-              <div>
-                 <p className="text-sm text-content-muted font-medium mb-1">
-                   {selectingLocationFor === 'pickup' ? 'Chọn điểm đón trên bản đồ' : 'Chọn điểm đến trên bản đồ'}
-                 </p>
-                 <p className="text-content-main font-semibold line-clamp-2 leading-snug">
-                   {tempMapLocation?.name || 'Đang xác định vị trí...'}
-                 </p>
-              </div>
-           </div>
-           <Button 
-             fullWidth size="lg" 
-             disabled={!tempMapLocation}
-             onClick={() => {
-               if (selectingLocationFor === 'pickup') setPickup(tempMapLocation)
-               else setDropoff(tempMapLocation)
-               setSelectingLocationFor(null)
-             }}
-           >
-             Xác nhận vị trí
-           </Button>
-        </div>
-      </>
+            </div>
+            <Button
+              fullWidth
+              size="lg"
+              disabled={!tempMapLocation}
+              className="h-[52px] rounded-xl font-bold"
+              onClick={() => {
+                if (isPickup) setPickup(tempMapLocation)
+                else setDropoff(tempMapLocation)
+                setSelectingLocationFor(null)
+              }}
+            >
+              Xác nhận vị trí
+            </Button>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
     )
   }
 
   return (
-    <div className="w-full h-full bg-surface-dark p-6 pointer-events-auto overflow-y-auto">
-      <div className="max-w-2xl mx-auto space-y-8 mt-4 lg:mt-10">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-display font-bold text-content-main">Bạn muốn đi đâu?</h1>
-          <p className="text-content-muted">Nhập điểm đón và điểm đến để bắt đầu hành trình</p>
-        </div>
-            
-      
-        <div className="card p-6 space-y-6 relative">
-          
-          <div className="space-y-6 relative z-10">
-            {/* Vertical line connecting inputs */}
-            <div className="absolute left-[15px] top-[32px] bottom-[32px] w-0.5 bg-surface-border border-dashed border-l-2 -z-10" />
+    <div className="pointer-events-auto h-full overflow-y-auto bg-[#e8ece3] dark:bg-surface-dark">
+      <motion.div
+        initial={{ opacity: 0, x: -18 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="mx-auto w-full max-w-xl space-y-5 p-5 pb-8 lg:p-7"
+      >
+        <BookingJourneyProgress step={1} />
 
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0 shadow-glow-green">
-                <RiMapPinLine size={18} className="text-brand-400" />
-              </div>
-              <div className="flex-1 flex gap-2 items-start">
-                <div className="flex-1">
-                  <p className="text-xs text-content-muted mb-1 ml-1">Điểm đón</p>
+        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-6 text-white">
+          <div className="relative z-10 max-w-[75%]">
+            <p className="mb-3 text-sm font-semibold text-lime-accent">Tạo hành trình mới</p>
+            <h1 className="font-display text-3xl font-bold leading-[1.02] tracking-[-0.04em]">
+              Bạn muốn đi đâu?
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-white/55">Chọn hai điểm, phần còn lại để BookCar lo.</p>
+          </div>
+          <span className="absolute -bottom-5 right-3 font-display text-8xl font-bold tracking-[-0.08em] text-white/[.06]">01</span>
+        </section>
+
+        <section className="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm">
+          <div className="relative space-y-5">
+            <span className="absolute bottom-12 left-5 top-12 w-px bg-surface-border" />
+
+            <div className="relative flex gap-3">
+              <span className="z-10 mt-6 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-500 text-white">
+                <RiMapPinLine size={19} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <label className="mb-1.5 block text-sm font-semibold text-content-muted">Điểm đón</label>
+                <div className="flex gap-2">
                   <AddressInput
-                    placeholder="Điểm đón của bạn"
+                    placeholder="Tìm điểm đón..."
                     value={pickup?.name || ''}
-                    onChange={(name) => {
-                      setPickup({ name })
-                    }}
-                    onLocationDetect={(locationData) => {
-                      if (locationData) {
-                        setPickup({
-                          name: locationData.name,
-                          lat: locationData.lat,
-                          lng: locationData.lng
-                        })
-                      } else {
-                        setPickup(null)
-                      }
-                    }}
+                    onChange={(name) => setPickup({ name })}
+                    onLocationDetect={(data) => setPickup(data || null)}
+                    className="!rounded-xl !border-surface-border !bg-surface-dark"
                   />
+                  <button
+                    type="button"
+                    onClick={() => openMapSelection('pickup')}
+                    disabled={mapLoading === 'pickup'}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface-dark text-content-muted transition hover:border-brand-500 hover:text-brand-500 active:scale-95"
+                    title="Chọn điểm đón trên bản đồ"
+                  >
+                    {mapLoading === 'pickup' ? <Spinner size="sm" /> : <RiFocus3Line size={20} />}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => openMapSelection('pickup')}
-                  disabled={mapLoading === 'pickup'}
-                  className="w-[42px] h-[42px] mt-6 shrink-0 bg-surface border border-surface-border rounded-xl flex items-center justify-center hover:bg-surface-hover hover:border-brand-500/50 transition-all shadow-sm group"
-                  title="Chọn trên bản đồ"
-                >
-                  {mapLoading === 'pickup' ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    <RiMapPinLine size={20} className="text-content-muted group-hover:text-brand-400 transition-colors" />
-                  )}
-                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                <RiMapPin2Line size={18} className="text-red-400" />
-              </div>
-              <div className="flex-1 flex gap-2 items-start">
-                <div className="flex-1">
-                  <p className="text-xs text-content-muted mb-1 ml-1">Điểm đến</p>
-                  <LocationAutocomplete 
-                    placeholder="Điểm đến của bạn"
+            <div className="relative flex gap-3">
+              <span className="z-10 mt-6 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-950 text-white dark:bg-white dark:text-slate-950">
+                <RiMapPin2Line size={19} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <label className="mb-1.5 block text-sm font-semibold text-content-muted">Điểm đến</label>
+                <div className="flex gap-2">
+                  <LocationAutocomplete
+                    placeholder="Bạn muốn đến đâu?"
                     value={dropoff?.name || ''}
-                    onChange={(name) => {
-                      setDropoff({ name })
-                    }}
-                    onSelectLocation={(locationData) => {
-                      if (locationData) {
-                        setDropoff({
-                          name: locationData.name,
-                          lat: locationData.lat,
-                          lng: locationData.lng
-                        })
-                      } else {
-                        setDropoff(null)
-                      }
-                    }}
+                    onChange={(name) => setDropoff({ name })}
+                    onSelectLocation={(data) => setDropoff(data || null)}
+                    className="!rounded-xl !border-surface-border !bg-surface-dark"
                   />
+                  <button
+                    type="button"
+                    onClick={() => openMapSelection('dropoff')}
+                    disabled={mapLoading === 'dropoff'}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface-dark text-content-muted transition hover:border-brand-500 hover:text-brand-500 active:scale-95"
+                    title="Chọn điểm đến trên bản đồ"
+                  >
+                    {mapLoading === 'dropoff' ? <Spinner size="sm" /> : <RiFocus3Line size={20} />}
+                  </button>
                 </div>
-                <button 
-                  onClick={() => openMapSelection('dropoff')}
-                  disabled={mapLoading === 'dropoff'}
-                  className="w-[42px] h-[42px] mt-6 shrink-0 bg-surface border border-surface-border rounded-xl flex items-center justify-center hover:bg-surface-hover hover:border-red-500/50 transition-all shadow-sm group"
-                  title="Chọn trên bản đồ"
-                >
-                  {mapLoading === 'dropoff' ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    <RiMapPin2Line size={20} className="text-content-muted group-hover:text-red-400 transition-colors" />
-                  )}
-                </button>
               </div>
             </div>
           </div>
+        </section>
 
-          <Button 
-            fullWidth 
-            size="lg" 
-            onClick={handleNextStep} 
-            disabled={!pickup || !dropoff}
-            className="mt-6"
-          >
-            Tiếp tục
-          </Button>
-        </div>
-      </div>
+        <Button
+          fullWidth
+          size="lg"
+          onClick={handleNextStep}
+          disabled={!pickup || !dropoff}
+          className="group h-14 rounded-xl font-bold"
+        >
+          Xem xe và giá
+          <RiArrowRightLine className="transition-transform group-hover:translate-x-1" />
+        </Button>
+      </motion.div>
     </div>
   )
 }

@@ -12,7 +12,9 @@ import InteractiveMap from '@/components/Map/InteractiveMap'
 import Button from '@/components/Elements/Button'
 import LocationSelectionStep from './booking/LocationSelectionStep'
 import VehicleSelectionStep from './booking/VehicleSelectionStep'
+import BookingJourneyProgress from './booking/BookingJourneyProgress'
 import { cn } from '@/utils/cn'
+import { motion, AnimatePresence } from 'motion/react'
 
 const DUMMY_DISTANCE = 5.2
 const DEFAULT_COORDINATES = { lat: 16.0544, lng: 108.2022 }
@@ -62,7 +64,7 @@ const BookingPage = () => {
   const [selectingLocationFor, setSelectingLocationFor] = useState(null)
   const [tempMapLocation, setTempMapLocation] = useState(null)
   const [mapLoading, setMapLoading] = useState(false)
-  
+
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem('temp_step')
     return saved ? parseInt(saved, 10) : 1
@@ -154,7 +156,7 @@ const BookingPage = () => {
     const sp = isValidLocation(pickup) ? pickup : { ...pickup, lat: 10.8231, lng: 106.6297 }
     const sd = isValidLocation(dropoff) ? dropoff : { ...dropoff, lat: 10.8231, lng: 106.6297 }
     setEstimating(true)
-    const payload = { 
+    const payload = {
       pickupLat: sp.lat,
       pickupLng: sp.lng,
       dropoffLat: sd.lat,
@@ -168,11 +170,9 @@ const BookingPage = () => {
           setCountdown(120)
         }
       })
-      .catch((e) => {
-        console.error("=== API ERROR ===", e)
-      })
+      .catch((error) => console.error('Estimate price failed', error))
       .finally(() => setEstimating(false))
-  }, [pickup, dropoff, selectedPromos])
+  }, [pickup, dropoff, selectedPromos, vehicleTypes])
 
   useEffect(() => {
     if (step !== 2) return
@@ -296,7 +296,7 @@ const BookingPage = () => {
     }
     setMapLoading(false)
   }
-  
+
   // Memoize the map callbacks so MemoizedMap doesn't re-render unless necessary
   const handleLocationSelect = useCallback((data) => {
     setTempMapLocation(data)
@@ -309,57 +309,34 @@ const BookingPage = () => {
   const isDiscounted = originalPrice > finalPrice
 
   return (
-    <div className="-m-6 h-[calc(100vh-64px)] relative flex flex-col lg:flex-row bg-surface-dark overflow-hidden">
-      
+    <div className="relative flex min-h-[calc(100dvh-5rem)] flex-col overflow-hidden bg-[#e9ede7] dark:bg-surface-dark lg:h-[calc(100dvh-5rem)] lg:min-h-0 lg:flex-row">
       {/* Background Map - Always present, absolute on selectingLocationFor and step 3 */}
       <div className={cn(
         "z-0 pointer-events-auto",
-        (selectingLocationFor || step === 3) 
+        (selectingLocationFor || step === 3)
           ? "absolute inset-0" // Full screen
-          : "relative flex-1 order-1 lg:order-2 h-[50vh] lg:h-full" // Split screen
+          : "relative order-1 h-[34dvh] min-h-64 shrink-0 lg:order-2 lg:h-full lg:min-h-0 lg:flex-1"
       )}>
-        <MemoizedMap 
-          pickup={selectingLocationFor === 'pickup' ? null : (isValidLocation(pickup) ? pickup : { name: pickup?.name, ...DEFAULT_COORDINATES })} 
-          dropoff={selectingLocationFor === 'dropoff' ? null : (isValidLocation(dropoff) ? dropoff : { name: dropoff?.name, ...DEFAULT_COORDINATES })} 
+        <MemoizedMap
+          pickup={selectingLocationFor === 'pickup' ? null : (isValidLocation(pickup) ? pickup : { name: pickup?.name, ...DEFAULT_COORDINATES })}
+          dropoff={selectingLocationFor === 'dropoff' ? null : (isValidLocation(dropoff) ? dropoff : { name: dropoff?.name, ...DEFAULT_COORDINATES })}
           selectingMode={!!selectingLocationFor}
           initialCenter={tempMapLocation ? [tempMapLocation.lat, tempMapLocation.lng] : null}
           onLocationSelect={selectingLocationFor ? handleLocationSelect : undefined}
         />
-        {/* Nút Back overlay cho Mobile trong Step 2 */}
-        {step === 2 && !selectingLocationFor && (
-          <button 
-            onClick={() => setStep(1)}
-            className="lg:hidden absolute top-4 left-4 z-10 w-10 h-10 bg-surface-card/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-surface-border hover:bg-surface-muted transition-colors"
-          >
-            <RiArrowLeftLine size={20} className="text-content-main" />
-          </button>
-        )}
       </div>
 
       {/* Overlay UI Layer */}
       <div className={cn(
         "z-10 pointer-events-none flex flex-col",
-        (selectingLocationFor || step === 3) 
+        (selectingLocationFor || step === 3)
           ? "absolute inset-0"
-          : "relative w-full lg:flex-1 h-[55vh] lg:h-full order-2 lg:order-1"
+          : cn(
+              "relative order-2 min-h-[66dvh] w-full lg:order-1 lg:h-full lg:min-h-0 lg:flex-none",
+              step === 2 ? "lg:w-[min(760px,65vw)]" : "lg:w-[470px]",
+            )
       )}>
-        {step === 1 && selectingLocationFor && (
-          <LocationSelectionStep
-            pickup={pickup}
-            setPickup={setPickup}
-            dropoff={dropoff}
-            setDropoff={setDropoff}
-            selectingLocationFor={selectingLocationFor}
-            setSelectingLocationFor={setSelectingLocationFor}
-            tempMapLocation={tempMapLocation}
-            setTempMapLocation={setTempMapLocation}
-            mapLoading={mapLoading}
-            openMapSelection={openMapSelection}
-            handleNextStep={() => setStep(2)}
-          />
-        )}
-
-        {step === 1 && !selectingLocationFor && (
+        {step === 1 && (
           <LocationSelectionStep
             pickup={pickup}
             setPickup={setPickup}
@@ -401,34 +378,44 @@ const BookingPage = () => {
           />
         )}
 
-        {step === 3 && (
-          <>
-            <button 
-              onClick={handleCancelSearch}
-              disabled={isCanceling}
-              className="absolute top-4 left-4 pointer-events-auto z-10 w-10 h-10 bg-surface-card/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-surface-border hover:bg-surface-muted transition-colors"
+        <AnimatePresence>
+          {step === 3 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 pointer-events-none flex flex-col z-30"
             >
-              {isCanceling ? <Spinner size="sm" /> : <RiArrowLeftLine size={20} className="text-content-main" />}
-            </button>
-            <div className="flex-1 min-h-0" />
-            <div className="bg-surface-card rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-surface-border p-6 flex flex-col items-center justify-center space-y-6 pointer-events-auto pb-10">
-              <div className="relative flex items-center justify-center w-24 h-24">
-                <div className="absolute inset-0 bg-brand-500/20 rounded-full animate-ping" />
-                <div className="absolute inset-2 bg-brand-500/40 rounded-full animate-pulse" />
-                <div className="absolute inset-4 bg-brand-500 rounded-full flex items-center justify-center shadow-glow-green">
-                  <span className="text-3xl">📡</span>
+              <button
+                onClick={handleCancelSearch}
+                disabled={isCanceling}
+                className="absolute top-6 left-6 pointer-events-auto z-10 w-12 h-12 bg-white/80 dark:bg-surface-card/80 backdrop-blur-xl rounded-full flex items-center justify-center shadow-lg border border-gray-200/50 dark:border-surface-border hover:bg-white dark:hover:bg-surface-muted transition-all active:scale-95"
+              >
+                {isCanceling ? <Spinner size="sm" /> : <RiArrowLeftLine size={24} className="text-gray-900 dark:text-white" />}
+              </button>
+              <div className="flex-1 min-h-0" />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="flex flex-col items-center justify-center rounded-t-3xl border-t border-white/20 bg-white/95 p-6 pb-8 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] backdrop-blur-2xl dark:border-surface-border dark:bg-surface-card/95 pointer-events-auto"
+              >
+                <BookingJourneyProgress step={3} className="mb-5 max-w-md" />
+                <div className="mb-3 flex items-center gap-2 rounded-full bg-brand-500/10 px-3 py-1.5 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-brand-500" />
+                  Đang kết nối
                 </div>
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-xl font-display font-bold text-content-main">Đang tìm tài xế...</h3>
-                <p className="text-sm text-content-muted">Vui lòng đợi trong giây lát, hệ thống đang kết nối với các tài xế gần bạn nhất.</p>
-              </div>
-              <Button variant="outline" fullWidth onClick={handleCancelSearch} loading={isCanceling}>
-                Hủy tìm kiếm
-              </Button>
-            </div>
-          </>
-        )}
+                <div className="space-y-2 text-center">
+                  <h3 className="font-display text-2xl font-bold text-content-main">Đang tìm tài xế gần bạn</h3>
+                  <p className="text-sm font-medium text-content-muted">Giữ màn hình này mở, BookCar sẽ báo ngay khi có tài xế nhận chuyến.</p>
+                </div>
+                <Button variant="outline" size="lg" className="mt-6 w-full max-w-sm rounded-xl font-bold" onClick={handleCancelSearch} loading={isCanceling}>
+                  Hủy yêu cầu
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

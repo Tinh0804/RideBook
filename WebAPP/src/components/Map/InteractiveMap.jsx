@@ -88,27 +88,7 @@ const darkMapStyle = [
   },
 ]
 
-const getVehicleIcon = (driver) => {
-  if (driver?.vehicleTypeIcon) {
-    return driver.vehicleTypeIcon;
-  }
-  if (!driver || !driver.vehicleTypeName) {
-    return 'https://cdn-icons-png.flaticon.com/128/1048/1048315.png'; // default 4-seater
-  }
-  const type = driver.vehicleTypeName.toLowerCase();
-  if (type.includes('máy') || type.includes('bike')) {
-    return 'https://cdn-icons-png.flaticon.com/128/1048/1048315.png'; // motorbike
-  }
-  if (type.includes('7') || type.includes('suv')) {
-    return 'https://cdn-icons-png.flaticon.com/128/1048/1048313.png'; // 7-seater
-  }
-  if (type.includes('sang trọng') || type.includes('luxury') || type.includes('vip')) {
-    return 'https://cdn-icons-png.flaticon.com/128/1048/1048333.png'; // luxury
-  }
-  return 'https://cdn-icons-png.flaticon.com/128/1048/1048315.png'; // default 4-seater
-}
-
-const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = false, onLocationSelect, initialCenter, onRouteReady }) => {
+const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = false, onLocationSelect, initialCenter }) => {
   const [directions, setDirections] = useState(null)
   const mapRef = useRef(null)
   const geocoderRef = useRef(null)
@@ -126,7 +106,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
   // Auto zoom to bounds
   useEffect(() => {
     if (directions) return // Let DirectionsRenderer handle zoom when route exists
-
+    
     if (mapRef.current && !selectingMode) {
       const bounds = new window.google.maps.LatLngBounds()
       let hasPoints = false
@@ -147,14 +127,14 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
       if (hasPoints) {
         // Use a small timeout to ensure the map is ready for bounds change
         setTimeout(() => {
-          if (mapRef.current) {
-            mapRef.current.fitBounds(bounds)
-            const padding = { top: 50, bottom: 50, left: 50, right: 50 }
-            mapRef.current.fitBounds(bounds, padding)
-            const listener = window.google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
-              if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16)
-            })
-          }
+           if (mapRef.current) {
+             mapRef.current.fitBounds(bounds)
+             const padding = { top: 50, bottom: 50, left: 50, right: 50 }
+             mapRef.current.fitBounds(bounds, padding)
+             const listener = window.google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
+               if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16)
+             })
+           }
         }, 100)
       }
     }
@@ -174,9 +154,6 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         (result, status) => {
           if (status === window.google.maps.DirectionsStatus.OK) {
             setDirections(result)
-            if (onRouteReady && result.routes && result.routes.length > 0) {
-              onRouteReady(result.routes[0].overview_path)
-            }
           } else {
             console.error(`Error fetching directions ${status}`)
             setDirections(null)
@@ -193,7 +170,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
     const currentCenter = mapRef.current.getCenter()
     const lat = currentCenter.lat()
     const lng = currentCenter.lng()
-
+    
     // Reverse geocoding
     geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === 'OK' && results[0]) {
@@ -202,7 +179,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         const route = results[0].address_components.find(c => c.types.includes('route'))
         const sublocal = results[0].address_components.find(c => c.types.includes('sublocality'))
         if (route && sublocal) {
-          addressName = `${route.long_name}, ${sublocal.long_name}`
+            addressName = `${route.long_name}, ${sublocal.long_name}`
         }
         onLocationSelect({ lat, lng, name: addressName || results[0].formatted_address, fullAddress: results[0].formatted_address })
       } else {
@@ -222,15 +199,15 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
     <div className={`w-full h-full relative z-0 ${className || ''}`}>
       {selectingMode && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[1000] pointer-events-none drop-shadow-md">
-          <img
-            src="https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png"
-            alt="center pin"
-            className="w-6 h-10 object-contain -mt-2"
-          />
-          <div className="w-2 h-1 bg-black/30 rounded-[50%] absolute bottom-[-2px] left-1/2 -translate-x-1/2 blur-[1px]"></div>
+           <img 
+             src="https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png" 
+             alt="center pin" 
+             className="w-6 h-10 object-contain -mt-2" 
+           />
+           <div className="w-2 h-1 bg-black/30 rounded-[50%] absolute bottom-[-2px] left-1/2 -translate-x-1/2 blur-[1px]"></div>
         </div>
       )}
-
+      
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={mapCenter}
@@ -243,27 +220,29 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         }}
       >
         {pickup && !selectingMode && !directions && (
-          <Marker
+          <Marker 
             position={{ lat: pickup.lat, lng: pickup.lng }}
           />
         )}
 
         {dropoff && !selectingMode && !directions && (
-          <Marker
+          <Marker 
             position={{ lat: dropoff.lat, lng: dropoff.lng }}
           />
         )}
 
         {driver && !selectingMode && (
-          <Marker
-            key={driver.lat ? `driver-${driver.lat}-${driver.lng}` : 'driver-marker'}
-            position={{ lat: Number(driver.lat), lng: Number(driver.lng) }}
+          <Marker 
+            position={{ lat: driver.lat, lng: driver.lng }}
             icon={{
-               url: getVehicleIcon(driver),
-               scaledSize: new window.google.maps.Size(40, 40),
-               anchor: new window.google.maps.Point(20, 35)
+               path: 'M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759   c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z    M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713   v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336   h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z',
+               fillColor: '#22c55e',
+               fillOpacity: 1,
+               strokeWeight: 1,
+               strokeColor: '#ffffff',
+               scale: 0.8,
+               anchor: new window.google.maps.Point(23, 23)
             }}
-            zIndex={99999}
           />
         )}
 
