@@ -832,6 +832,9 @@ public class BookingService {
                 .vehicleTypeName(booking.getDriverNo() != null && booking.getDriverNo().getVehicleType() != null
                         ? booking.getDriverNo().getVehicleType().getVehicleTypeName()
                         : null)
+                .vehicleTypeIcon(booking.getDriverNo() != null && booking.getDriverNo().getVehicleType() != null
+                        ? booking.getDriverNo().getVehicleType().getIcon()
+                        : null)
                 .licensePlate(booking.getDriverNo() != null ? booking.getDriverNo().getLicensePlate() : null)
                 .pickupLocation(booking.getPickupLocation())
                 .dropoffLocation(booking.getDropoffLocation())

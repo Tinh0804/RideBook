@@ -154,7 +154,9 @@ const TripTrackingPage = () => {
         setDriverCoord({
           lat: payload.lat,
           lng: payload.lng,
-          name: booking?.driverName || 'Tài xế'
+          name: booking?.driverName || 'Tài xế',
+          vehicleTypeName: booking?.vehicleTypeName,
+          vehicleTypeIcon: booking?.vehicleTypeIcon
         })
       }
       return

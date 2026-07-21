@@ -75,6 +75,7 @@ export const DriverProfileSchema = z.object({
   currentLng: z.number().nullable().catch(null),
   vehicleTypeId: z.string().nullable().catch(''),
   vehicleTypeName: z.string().nullable().catch(''),
+  vehicleTypeIcon: z.string().nullable().catch(''),
   pricePerKm: z.number().nullable().catch(0),
   account: AccountSchema.optional().catch({}),
 }).transform(data => ({
@@ -93,6 +94,7 @@ export const BookingDetailSchema = z.object({
   driverName: z.string().nullable().catch(''),
   driverPhone: z.string().nullable().catch(''),
   vehicleTypeName: z.string().nullable().catch(''),
+  vehicleTypeIcon: z.string().nullable().catch(''),
   licensePlate: z.string().nullable().catch(''),
   pickupLocation: z.string().catch(''),
   dropoffLocation: z.string().catch(''),

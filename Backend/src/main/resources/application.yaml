@@ -1,12 +1,4 @@
 server:
-    tomcat:
-         threads:
-              max: 500
-              min-spare: 20
-         accept-count: 500
-         max-connections: 10000
-         keep-alive-timeout: 10000
-         max-keep-alive-requests: 100
     servlet:
          context-path: "/RideBook"
 spring:
@@ -23,11 +15,6 @@ spring:
         username: ${DB_USERNAME}
         password: ${DB_PASSWORD}
         driver-class-name: org.postgresql.Driver
-        hikari:
-            maximum-pool-size: 50
-            minimum-idle: 10
-            connection-timeout: 20000
-            idle-timeout: 300000
 
     jpa:
         hibernate:

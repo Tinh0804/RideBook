@@ -6,6 +6,7 @@ import {
   RiUserLine, RiPhoneLine, RiCheckLine, RiCarLine, RiCloseLine
 } from 'react-icons/ri'
 import { bookingApi } from '@/features/booking/api/bookingApi'
+import { driverApi } from '@/features/driver/api/driverApi'
 import { useDriverStore, useAuthStore } from '@/store/rootStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config'
@@ -20,9 +21,9 @@ import InteractiveMap from '@/components/Map/InteractiveMap'
 
 
 const STATUS_FLOW = [
-  { status: BOOKING_STATUS.ACCEPTED,    label: 'Đến đón khách',    next: BOOKING_STATUS.ARRIVED,     action: 'Tôi đã đến điểm đón' },
-  { status: BOOKING_STATUS.ARRIVED,     label: 'Đã đến điểm đón',  next: BOOKING_STATUS.IN_PROGRESS, action: 'Đã đón khách, bắt đầu chạy' },
-  { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường',  next: BOOKING_STATUS.COMPLETED,   action: 'Hoàn thành chuyến đi' },
+  { status: BOOKING_STATUS.ACCEPTED, label: 'Đến đón khách', next: BOOKING_STATUS.ARRIVED, action: 'Tôi đã đến điểm đón' },
+  { status: BOOKING_STATUS.ARRIVED, label: 'Đã đến điểm đón', next: BOOKING_STATUS.IN_PROGRESS, action: 'Đã đón khách, bắt đầu chạy' },
+  { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường', next: BOOKING_STATUS.COMPLETED, action: 'Hoàn thành chuyến đi' },
 ]
 
 const DriverTripFlowPage = () => {
@@ -33,7 +34,7 @@ const DriverTripFlowPage = () => {
   // State for Waiting phase
   const [incomingTrip, setIncomingTrip] = useState(null)
   const [accepting, setAccepting] = useState(false)
-  
+
   // State for Active Trip phase
   const [loadingTrip, setLoadingTrip] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -44,6 +45,11 @@ const DriverTripFlowPage = () => {
   const [pickupCoord, setPickupCoord] = useState(null)
   const [dropoffCoord, setDropoffCoord] = useState(null)
   const [driverCoord, setDriverCoord] = useState(null)
+
+  // Simulator states
+  const [isSimulating, setIsSimulating] = useState(false)
+  const simulationIntervalRef = useRef(null)
+  const simulationPathRef = useRef([])
 
   // Ref to hold sendMessage from the active-trip WebSocket hook (avoids hook-ordering issues)
   const sendTripMessageRef = useRef(null)
@@ -76,37 +82,61 @@ const DriverTripFlowPage = () => {
 
   // Live location tracking (No simulation, pure real-time GPS)
   useEffect(() => {
-    if (!currentTrip) return
-    const status = currentTrip.bookingStatus
+    if (!isOnline && !currentTrip) return
 
-    if (![BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(status)) {
-      setDriverCoord(null)
-      return
+    if (currentTrip) {
+      const status = currentTrip.bookingStatus
+      if (![BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(status)) {
+        setDriverCoord(null)
+        return
+      }
     }
 
     let watchId = null
+    let lastReportTime = 0
 
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
+          if (isSimulatingRef.current) return // Disable real GPS when simulating
+
           const lat = position.coords.latitude
           const lng = position.coords.longitude
-          
-          setDriverCoord({
-            lat,
-            lng,
-            name: 'Vị trí của bạn'
-          })
 
-          // Also keep localStorage as same-device fallback
-          localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
+          if (currentTrip) {
+            setDriverCoord({
+              lat,
+              lng,
+              name: 'Vị trí của bạn',
+              vehicleTypeName: currentTrip.vehicleTypeName,
+              vehicleTypeIcon: currentTrip.vehicleTypeIcon
+            })
 
-          // Broadcast GPS via WebSocket to customer in real-time
-          sendTripMessageRef.current?.('/app/driver/location', {
-            bookingId: currentTrip.bookingId,
-            lat,
-            lng,
-          })
+            // Also keep localStorage as same-device fallback
+            localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
+
+            // Broadcast GPS via WebSocket to customer in real-time
+            sendTripMessageRef.current?.('/app/driver/location', {
+              bookingId: currentTrip.bookingId,
+              lat,
+              lng,
+            })
+          } else if (isOnline) {
+            // Free driver updating location to Redis GEO
+            const now = Date.now()
+            // Throttle: Update maximum once every 10 seconds to avoid spamming the DB/Network
+            if (now - lastReportTime > 10000) {
+              lastReportTime = now
+              driverApi.updateFreeLocation(lat, lng).catch(console.error)
+              setDriverCoord({
+                lat,
+                lng,
+                name: 'Vị trí hiện tại (Đang rảnh)',
+                vehicleTypeName: userProfile?.vehicleTypeName,
+                vehicleTypeIcon: userProfile?.vehicleTypeIcon
+              })
+            }
+          }
         },
         (error) => {
           console.error('Lỗi lấy toạ độ GPS tài xế:', error)
@@ -118,14 +148,100 @@ const DriverTripFlowPage = () => {
     return () => {
       if (watchId) navigator.geolocation.clearWatch(watchId)
     }
-  }, [currentTrip?.bookingStatus, currentTrip?.bookingId])
+  }, [currentTrip?.bookingStatus, currentTrip?.bookingId, isOnline])
+
+  // Simulation Logic
+  const toggleSimulation = () => {
+    if (isSimulating) {
+      clearInterval(simulationIntervalRef.current)
+      setIsSimulating(false)
+      return
+    }
+
+    setIsSimulating(true)
+
+    // Check if we have a road path to follow
+    const path = simulationPathRef.current
+    if (path && path.length > 0) {
+      // Find closest point on path to start from, or just start from 0
+      let stepIndex = 0
+      simulationIntervalRef.current = setInterval(() => {
+        if (stepIndex >= path.length) {
+          clearInterval(simulationIntervalRef.current)
+          setIsSimulating(false)
+          return
+        }
+
+        const point = path[stepIndex]
+        const currentLat = point.lat()
+        const currentLng = point.lng()
+
+        setDriverCoord({
+          lat: currentLat,
+          lng: currentLng,
+          name: 'Vị trí của bạn (Simulated)',
+          vehicleTypeName: currentTrip.vehicleTypeName,
+          vehicleTypeIcon: currentTrip.vehicleTypeIcon
+        })
+
+        sendTripMessageRef.current?.('/app/driver/location', {
+          bookingId: currentTrip.bookingId,
+          lat: currentLat,
+          lng: currentLng,
+        })
+
+        // Move 2 points at a time for faster simulation if path is long
+        stepIndex += Math.max(1, Math.floor(path.length / 50))
+      }, 500)
+      return
+    }
+
+    // Fallback: Straight line Euclidean simulation
+    let currentLat = driverCoord?.lat || pickupCoord?.lat || 16.06437
+    let currentLng = driverCoord?.lng || pickupCoord?.lng || 108.22052
+    const targetLat = dropoffCoord?.lat || 16.07619
+    const targetLng = dropoffCoord?.lng || 108.15609
+
+    // Calculate step to reach destination in roughly 100 steps
+    const latStep = (targetLat - currentLat) / 100
+    const lngStep = (targetLng - currentLng) / 100
+
+    simulationIntervalRef.current = setInterval(() => {
+      currentLat += latStep
+      currentLng += lngStep
+
+      setDriverCoord({
+        lat: currentLat,
+        lng: currentLng,
+        name: 'Vị trí của bạn (Simulated)',
+        vehicleTypeName: currentTrip.vehicleTypeName,
+        vehicleTypeIcon: currentTrip.vehicleTypeIcon
+      })
+
+      sendTripMessageRef.current?.('/app/driver/location', {
+        bookingId: currentTrip.bookingId,
+        lat: currentLat,
+        lng: currentLng,
+      })
+
+      // Auto stop simulation if close to destination
+      if (Math.abs(currentLat - targetLat) < 0.0001 && Math.abs(currentLng - targetLng) < 0.0001) {
+        clearInterval(simulationIntervalRef.current)
+        setIsSimulating(false)
+      }
+    }, 1000)
+  }
+
+  useEffect(() => {
+    return () => clearInterval(simulationIntervalRef.current)
+  }, [])
 
   // 1. Fetch current trip if any (on mount)
   useEffect(() => {
     if (currentTrip?.bookingId) {
       // Update URL silently so user sees the ID in address bar
       window.history.replaceState(null, '', `/driver/trips/${currentTrip.bookingId}`)
-      
+
       // Refresh current trip info
       setLoadingTrip(true)
       bookingApi.getById(currentTrip.bookingId)
@@ -182,7 +298,7 @@ const DriverTripFlowPage = () => {
 
   // Listen to global available bookings and personal driver topic
   const driverId = userProfile?.driverId || user?.id
-  const topicsToListen = driverId 
+  const topicsToListen = driverId
     ? ['/topic/available-bookings', `/topic/driver/${driverId}`]
     : ['/topic/available-bookings']
 
@@ -254,7 +370,7 @@ const DriverTripFlowPage = () => {
 
   const handleCancelTrip = async () => {
     if (!window.confirm('Bạn có chắc chắn muốn huỷ chuyến đi này không?')) return;
-    
+
     setCancelingTrip(true);
     try {
       await bookingApi.cancelBookingByDriver(currentTrip.bookingId, driverId);
@@ -309,19 +425,19 @@ const DriverTripFlowPage = () => {
             backgroundImage: `linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px)`,
             backgroundSize: '40px 40px'
           }} />
-          
+
           {/* Radar effect */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-[300px] h-[300px] rounded-full border border-brand-500/30 animate-ping absolute opacity-20" />
             <div className="w-[200px] h-[200px] rounded-full border border-brand-500/50 animate-ping absolute opacity-40 delay-300" />
             <div className="w-[100px] h-[100px] rounded-full border border-brand-500/80 animate-ping absolute opacity-60 delay-700" />
-            
+
             {/* Driver Marker */}
             <div className="relative z-10 w-12 h-12 rounded-full bg-brand-500/20 border-2 border-brand-400 flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)]">
               <RiCarLine size={24} className="text-content-main" />
             </div>
           </div>
-          
+
           {/* Status Overlay */}
           <div className="absolute top-4 left-4 bg-surface-dark/90 backdrop-blur-md px-4 py-2 rounded-xl border border-surface-border flex items-center gap-3 shadow-lg">
             <Spinner size="sm" className="text-brand-400" />
@@ -494,7 +610,7 @@ const DriverTripFlowPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="border-t border-surface-border pt-4 mt-2 flex justify-between items-center text-sm">
               <span className="text-content-muted font-medium">Cước phí</span>
               <div className="text-right flex items-center gap-2">
@@ -519,7 +635,7 @@ const DriverTripFlowPage = () => {
                 {currentStep.action}
               </Button>
             )}
-            
+
             {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
               <Button fullWidth variant="outline" onClick={handleCancelTrip} loading={cancelingTrip} disabled={updating}
                 className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-500"
@@ -533,12 +649,30 @@ const DriverTripFlowPage = () => {
 
       {/* Vùng 2: Bản đồ Realtime */}
       <div className="flex-1 relative h-[45vh] lg:h-full bg-surface-dark z-0">
-        <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
-        
+        <InteractiveMap 
+          pickup={pickupCoord} 
+          dropoff={dropoffCoord} 
+          driver={driverCoord} 
+          onRouteReady={(path) => { simulationPathRef.current = path }}
+        />
+
         {/* Map Overlay Indicator */}
         <div className="absolute top-4 right-4 z-10 bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full border border-surface-border shadow-lg flex items-center gap-2">
           <div className="w-2 h-2 bg-brand-500 rounded-full animate-pulse" />
           <span className="text-xs font-semibold text-content-main">Đường đi trực tiếp</span>
+        </div>
+
+        {/* Simulate Button (for Testing) */}
+        <div className="absolute top-4 left-4 z-10">
+          <Button
+            size="sm"
+            variant={isSimulating ? "primary" : "outline"}
+            onClick={toggleSimulation}
+            className="shadow-lg bg-surface-card/90 backdrop-blur-md"
+          >
+            <RiCarLine className="mr-1" />
+            {isSimulating ? 'Dừng mô phỏng' : 'Test: Tài xế chạy'}
+          </Button>
         </div>
       </div>
 
