@@ -12,6 +12,8 @@ import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/sto
 import { useAuth } from '@/hooks/useAuth'
 import { notificationApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
+import { driverApi } from '@/features/driver/api/driverApi'
+import { customerApi } from '@/features/customer/api/customerApi'
 import { ROLES, BOOKING_STATUS, WS_URL } from '@/config'
 import { cn } from '@/utils/cn'
 import { Client } from '@stomp/stompjs'
@@ -124,36 +126,60 @@ const MainLayout = () => {
     return () => client.deactivate()
   }, [user?.userName, setNotifCount])
 
-  // Fetch active trips
+  // Fetch active trips & sync driver profile/online status
   useEffect(() => {
-    if (!user?.customerId) {
+    if (!user) {
       setTripLoading(false)
       return
     }
 
-    setTripLoading(true)
-    if (role === ROLES.CUSTOMER) {
-      bookingApi.getCustomerHistory(user.customerId)
-        .then(history => {
-          const active = history.find(b => [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.ARRIVED].includes(b.bookingStatus))
-          if (active) setCurrentBooking(active)
-          else clearCurrentBooking()
-        })
-        .catch(clearCurrentBooking)
-        .finally(() => setTripLoading(false))
-    } else if (role === ROLES.DRIVER) {
-      bookingApi.getDriverHistory(user?.driverId)
-        .then(history => {
-          const active = history.find(b => [BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.IN_PROGRESS, BOOKING_STATUS.ARRIVED].includes(b.bookingStatus))
-          if (active) setCurrentTrip(active)
-          else clearCurrentTrip()
-        })
-        .catch(clearCurrentTrip)
-        .finally(() => setTripLoading(false))
-    } else {
-      setTripLoading(false)
+    const fetchActiveTrip = async () => {
+      setTripLoading(true)
+      try {
+        let currentProfile = useAuthStore.getState().userProfile
+
+        if (role === ROLES.DRIVER) {
+          if (!currentProfile?.id && !currentProfile?.driverId) {
+            currentProfile = await driverApi.getMyInfo()
+            useAuthStore.getState().setUserProfile(currentProfile)
+          }
+          if (currentProfile?.activityStatus !== undefined && currentProfile?.activityStatus !== null) {
+            useDriverStore.getState().setOnline(currentProfile.activityStatus)
+          }
+          const driverId = currentProfile?.driverId || currentProfile?.id
+          if (driverId) {
+            const activeTrip = await bookingApi.getActiveByDriver(driverId)
+            if (activeTrip) {
+              setCurrentTrip(activeTrip)
+              useDriverStore.getState().setOnline(true)
+            } else {
+              clearCurrentTrip()
+            }
+          }
+        } else if (role === ROLES.CUSTOMER) {
+          if (!currentProfile?.id && !currentProfile?.customerId) {
+            currentProfile = await customerApi.getMyInfo()
+            useAuthStore.getState().setUserProfile(currentProfile)
+          }
+          const customerId = currentProfile?.customerId || currentProfile?.id
+          if (customerId) {
+            const activeBooking = await bookingApi.getActiveByCustomer(customerId)
+            if (activeBooking) {
+              setCurrentBooking(activeBooking)
+            } else {
+              clearCurrentBooking()
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching active trips in layout:', err)
+      } finally {
+        setTripLoading(false)
+      }
     }
-  }, [user?.customerId, role, setCurrentBooking, clearCurrentBooking, setCurrentTrip, clearCurrentTrip])
+
+    fetchActiveTrip()
+  }, [user, role, setCurrentBooking, clearCurrentBooking, setCurrentTrip, clearCurrentTrip])
 
   const handleNotificationClick = async (n) => {
     if (!n.read) {

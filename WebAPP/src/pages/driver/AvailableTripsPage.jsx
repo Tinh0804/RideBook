@@ -7,6 +7,7 @@ import {
   RiNavigationFill, RiTimeLine
 } from 'react-icons/ri'
 import { bookingApi } from '@/features/booking/api/bookingApi'
+import { driverApi } from '@/features/driver/api/driverApi'
 import { useDriverStore, useAuthStore } from '@/store/rootStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { BOOKING_STATUS, BOOKING_STATUS_LABEL } from '@/config'
@@ -25,14 +26,21 @@ const STATUS_FLOW = [
   { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường',  next: BOOKING_STATUS.COMPLETED,   action: 'Hoàn thành chuyến đi' },
 ]
 
+const playSound = (audio) => {
+  if (!audio) return
+  audio.currentTime = 0
+  audio.play().catch(() => {})
+}
+
 const DriverTripFlowPage = () => {
   const navigate = useNavigate()
-  const { user, userProfile } = useAuthStore()
-  const { isOnline, currentTrip, setCurrentTrip, clearCurrentTrip } = useDriverStore()
+  const { user, userProfile, updateUserProfile } = useAuthStore()
+  const { isOnline, setOnline, currentTrip, setCurrentTrip, clearCurrentTrip } = useDriverStore()
 
   // State for Waiting phase
   const [incomingTrip, setIncomingTrip] = useState(null)
   const [accepting, setAccepting] = useState(false)
+  const [togglingOnline, setTogglingOnline] = useState(false)
   
   // State for Active Trip phase
   const [loadingTrip, setLoadingTrip] = useState(false)
@@ -47,6 +55,24 @@ const DriverTripFlowPage = () => {
 
   // Ref to hold sendMessage from the active-trip WebSocket hook (avoids hook-ordering issues)
   const sendTripMessageRef = useRef(null)
+  const receiveBookingSoundRef = useRef(null)
+  const statusBookingSoundRef = useRef(null)
+
+  useEffect(() => {
+    receiveBookingSoundRef.current = new Audio('/sounds/recivebooking.mp3')
+    statusBookingSoundRef.current = new Audio('/sounds/statusbooking.mp3')
+    receiveBookingSoundRef.current.preload = 'auto'
+    statusBookingSoundRef.current.preload = 'auto'
+
+    return () => {
+      receiveBookingSoundRef.current?.pause()
+      statusBookingSoundRef.current?.pause()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (incomingTrip?.bookingId) playSound(receiveBookingSoundRef.current)
+  }, [incomingTrip?.bookingId])
 
   // Reset coords whenever the trip changes so geocoding always re-runs for new trip
   useEffect(() => {
@@ -180,7 +206,26 @@ const DriverTripFlowPage = () => {
   }, [isOnline, currentTrip, incomingTrip])
 
   // Listen to global available bookings and personal driver topic
-  const driverId = userProfile?.driverId || user?.id
+  const driverId = userProfile?.driverId || userProfile?.id || user?.id
+
+  // Auto-sync profile online status & active trip on mount
+  useEffect(() => {
+    if (userProfile?.activityStatus !== undefined && userProfile?.activityStatus !== null) {
+      setOnline(userProfile.activityStatus)
+    }
+    const activeDriverId = userProfile?.driverId || userProfile?.id
+    if (activeDriverId) {
+      bookingApi.getActiveByDriver(activeDriverId)
+        .then((activeTrip) => {
+          if (activeTrip) {
+            setCurrentTrip(activeTrip)
+            setOnline(true)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [userProfile?.driverId, userProfile?.id, userProfile?.activityStatus, setCurrentTrip, setOnline])
+
   const topicsToListen = driverId 
     ? ['/topic/available-bookings', `/topic/driver/${driverId}`]
     : ['/topic/available-bookings']
@@ -202,15 +247,37 @@ const DriverTripFlowPage = () => {
   // Keep ref up-to-date so GPS watchPosition callback can always call the latest sendMessage
   sendTripMessageRef.current = sendTripMessage
 
+  const handleToggleOnline = async () => {
+    setTogglingOnline(true)
+    try {
+      const data = await driverApi.toggleStatus()
+      const newStatus = typeof data?.result === 'boolean' ? data.result : !isOnline
+      setOnline(newStatus)
+      if (updateUserProfile) {
+        updateUserProfile({ activityStatus: newStatus })
+      }
+      toast.success(newStatus ? 'Đã bật trạng thái trực tuyến' : 'Đã tắt trạng thái trực tuyến')
+    } catch (err) {
+      toast.error('Lỗi khi thay đổi trạng thái')
+    } finally {
+      setTogglingOnline(false)
+    }
+  }
+
   // --- Handlers for Waiting Phase ---
   const handleAccept = async () => {
-    if (!incomingTrip || !driverId) return
+    const activeDriverId = userProfile?.driverId || userProfile?.id || driverId
+    if (!incomingTrip || !activeDriverId) return
+    receiveBookingSoundRef.current.pause()
+    receiveBookingSoundRef.current.currentTime = 0
     setAccepting(true)
     try {
-      const updatedTrip = await bookingApi.assignDriver(incomingTrip.bookingId, driverId)
+      const updatedTrip = await bookingApi.assignDriver(incomingTrip.bookingId, activeDriverId)
       toast.success('Nhận chuyến thành công!')
+      playSound(statusBookingSoundRef.current)
       setIncomingTrip(null)
       setCurrentTrip(updatedTrip)
+      setOnline(true)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Chuyến đã có người nhận hoặc bị lỗi')
       setIncomingTrip(null)
@@ -220,9 +287,10 @@ const DriverTripFlowPage = () => {
   }
 
   const handleReject = async () => {
-    if (!incomingTrip || !driverId) return
+    const activeDriverId = userProfile?.driverId || userProfile?.id || driverId
+    if (!incomingTrip || !activeDriverId) return
     try {
-      await bookingApi.rejectBooking(incomingTrip.bookingId, driverId)
+      await bookingApi.rejectBooking(incomingTrip.bookingId, activeDriverId)
     } catch (err) {
       console.error('Lỗi khi từ chối chuyến', err)
     }
@@ -238,10 +306,12 @@ const DriverTripFlowPage = () => {
       if (currentStep.next === BOOKING_STATUS.COMPLETED) {
         await bookingApi.completeBooking(currentTrip.bookingId)
         toast.success('Chuyến đi hoàn thành!')
+        playSound(statusBookingSoundRef.current)
         clearCurrentTrip()
         navigate('/driver/dashboard')
       } else {
         const updated = await bookingApi.updateStatus(currentTrip.bookingId, currentStep.next)
+        playSound(statusBookingSoundRef.current)
         setCurrentTrip(updated)
       }
     } catch (err) {
@@ -267,9 +337,9 @@ const DriverTripFlowPage = () => {
   }
 
   // ==========================================
-  // RENDER: OFFLINE
+  // RENDER: OFFLINE (Only if no active trip AND driver is offline)
   // ==========================================
-  if (!isOnline) return (
+  if (!isOnline && !currentTrip) return (
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden bg-[#e8ece3] dark:bg-surface-dark w-full">
       <img src="/assets/images/map_bg.jpg" alt="Map" className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-white/40 dark:bg-surface-dark/40 backdrop-blur-[2px] pointer-events-none" />
@@ -280,14 +350,23 @@ const DriverTripFlowPage = () => {
         </div>
         <h2 className="font-display text-2xl font-bold text-gray-900 dark:text-white mb-3">Đang ngoại tuyến</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">
-          Vui lòng bật trạng thái hoạt động trên trang Dashboard để bắt đầu nhận cuốc và kiếm thêm thu nhập.
+          Vui lòng bật trạng thái hoạt động để bắt đầu nhận cuốc và kiếm thêm thu nhập.
         </p>
-        <button 
-          onClick={() => navigate('/driver/dashboard')}
-          className="w-full bg-brand-500 hover:bg-brand-400 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all"
-        >
-          Trở về Dashboard
-        </button>
+        <div className="flex flex-col gap-3 w-full">
+          <button
+            onClick={handleToggleOnline}
+            disabled={togglingOnline}
+            className="w-full bg-brand-500 hover:bg-brand-400 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all flex items-center justify-center gap-2"
+          >
+            {togglingOnline ? <Spinner size="sm" /> : <RiCheckLine size={20} />} Bật trực tuyến ngay
+          </button>
+          <button
+            onClick={() => navigate('/driver/dashboard')}
+            className="w-full bg-gray-100 dark:bg-surface-dark text-gray-700 dark:text-gray-300 font-bold py-3 rounded-xl transition-all"
+          >
+            Trở về Dashboard
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -429,7 +508,7 @@ const DriverTripFlowPage = () => {
           {/* Progress steps */}
           <div className="flex items-center justify-between mt-2 px-2">
             {STATUS_FLOW.map((s, i) => (
-              <div key={s.status} className="flex items-center flex-1">
+              <div key={s.status} className={cn('flex items-center', i < STATUS_FLOW.length - 1 && 'flex-1')}>
                 <div className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-all duration-500',
                   i <= stepIndex ? 'bg-brand-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-gray-100 text-gray-400 dark:bg-surface-dark',
