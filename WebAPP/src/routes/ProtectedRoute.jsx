@@ -1,9 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/rootStore'
 
-// ponytail: temporary UI-test bypass; set to false before merging/deploying.
-const BYPASS_ROUTE_GUARDS = true
-
 /**
  * Protects routes based on auth state and role
  * @param {string[]} allowedRoles - If empty, any authenticated user passes
@@ -14,8 +11,6 @@ const ProtectedRoute = ({ allowedRoles = [] }) => {
 
   const rawRole = user?.role
   const userRoleStr = typeof rawRole === 'object' ? rawRole?.roleName : rawRole
-
-  if (BYPASS_ROUTE_GUARDS) return <Outlet />
 
   if (!isAuth) {
     const roleParam = userRoleStr?.toLowerCase() || 'customer'
