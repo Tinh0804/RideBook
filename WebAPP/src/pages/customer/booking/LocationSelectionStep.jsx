@@ -8,7 +8,6 @@ import {
 import { AnimatePresence, motion } from 'motion/react'
 import Button from '@/components/Elements/Button'
 import AddressInput from '@/components/Map/AddressInput'
-import LocationAutocomplete from '@/components/Elements/LocationAutocomplete'
 import Spinner from '@/components/Elements/Spinner'
 import BookingJourneyProgress from './BookingJourneyProgress'
 
@@ -121,8 +120,9 @@ const LocationSelectionStep = ({
                   <AddressInput
                     placeholder="Tìm điểm đón..."
                     value={pickup?.name || ''}
-                    onChange={(name) => setPickup({ name })}
+                    onChange={(name) => setPickup((prev) => ({ ...prev, name }))}
                     onLocationDetect={(data) => setPickup(data || null)}
+                    showDetectButton={false}
                     className="!rounded-xl !border-surface-border !bg-surface-dark"
                   />
                   <button
@@ -145,11 +145,12 @@ const LocationSelectionStep = ({
               <div className="min-w-0 flex-1">
                 <label className="mb-1.5 block text-sm font-semibold text-content-muted">Điểm đến</label>
                 <div className="flex gap-2">
-                  <LocationAutocomplete
+                  <AddressInput
                     placeholder="Bạn muốn đến đâu?"
                     value={dropoff?.name || ''}
-                    onChange={(name) => setDropoff({ name })}
-                    onSelectLocation={(data) => setDropoff(data || null)}
+                    onChange={(name) => setDropoff((prev) => ({ ...prev, name }))}
+                    onLocationDetect={(data) => setDropoff(data || null)}
+                    showDetectButton={false}
                     className="!rounded-xl !border-surface-border !bg-surface-dark"
                   />
                   <button

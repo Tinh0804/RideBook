@@ -11,7 +11,8 @@ const AddressInput = ({
   onLocationDetect,
   className,
   prefixIcon,
-  disabled = false
+  disabled = false,
+  showDetectButton = true
 }) => {
   const [query, setQuery] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
@@ -209,7 +210,13 @@ const AddressInput = ({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={cn("w-full", prefixIcon && "pl-10", (query || detectingLocation) && "pr-16")}
+          className={cn(
+            "w-full",
+            prefixIcon && "pl-10",
+            showDetectButton
+              ? (query || detectingLocation) && "pr-16"
+              : query && "pr-10"
+          )}
         />
         
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -224,19 +231,21 @@ const AddressInput = ({
             </button>
           )}
           
-          <button
-            type="button"
-            onClick={detectCurrentLocation}
-            disabled={detectingLocation || disabled}
-            className="p-1.5 rounded-lg hover:bg-surface-border transition-colors disabled:opacity-50"
-            title="Sử dụng vị trí hiện tại"
-          >
-            {detectingLocation ? (
-              <RiLoader4Line className="animate-spin text-brand-500" size={18} />
-            ) : (
-              <RiCrosshairLine className="text-content-muted hover:text-brand-500" size={18} />
-            )}
-          </button>
+          {showDetectButton && (
+            <button
+              type="button"
+              onClick={detectCurrentLocation}
+              disabled={detectingLocation || disabled}
+              className="p-1.5 rounded-lg hover:bg-surface-border transition-colors disabled:opacity-50"
+              title="Sử dụng vị trí hiện tại"
+            >
+              {detectingLocation ? (
+                <RiLoader4Line className="animate-spin text-brand-500" size={18} />
+              ) : (
+                <RiCrosshairLine className="text-content-muted hover:text-brand-500" size={18} />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

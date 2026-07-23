@@ -95,9 +95,11 @@ public class DriverController {
                 .build();
     }
     @PutMapping(value = "/status-activity")
-    public APIResponse<Boolean> updateStatusActive(){
+    public APIResponse<Boolean> updateStatusActive(@RequestBody(required = false) DriverLocationRequest locationRequest){
         String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
-        boolean isActive = driverService.toggleDriverActivityStatus(driverId);
+        Double lat = locationRequest != null ? locationRequest.getLat() : null;
+        Double lng = locationRequest != null ? locationRequest.getLng() : null;
+        boolean isActive = driverService.toggleDriverActivityStatus(driverId, lat, lng);
         return APIResponse.<Boolean>builder()
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật trạng thái hoạt động thành công")

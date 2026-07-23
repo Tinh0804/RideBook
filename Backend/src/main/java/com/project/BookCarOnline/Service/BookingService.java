@@ -22,6 +22,7 @@ import com.project.BookCarOnline.Exception.ErrorCode;
 import com.project.BookCarOnline.Repository.*;
 import com.project.BookCarOnline.Entity.Payment;
 import com.project.BookCarOnline.DTO.Redis.DriverGeoResult;
+import com.project.BookCarOnline.DTO.Redis.DriverLocation;
 import com.project.BookCarOnline.DTO.Redis.DriverStats;
 import com.project.BookCarOnline.DTO.Redis.FareQuote;
 import jakarta.persistence.criteria.Join;
@@ -273,6 +274,15 @@ public class BookingService {
         notifyCustomerDriverAssigned(updated, driver);
         dispatcherService.resolveDispatch(bookingId, WaitResult.ACCEPTED);
 
+        // Seed vị trí tức thì của tài xế từ Redis GEO vào booking location cache
+        // Để khách hàng thấy ngay vị trí tài xế trên bản đồ mà không cần đợi WebSocket GPS
+        String vehicleTypeId = driver.getVehicleType() != null ? driver.getVehicleType().getVehicleTypeId() : null;
+        DriverLocation geoPos = driverCacheService.getDriverPositionFromGeo(driverId, vehicleTypeId);
+        if (geoPos != null) {
+            driverCacheService.saveLocation(bookingId, geoPos.getLat(), geoPos.getLng());
+            log.info("[Booking] Seed vị trí tài xế từ Redis GEO cho booking={}: ({}, {})", bookingId, geoPos.getLat(), geoPos.getLng());
+        }
+
         log.info("[Booking] Gán tài xế thành công: booking={}", bookingId);
         return mapToBookingDetailResponse(updated);
     }
@@ -493,6 +503,14 @@ public class BookingService {
         booking.setPickupTime(Timestamp.valueOf(LocalDateTime.now()));
         Booking updated = bookingRepository.save(booking);
         notifyCustomerDriverAssigned(updated, driver);
+
+        // Seed vị trí tức thì từ Redis GEO
+        String vehicleTypeId = driver.getVehicleType() != null ? driver.getVehicleType().getVehicleTypeId() : null;
+        com.project.BookCarOnline.DTO.Redis.DriverLocation geoPos = driverCacheService.getDriverPositionFromGeo(driverId, vehicleTypeId);
+        if (geoPos != null) {
+            driverCacheService.saveLocation(bookingId, geoPos.getLat(), geoPos.getLng());
+        }
+
         log.info("[Admin] Gán tài xế {} vào booking {}", driverId, bookingId);
         return mapToBookingDetailResponse(updated);
     }

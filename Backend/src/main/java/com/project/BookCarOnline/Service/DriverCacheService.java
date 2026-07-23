@@ -142,6 +142,22 @@ public class DriverCacheService {
         );
     }
 
+    public DriverLocation getDriverPositionFromGeo(String driverId, String vehicleTypeId) {
+        if (driverId == null || vehicleTypeId == null) return null;
+        try {
+            List<Point> positions = redisTemplate.opsForGeo()
+                    .position(getGeoKey(vehicleTypeId), driverId);
+            if (positions != null && !positions.isEmpty() && positions.get(0) != null) {
+                Point point = positions.get(0);
+                // Redis GEO lưu (lng, lat), trả về Point(x=lng, y=lat)
+                return new DriverLocation(point.getY(), point.getX(), Instant.now().toEpochMilli());
+            }
+        } catch (Exception e) {
+            log.warn("[GEO] Không lấy được vị trí tài xế {} từ Redis GEO: {}", driverId, e.getMessage());
+        }
+        return null;
+    }
+
     @CacheEvict(value = "driverStats", key = "#driverId")
     public void evictDriverStats(String driverId) {
         log.debug("[DriverScore] Xóa cache cho tài xế: {}", driverId);

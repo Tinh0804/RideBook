@@ -444,13 +444,20 @@ public class DriverService {
                 .map(mapper::toDriverDetailResponse)
                 .collect(Collectors.toList());
     }
-    public Boolean toggleDriverActivityStatus(String driverId) {
+    public Boolean toggleDriverActivityStatus(String driverId, Double lat, Double lng) {
         log.info("Toggling activity status for driver: {}", driverId);
         Driver driver = driverRepository.findById(driverId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
         
         Boolean currentStatus = driver.getActivityStatus();
         driver.setActivityStatus(currentStatus == null ? true : !currentStatus);
+
+        // Nếu Frontend gửi kèm tọa độ → cập nhật vào DB để luôn có vị trí mới nhất
+        if (lat != null && lng != null) {
+            driver.setCurrentLat(lat);
+            driver.setCurrentLng(lng);
+            log.info("Driver {} location updated from device: ({}, {})", driverId, lat, lng);
+        }
         
         driverRepository.save(driver);
 
