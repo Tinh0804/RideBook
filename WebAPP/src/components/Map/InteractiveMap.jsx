@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { GoogleMap, Marker, DirectionsRenderer } from '@react-google-maps/api'
 
 const mapContainerStyle = {
@@ -94,7 +94,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
   const geocoderRef = useRef(null)
 
   const defaultCenter = useMemo(() => ({ lat: 16.0544, lng: 108.2022 }), [])
-  
+
   const mapCenter = useMemo(() => {
     if (initialCenter) return { lat: initialCenter[0], lng: initialCenter[1] }
     if (pickup?.lat && pickup?.lng) return { lat: Number(pickup.lat), lng: Number(pickup.lng) }
@@ -111,7 +111,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
   const boundsFittedRef = useRef(false)
   useEffect(() => {
     if (directions) return // Let DirectionsRenderer handle zoom when route exists
-    
+
     if (mapRef.current && !selectingMode) {
       const bounds = new window.google.maps.LatLngBounds()
       let hasPoints = false
@@ -132,13 +132,13 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
       if (hasPoints && !boundsFittedRef.current) {
         boundsFittedRef.current = true
         setTimeout(() => {
-           if (mapRef.current) {
-             const padding = { top: 60, bottom: 60, left: 60, right: 60 }
-             mapRef.current.fitBounds(bounds, padding)
-             const listener = window.google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
-               if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16)
-             })
-           }
+          if (mapRef.current) {
+            const padding = { top: 60, bottom: 60, left: 60, right: 60 }
+            mapRef.current.fitBounds(bounds, padding)
+            const listener = window.google.maps.event.addListenerOnce(mapRef.current, 'idle', () => {
+              if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16)
+            })
+          }
         }, 100)
       }
     }
@@ -174,7 +174,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
     const currentCenter = mapRef.current.getCenter()
     const lat = currentCenter.lat()
     const lng = currentCenter.lng()
-    
+
     // Reverse geocoding
     geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === 'OK' && results[0]) {
@@ -182,7 +182,7 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         const route = results[0].address_components.find(c => c.types.includes('route'))
         const sublocal = results[0].address_components.find(c => c.types.includes('sublocality'))
         if (route && sublocal) {
-            addressName = `${route.long_name}, ${sublocal.long_name}`
+          addressName = `${route.long_name}, ${sublocal.long_name}`
         }
         onLocationSelect({ lat, lng, name: addressName || results[0].formatted_address, fullAddress: results[0].formatted_address })
       } else {
@@ -202,15 +202,15 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
     <div className={`w-full h-full relative z-0 ${className || ''}`}>
       {selectingMode && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[1000] pointer-events-none drop-shadow-md">
-           <img 
-             src="https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png" 
-             alt="center pin" 
-             className="w-6 h-10 object-contain -mt-2" 
-           />
-           <div className="w-2 h-1 bg-black/30 rounded-[50%] absolute bottom-[-2px] left-1/2 -translate-x-1/2 blur-[1px]"></div>
+          <img
+            src="https://maps.gstatic.com/mapfiles/api-3/images/spotlight-poi2_hdpi.png"
+            alt="center pin"
+            className="w-6 h-10 object-contain -mt-2"
+          />
+          <div className="w-2 h-1 bg-black/30 rounded-[50%] absolute bottom-[-2px] left-1/2 -translate-x-1/2 blur-[1px]"></div>
         </div>
       )}
-      
+
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={mapCenter}
@@ -223,28 +223,28 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         }}
       >
         {pickup && !selectingMode && !directions && (
-          <Marker 
+          <Marker
             position={{ lat: Number(pickup.lat), lng: Number(pickup.lng) }}
           />
         )}
 
         {dropoff && !selectingMode && !directions && (
-          <Marker 
+          <Marker
             position={{ lat: Number(dropoff.lat), lng: Number(dropoff.lng) }}
           />
         )}
 
         {driver && driver.lat && driver.lng && !selectingMode && (
-          <Marker 
+          <Marker
             position={{ lat: Number(driver.lat), lng: Number(driver.lng) }}
             icon={{
-               path: 'M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759   c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z    M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713   v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336   h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z',
-               fillColor: '#22c55e',
-               fillOpacity: 1,
-               strokeWeight: 1.5,
-               strokeColor: '#ffffff',
-               scale: 0.8,
-               anchor: window.google?.maps?.Point ? new window.google.maps.Point(23, 23) : undefined
+              path: 'M29.395,0H17.636c-3.117,0-5.643,3.467-5.643,6.584v34.804c0,3.116,2.526,5.644,5.643,5.644h11.759   c3.116,0,5.644-2.527,5.644-5.644V6.584C35.037,3.467,32.511,0,29.395,0z M34.05,14.188v11.665l-2.729,0.351v-4.806L34.05,14.188z    M32.618,10.773c-1.016,3.9-2.219,8.51-2.219,8.51H16.631l-2.222-8.51C14.41,10.773,23.293,7.755,32.618,10.773z M15.741,21.713   v4.492l-2.73-0.349V14.502L15.741,21.713z M13.011,37.938V27.579l2.73,0.343v8.196L13.011,37.938z M14.568,40.882l2.218-3.336   h13.771l2.219,3.336H14.568z M31.321,35.805v-7.872l2.729-0.355v10.048L31.321,35.805z',
+              fillColor: '#22c55e',
+              fillOpacity: 1,
+              strokeWeight: 1.5,
+              strokeColor: '#ffffff',
+              scale: 0.8,
+              anchor: window.google?.maps?.Point ? new window.google.maps.Point(23, 23) : undefined
             }}
           />
         )}

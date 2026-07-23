@@ -123,8 +123,6 @@ const DriverTripFlowPage = () => {
             name: 'Vị trí của bạn'
           })
 
-          const activeDriverId = userProfile?.driverId || userProfile?.id || user?.id
-
           if (currentTrip) {
             localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
 
@@ -136,9 +134,9 @@ const DriverTripFlowPage = () => {
                 lng,
               })
             }
-          } else if (activeDriverId) {
+          } else {
             // Cập nhật vị trí tự do lên Redis GEO khi tài xế di chuyển mà chưa có chuyến
-            driverApi.updateFreeLocation(activeDriverId, lat, lng).catch(() => {})
+            driverApi.updateFreeLocation(lat, lng).catch(() => { })
           }
         },
         (error) => {

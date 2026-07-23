@@ -1,11 +1,10 @@
 package com.project.BookCarOnline.Controller;
+
 import com.project.BookCarOnline.DTO.Redis.DriverLocation;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.context.SecurityContextHolder;
-
 import com.project.BookCarOnline.DTO.APIResponse;
 import com.project.BookCarOnline.DTO.Request.CreateDriverRequest;
 import com.project.BookCarOnline.DTO.Request.DriverLocationRequest;
@@ -38,7 +37,6 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 
-
 @Slf4j
 @RestController
 @RequestMapping("/drivers")
@@ -46,15 +44,13 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DriverController {
-    
+
     DriverService driverService;
     SimpMessagingTemplate messagingTemplate;
     DriverCacheService driverCacheService;
 
-
-
     @GetMapping("/my-info")
-    public APIResponse<DriverDetailResponse> getMyInfo(){
+    public APIResponse<DriverDetailResponse> getMyInfo() {
         DriverDetailResponse response = driverService.getMyInfo();
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -64,7 +60,7 @@ public class DriverController {
     }
 
     @GetMapping("/my-dashboard")
-    public APIResponse<DriverDashboardResponse> getMyDashboard(){
+    public APIResponse<DriverDashboardResponse> getMyDashboard() {
         DriverDashboardResponse response = driverService.getDriverDashboard();
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverDashboardResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -75,7 +71,7 @@ public class DriverController {
 
     @GetMapping("/my-revenue")
     public APIResponse<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse> getMyRevenue(
-            @RequestParam(name = "period", defaultValue = "week") String period){
+            @RequestParam(name = "period", defaultValue = "week") String period) {
         com.project.BookCarOnline.DTO.Response.DriverRevenueResponse response = driverService.getDriverRevenue(period);
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DriverRevenueResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -86,7 +82,7 @@ public class DriverController {
 
     @GetMapping("/my-revenue/daily")
     public APIResponse<DailyRevenueDTO> getDailyRevenue(
-            @RequestParam(name = "date", required = false) String dateStr){
+            @RequestParam(name = "date", required = false) String dateStr) {
         com.project.BookCarOnline.DTO.Response.DailyRevenueDTO response = driverService.getDailyRevenue(dateStr);
         return APIResponse.<com.project.BookCarOnline.DTO.Response.DailyRevenueDTO>builder()
                 .status(HttpStatus.OK.value())
@@ -94,9 +90,12 @@ public class DriverController {
                 .result(response)
                 .build();
     }
+
     @PutMapping(value = "/status-activity")
-    public APIResponse<Boolean> updateStatusActive(@RequestBody(required = false) DriverLocationRequest locationRequest){
-        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+    public APIResponse<Boolean> updateStatusActive(
+            @RequestBody(required = false) DriverLocationRequest locationRequest) {
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         Double lat = locationRequest != null ? locationRequest.getLat() : null;
         Double lng = locationRequest != null ? locationRequest.getLng() : null;
         boolean isActive = driverService.toggleDriverActivityStatus(driverId, lat, lng);
@@ -108,8 +107,10 @@ public class DriverController {
     }
 
     @PutMapping(value = "/my-info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public APIResponse<DriverDetailResponse> updateMyInfo(@Valid @ModelAttribute UpdateDriverRequest request) throws IOException {
-        String driverId = SecurityUtils.getCurrentProfileId().orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
+    public APIResponse<DriverDetailResponse> updateMyInfo(@Valid @ModelAttribute UpdateDriverRequest request)
+            throws IOException {
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         log.info("REST API: PUT /drivers/my-info - Updating driver {}", driverId);
         DriverDetailResponse driver = driverService.updateDriver(driverId, request, null);
         return APIResponse.<DriverDetailResponse>builder()
@@ -121,7 +122,8 @@ public class DriverController {
 
     @PutMapping("/location/free")
     public APIResponse<Void> updateFreeLocation(@RequestBody DriverLocationRequest request) {
-        String driverId = SecurityContextHolder.getContext().getAuthentication().getName();
+        String driverId = SecurityUtils.getCurrentProfileId()
+                .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         if (request.getLat() != null && request.getLng() != null) {
             driverService.updateFreeLocation(driverId, request.getLat(), request.getLng());
         }
@@ -130,9 +132,6 @@ public class DriverController {
                 .message("Location updated")
                 .build();
     }
-
-
-
 
     @GetMapping("/active")
     public APIResponse<List<DriverDetailResponse>> getActiveDrivers() {
@@ -145,7 +144,6 @@ public class DriverController {
                 .build();
     }
 
-
     @GetMapping("/area/{area}")
     public APIResponse<List<DriverDetailResponse>> getDriversByArea(@PathVariable String area) {
         log.info("REST API: GET /drivers/area/{} - Fetching drivers by area", area);
@@ -156,7 +154,6 @@ public class DriverController {
                 .result(drivers)
                 .build();
     }
-
 
     @GetMapping("/vehicle-type/{vehicleTypeId}")
     public APIResponse<List<DriverDetailResponse>> getDriversByVehicleType(@PathVariable String vehicleTypeId) {
@@ -169,21 +166,20 @@ public class DriverController {
                 .build();
     }
 
-
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public APIResponse<DriverDetailResponse> createDriver(@Valid @ModelAttribute CreateDriverRequest request) throws IOException {
+    public APIResponse<DriverDetailResponse> createDriver(@Valid @ModelAttribute CreateDriverRequest request)
+            throws IOException {
         log.info("REST API: POST /drivers - Creating new driver: {}", request.getEmail());
 
         DriverDetailResponse driver = driverService.createDriver(request, null);
-        
+
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.CREATED.value())
                 .message("Tạo tài xế thành công")
                 .result(driver)
                 .build();
     }
-
 
     @MessageMapping("/driver/location")
     public void updateDriverLocation(@Payload DriverLocationRequest request) {
@@ -195,13 +191,11 @@ public class DriverController {
         log.debug("Driver location update for booking {}: lat={}, lng={}",
                 request.getBookingId(), request.getLat(), request.getLng());
 
-
         driverCacheService.saveLocation(request.getBookingId(), request.getLat(), request.getLng());
 
         messagingTemplate.convertAndSend(
                 "/topic/booking/" + request.getBookingId() + "/driver-location",
-                request
-        );
+                request);
     }
 
     @GetMapping("/location/{bookingId}")
@@ -210,7 +204,7 @@ public class DriverController {
         return APIResponse.<DriverLocation>builder()
                 .status(HttpStatus.OK.value())
                 .message("Driver location")
-                .result(location) 
+                .result(location)
                 .build();
     }
 }
