@@ -5,6 +5,7 @@ import { ROLES } from '@/config'
 import AuthLayout    from '@/layouts/AuthLayout'
 import MainLayout    from '@/layouts/MainLayout'
 import ProtectedRoute from './ProtectedRoute'
+import RequireGeolocation from '@/components/Elements/RequireGeolocation'
 import Spinner       from '@/components/Elements/Spinner'
 
 // ─── Lazy page imports ───────────────────────────────────────────────────────
@@ -103,16 +104,18 @@ const AppRoutes = () => (
         </Route>
       </Route>
 
-      {/* ── Driver routes ── */}
+      {/* ── Driver routes (bắt buộc bật định vị) ── */}
       <Route element={<ProtectedRoute allowedRoles={[ROLES.DRIVER]} />}>
         <Route element={<MainLayout />}>
-          <Route path="driver/dashboard"    element={<DriverDashboardPage />} />
-          <Route path="driver/trips/:id?"        element={<AvailableTripsPage />} />
-          <Route path="driver/current-trip" element={<Navigate to="/driver/trips" replace />} />
-          <Route path="driver/revenue"      element={<DriverRevenuePage />} />
-          <Route path="driver/wallet"       element={<DriverWalletPage />} />
-          <Route path="driver/profile"      element={<DriverProfilePage />} />
-          <Route path="driver/history"      element={<DriverHistoryPage />} />
+          <Route element={<RequireGeolocation />}>
+            <Route path="driver/dashboard"    element={<DriverDashboardPage />} />
+            <Route path="driver/trips/:id?"        element={<AvailableTripsPage />} />
+            <Route path="driver/current-trip" element={<Navigate to="/driver/trips" replace />} />
+            <Route path="driver/revenue"      element={<DriverRevenuePage />} />
+            <Route path="driver/wallet"       element={<DriverWalletPage />} />
+            <Route path="driver/profile"      element={<DriverProfilePage />} />
+            <Route path="driver/history"      element={<DriverHistoryPage />} />
+          </Route>
         </Route>
       </Route>
 

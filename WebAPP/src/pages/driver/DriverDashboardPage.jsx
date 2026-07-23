@@ -34,7 +34,19 @@ const DriverDashboardPage = () => {
   const handleToggleStatus = async () => {
     setToggling(true)
     try {
-      const data = await driverApi.toggleStatus()
+      // Lấy tọa độ hiện tại từ thiết bị trước khi gửi
+      let lat = null, lng = null
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, enableHighAccuracy: true })
+        )
+        lat = pos.coords.latitude
+        lng = pos.coords.longitude
+      } catch (geoErr) {
+        console.warn('Could not get geolocation:', geoErr)
+      }
+
+      const data = await driverApi.toggleStatus(lat, lng)
       const newStatus = typeof data?.result === 'boolean' ? data.result : !isOnline
       setOnline(newStatus)
       if (updateUserProfile) {

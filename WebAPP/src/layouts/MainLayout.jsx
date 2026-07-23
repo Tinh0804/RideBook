@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   RiHomeLine, RiHistoryLine, RiUserLine,
   RiWalletLine, RiNotification3Line,
@@ -66,6 +66,16 @@ const MainLayout = () => {
   // Animation state cho chiếc xe kéo sidebar
   const [isCarDriving, setIsCarDriving] = useState(false)
   
+  // Âm thanh thông báo hệ thống
+  const notifSoundRef = useRef(null)
+  useEffect(() => {
+    notifSoundRef.current = new Audio('/sounds/notification.mp3')
+    notifSoundRef.current.preload = 'auto'
+    return () => {
+      notifSoundRef.current?.pause()
+    }
+  }, [])
+  
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -110,6 +120,10 @@ const MainLayout = () => {
               const newNotif = JSON.parse(msg.body)
               setNotifications(prev => [newNotif, ...prev])
               setNotifCount(prev => prev + 1)
+              if (notifSoundRef.current) {
+                notifSoundRef.current.currentTime = 0
+                notifSoundRef.current.play().catch(() => {})
+              }
               toast.success(newNotif.title + '\n' + newNotif.message, {
                 duration: 5000,
                 icon: '🔔',

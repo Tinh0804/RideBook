@@ -21,15 +21,15 @@ import InteractiveMap from '@/components/Map/InteractiveMap'
 
 
 const STATUS_FLOW = [
-  { status: BOOKING_STATUS.ACCEPTED,    label: 'Đến đón khách',    next: BOOKING_STATUS.ARRIVED,     action: 'Tôi đã đến điểm đón' },
-  { status: BOOKING_STATUS.ARRIVED,     label: 'Đã đến điểm đón',  next: BOOKING_STATUS.IN_PROGRESS, action: 'Đã đón khách, bắt đầu chạy' },
-  { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường',  next: BOOKING_STATUS.COMPLETED,   action: 'Hoàn thành chuyến đi' },
+  { status: BOOKING_STATUS.ACCEPTED, label: 'Đến đón khách', next: BOOKING_STATUS.ARRIVED, action: 'Tôi đã đến điểm đón' },
+  { status: BOOKING_STATUS.ARRIVED, label: 'Đã đến điểm đón', next: BOOKING_STATUS.IN_PROGRESS, action: 'Đã đón khách, bắt đầu chạy' },
+  { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường', next: BOOKING_STATUS.COMPLETED, action: 'Hoàn thành chuyến đi' },
 ]
 
 const playSound = (audio) => {
   if (!audio) return
   audio.currentTime = 0
-  audio.play().catch(() => {})
+  audio.play().catch(() => { })
 }
 
 const DriverTripFlowPage = () => {
@@ -41,7 +41,7 @@ const DriverTripFlowPage = () => {
   const [incomingTrip, setIncomingTrip] = useState(null)
   const [accepting, setAccepting] = useState(false)
   const [togglingOnline, setTogglingOnline] = useState(false)
-  
+
   // State for Active Trip phase
   const [loadingTrip, setLoadingTrip] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -57,16 +57,20 @@ const DriverTripFlowPage = () => {
   const sendTripMessageRef = useRef(null)
   const receiveBookingSoundRef = useRef(null)
   const statusBookingSoundRef = useRef(null)
+  const cancelBookingSoundRef = useRef(null)
 
   useEffect(() => {
     receiveBookingSoundRef.current = new Audio('/sounds/recivebooking.mp3')
     statusBookingSoundRef.current = new Audio('/sounds/statusbooking.mp3')
+    cancelBookingSoundRef.current = new Audio('/sounds/cancelbooking.mp3')
     receiveBookingSoundRef.current.preload = 'auto'
     statusBookingSoundRef.current.preload = 'auto'
+    cancelBookingSoundRef.current.preload = 'auto'
 
     return () => {
       receiveBookingSoundRef.current?.pause()
       statusBookingSoundRef.current?.pause()
+      cancelBookingSoundRef.current?.pause()
     }
   }, [])
 
@@ -112,25 +116,29 @@ const DriverTripFlowPage = () => {
         (position) => {
           const lat = position.coords.latitude
           const lng = position.coords.longitude
-          
+
           setDriverCoord({
             lat,
             lng,
             name: 'Vị trí của bạn'
           })
 
-          // Also keep localStorage as same-device fallback
+          const activeDriverId = userProfile?.driverId || userProfile?.id || user?.id
+
           if (currentTrip) {
             localStorage.setItem(`driver_live_loc_${currentTrip.bookingId}`, JSON.stringify({ lat, lng }))
-            
+
             if ([BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS].includes(currentTrip.bookingStatus)) {
-               // Broadcast GPS via WebSocket to customer in real-time
-               sendTripMessageRef.current?.('/app/driver/location', {
-                 bookingId: currentTrip.bookingId,
-                 lat,
-                 lng,
-               })
+              // Broadcast GPS via WebSocket to customer in real-time
+              sendTripMessageRef.current?.('/app/driver/location', {
+                bookingId: currentTrip.bookingId,
+                lat,
+                lng,
+              })
             }
+          } else if (activeDriverId) {
+            // Cập nhật vị trí tự do lên Redis GEO khi tài xế di chuyển mà chưa có chuyến
+            driverApi.updateFreeLocation(activeDriverId, lat, lng).catch(() => {})
           }
         },
         (error) => {
@@ -150,7 +158,7 @@ const DriverTripFlowPage = () => {
     if (currentTrip?.bookingId) {
       // Update URL silently so user sees the ID in address bar
       window.history.replaceState(null, '', `/driver/trips/${currentTrip.bookingId}`)
-      
+
       // Refresh current trip info
       setLoadingTrip(true)
       bookingApi.getById(currentTrip.bookingId)
@@ -168,6 +176,8 @@ const DriverTripFlowPage = () => {
     if (typeof payload === 'string') {
       if (payload.startsWith('CUSTOMER_CANCELLED:')) {
         const bookingId = payload.split(':')[1]
+        // Phát âm thanh huỷ chuyến
+        playSound(cancelBookingSoundRef.current)
         if (currentTrip?.bookingId === bookingId) {
           toast.error('Khách hàng đã hủy chuyến đi này!', { duration: 5000 })
           setCurrentTrip(null)
@@ -197,6 +207,7 @@ const DriverTripFlowPage = () => {
       if (incomingTrip?.bookingId === payload.bookingId) {
         setIncomingTrip(null)
         if (payload?.type === 'BOOKING_CANCELLED') {
+          playSound(cancelBookingSoundRef.current)
           toast.error('Chuyến đi đã bị khách hủy')
         } else {
           toast.error('Chuyến đã có tài xế khác nhận')
@@ -222,11 +233,11 @@ const DriverTripFlowPage = () => {
             setOnline(true)
           }
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   }, [userProfile?.driverId, userProfile?.id, userProfile?.activityStatus, setCurrentTrip, setOnline])
 
-  const topicsToListen = driverId 
+  const topicsToListen = driverId
     ? ['/topic/available-bookings', `/topic/driver/${driverId}`]
     : ['/topic/available-bookings']
 
@@ -250,7 +261,19 @@ const DriverTripFlowPage = () => {
   const handleToggleOnline = async () => {
     setTogglingOnline(true)
     try {
-      const data = await driverApi.toggleStatus()
+      // Lấy tọa độ hiện tại từ thiết bị trước khi gửi
+      let lat = null, lng = null
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000, enableHighAccuracy: true })
+        )
+        lat = pos.coords.latitude
+        lng = pos.coords.longitude
+      } catch (geoErr) {
+        console.warn('Could not get geolocation:', geoErr)
+      }
+
+      const data = await driverApi.toggleStatus(lat, lng)
       const newStatus = typeof data?.result === 'boolean' ? data.result : !isOnline
       setOnline(newStatus)
       if (updateUserProfile) {
@@ -323,7 +346,7 @@ const DriverTripFlowPage = () => {
 
   const handleCancelTrip = async () => {
     if (!window.confirm('Bạn có chắc chắn muốn huỷ chuyến đi này không?')) return;
-    
+
     setCancelingTrip(true);
     try {
       await bookingApi.cancelBookingByDriver(currentTrip.bookingId, driverId);
@@ -343,7 +366,7 @@ const DriverTripFlowPage = () => {
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden bg-[#e8ece3] dark:bg-surface-dark w-full">
       <img src="/assets/images/map_bg.jpg" alt="Map" className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-white/40 dark:bg-surface-dark/40 backdrop-blur-[2px] pointer-events-none" />
-      
+
       <div className="relative z-10 bg-white/95 dark:bg-surface-card/95 backdrop-blur-md p-8 md:p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-11/12 text-center border border-gray-200 dark:border-surface-border">
         <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-surface-dark flex items-center justify-center mb-6 shadow-inner">
           <RiCarLine size={48} className="text-gray-400" />
@@ -377,7 +400,7 @@ const DriverTripFlowPage = () => {
   if (!currentTrip) {
     return (
       <div className="h-full flex flex-col relative bg-[#e8ece3] dark:bg-surface-dark w-full overflow-hidden">
-        
+
         {/* Real Map or Background Map if real not available */}
         <div className="absolute inset-0 z-0">
           <InteractiveMap driver={driverCoord} zoom={15} />
@@ -459,16 +482,16 @@ const DriverTripFlowPage = () => {
 
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-surface-border">
-                <button 
-                  onClick={handleReject} 
-                  disabled={accepting} 
+                <button
+                  onClick={handleReject}
+                  disabled={accepting}
                   className="flex-1 py-3.5 rounded-xl font-bold border-2 border-red-100 text-red-500 bg-red-50 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
                 >
                   <RiCloseLine size={20} /> Bỏ qua
                 </button>
-                <button 
-                  onClick={handleAccept} 
-                  disabled={accepting} 
+                <button
+                  onClick={handleAccept}
+                  disabled={accepting}
                   className="flex-[2] py-3.5 rounded-xl font-bold bg-brand-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:bg-brand-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {accepting ? <Spinner size="sm" /> : <RiCheckLine size={20} />} Nhận chuyến
@@ -558,29 +581,29 @@ const DriverTripFlowPage = () => {
           {/* Route info */}
           <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-5 uppercase tracking-wider">Hành trình & Cước phí</h3>
-            
+
             <div className="relative mb-6">
-               <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gray-200 dark:bg-surface-border"></div>
-               <div className="space-y-5 relative z-10">
-                 <div className="flex items-start gap-4">
-                   <div className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                     <RiMapPinLine size={14} className="text-brand-500" />
-                   </div>
-                   <div>
-                     <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.pickupLocation}</p>
-                   </div>
-                 </div>
-                 <div className="flex items-start gap-4">
-                   <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                     <RiMapPin2Line size={14} className="text-red-500" />
-                   </div>
-                   <div>
-                     <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.dropoffLocation}</p>
-                   </div>
-                 </div>
-               </div>
+              <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gray-200 dark:bg-surface-border"></div>
+              <div className="space-y-5 relative z-10">
+                <div className="flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <RiMapPinLine size={14} className="text-brand-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.pickupLocation}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <RiMapPin2Line size={14} className="text-red-500" />
+                  </div>
+                  <div>
+                    <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.dropoffLocation}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            
+
             <div className="border-t border-gray-100 dark:border-surface-border pt-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-500 font-medium text-sm">Cước phí</span>
@@ -603,13 +626,13 @@ const DriverTripFlowPage = () => {
           {/* Actions */}
           <div className="space-y-3 pt-2">
             {currentStep && (
-              <button 
-                onClick={handleNextStatus} 
+              <button
+                onClick={handleNextStatus}
                 disabled={updating || cancelingTrip}
                 className={cn(
                   "w-full py-4 rounded-xl font-bold text-white text-base transition-all flex justify-center items-center gap-2",
-                  currentStep.next === BOOKING_STATUS.COMPLETED 
-                    ? 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]' 
+                  currentStep.next === BOOKING_STATUS.COMPLETED
+                    ? 'bg-blue-500 hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.4)]'
                     : 'bg-brand-500 hover:bg-brand-600 shadow-[0_0_20px_rgba(34,197,94,0.4)]'
                 )}
               >
@@ -617,10 +640,10 @@ const DriverTripFlowPage = () => {
                 {currentStep.action}
               </button>
             )}
-            
+
             {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
-              <button 
-                onClick={handleCancelTrip} 
+              <button
+                onClick={handleCancelTrip}
                 disabled={cancelingTrip || updating}
                 className="w-full py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
               >
@@ -634,7 +657,7 @@ const DriverTripFlowPage = () => {
       {/* Vùng 2: Bản đồ Realtime */}
       <div className="flex-1 relative h-[45vh] lg:h-full bg-[#e8ece3] dark:bg-surface-dark z-0">
         <InteractiveMap pickup={pickupCoord} dropoff={dropoffCoord} driver={driverCoord} />
-        
+
         {/* Map Overlay Indicator */}
         <div className="absolute top-6 right-6 z-10 bg-white/90 dark:bg-surface-card/90 backdrop-blur-md px-4 py-2.5 rounded-full border border-gray-100 dark:border-surface-border shadow-lg flex items-center gap-2">
           <div className="w-2.5 h-2.5 bg-brand-500 rounded-full animate-pulse" />

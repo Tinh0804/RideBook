@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import axios from 'axios'
@@ -47,6 +47,30 @@ const TripTrackingPage = () => {
   const [loading,    setLoading]    = useState(!currentBooking)
   const [chatOpen,   setChatOpen]   = useState(false)
   const [cancelling, setCancelling] = useState(false)
+
+  // Âm thanh khi tài xế huỷ chuyến & khi hoàn thành chuyến
+  const cancelBookingSoundRef = useRef(null)
+  const completeBookingSoundRef = useRef(null)
+
+  useEffect(() => {
+    cancelBookingSoundRef.current = new Audio('/sounds/cancelbooking.mp3')
+    cancelBookingSoundRef.current.preload = 'auto'
+
+    completeBookingSoundRef.current = new Audio('/sounds/completebooking.mp3')
+    completeBookingSoundRef.current.preload = 'auto'
+
+    return () => {
+      cancelBookingSoundRef.current?.pause()
+      completeBookingSoundRef.current?.pause()
+    }
+  }, [])
+
+  const playCompleteSound = useCallback(() => {
+    if (completeBookingSoundRef.current) {
+      completeBookingSoundRef.current.currentTime = 0
+      completeBookingSoundRef.current.play().catch(() => {})
+    }
+  }, [])
 
   // Sync URL with booking ID silently
   useEffect(() => {
@@ -134,13 +158,14 @@ const TripTrackingPage = () => {
           setCurrentBooking(updated)
           if (updated.bookingStatus === BOOKING_STATUS.COMPLETED) {
             clearInterval(interval)
+            playCompleteSound()
             toast.success('Chuyến đi hoàn thành!')
           }
         })
         .catch(() => {})
     }, 5000)
     return () => clearInterval(interval)
-  }, [booking?.bookingStatus, bookingId, setCurrentBooking])
+  }, [booking?.bookingStatus, bookingId, setCurrentBooking, playCompleteSound])
 
   // WebSocket for realtime updates
   const onWsMessage = useCallback((topic, payload) => {
@@ -158,6 +183,11 @@ const TripTrackingPage = () => {
     if (typeof payload === 'string' && payload.startsWith('DRIVER_CANCELLED:')) {
       const canceledBookingId = payload.split(':')[1]
       if (bookingId === canceledBookingId) {
+        // Phát âm thanh huỷ chuyến
+        if (cancelBookingSoundRef.current) {
+          cancelBookingSoundRef.current.currentTime = 0
+          cancelBookingSoundRef.current.play().catch(() => {})
+        }
         toast.error('Tài xế đã huỷ chuyến đi. Vui lòng đặt lại!', { duration: 5000 })
         clearCurrentBooking()
         navigate('/customer/home')
@@ -165,12 +195,34 @@ const TripTrackingPage = () => {
       return
     }
 
+    if (typeof payload === 'string' && payload.startsWith('STATUS_UPDATE:')) {
+      const parts = payload.split(':')
+      const targetId = parts[1]
+      const newStatus = parts[2]
+      if (bookingId === targetId) {
+        setBooking((prev) => ({ ...prev, bookingStatus: newStatus }))
+        setCurrentBooking((prev) => ({ ...prev, bookingStatus: newStatus }))
+        if (newStatus === BOOKING_STATUS.COMPLETED) {
+          playCompleteSound()
+          toast.success('Chuyến đi hoàn thành!')
+        } else {
+          toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[newStatus] || newStatus}`)
+        }
+      }
+      return
+    }
+
     if (payload?.bookingId === bookingId) {
       setBooking((prev) => ({ ...prev, ...payload }))
       setCurrentBooking((prev) => ({ ...prev, ...payload }))
-      toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.bookingStatus]}`)
+      if (payload.bookingStatus === BOOKING_STATUS.COMPLETED) {
+        playCompleteSound()
+        toast.success('Chuyến đi hoàn thành!')
+      } else {
+        toast.success(`Trạng thái: ${BOOKING_STATUS_LABEL[payload.bookingStatus]}`)
+      }
     }
-  }, [bookingId, booking?.driverName, setCurrentBooking, clearCurrentBooking, navigate])
+  }, [bookingId, booking?.driverName, setCurrentBooking, clearCurrentBooking, navigate, playCompleteSound])
 
   useWebSocket([
     `/topic/booking/${bookingId}`,

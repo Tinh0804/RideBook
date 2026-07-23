@@ -25,8 +25,8 @@ export const driverApi = {
   getDailyRevenue: (date) =>
     apiClient.get(`/drivers/my-revenue/daily${date ? `?date=${date}` : ''}`).then((r) => parseApiResponse(DailyRevenueSchema, r.data)),
 
-  toggleStatus: () =>
-    apiClient.put('/drivers/status-activity').then((r) => r.data),
+  toggleStatus: (lat, lng) =>
+    apiClient.put('/drivers/status-activity', { lat, lng }).then((r) => r.data),
 
   getMyInfo: () =>
     apiClient.get('/drivers/my-info').then((r) => parseApiResponse(DriverProfileSchema, r.data)),
