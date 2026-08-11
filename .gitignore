@@ -1,6 +1,6 @@
 .sixth
 .vscode
 **/cd.yml
-# .agents
+.agents
 .claude
 .idea

@@ -84,18 +84,13 @@ Dự án được xây dựng theo kiến trúc Client-Server với hệ sinh th
 ```text
 BookCar/
 ├── Backend/                # Spring Boot API (Java 21)
-│   ├── src/main/java/.../BookCarOnline/
-│   │   ├── Configuration/  # Cấu hình hệ thống (Security, WebSocket, Redis...)
-│   │   ├── Controller/     # REST APIs tiếp nhận và trả về response cho client
-│   │   ├── DTO/            # Data Transfer Objects định dạng dữ liệu giao tiếp
-│   │   ├── Entity/         # Các thực thể ánh xạ tới bảng trong Database (JPA)
-│   │   ├── Exception/      # Bắt và xử lý lỗi/ngoại lệ toàn cục
-│   │   ├── Mapper/         # Chuyển đổi dữ liệu tự động giữa Entity và DTO
-│   │   ├── Repository/     # Lớp truy xuất, thao tác với CSDL (Spring Data JPA)
-│   │   ├── Service/        # Xử lý các nghiệp vụ (Business logic) của dự án
-│   │   └── Utils/          # Các class/hàm tiện ích dùng chung
-│   ├── docker-compose.yml  # Script khởi tạo nhanh CSDL (PostgreSQL, Redis) bằng Docker
-│   └── pom.xml             # Cấu hình và quản lý các thư viện phụ thuộc (Maven)
+│   ├── app/                # Composition root và cấu hình Spring Boot
+│   ├── shared/             # API response, lỗi và tiện ích dùng chung
+│   ├── modules/            # Các module nghiệp vụ của modular monolith
+│   ├── keycloak/           # Realm, image và user-storage provider
+│   ├── docker-compose.yml  # Stack local: PostgreSQL, Redis, Keycloak, Backend
+│   ├── docker-compose.prod.yml # Backend/Keycloak dùng hạ tầng production bên ngoài
+│   └── pom.xml             # Maven reactor
 └── WebAPP/                 # React Web App (Customer, Driver & Admin)
     ├── src/
     │   ├── components/     # Các thành phần UI có thể tái sử dụng (Button, Input, Map...)
@@ -121,26 +116,27 @@ BookCar/
 
 **Yêu cầu hệ thống:** Java 21, Node.js 18+, Docker.
 
-### Bước 1: Khởi chạy Cơ sở dữ liệu (Docker)
+### Bước 1: Khởi chạy Backend stack bằng Docker
 
 ```bash
 git clone <URL_REPOSITORY_CỦA_BẠN>
 cd BookCar/Backend
-docker-compose up -d
+cp .env.example .env
+# Thay toàn bộ giá trị replace-me trong .env
+docker compose up --build -d
 ```
 
-Lệnh trên sẽ khởi chạy PostgreSQL và Redis.
+Lệnh trên khởi chạy PostgreSQL, Redis, Keycloak và Backend. PostgreSQL dùng hai
+database riêng là `ridebook` và `keycloak`.
 
 ### Bước 2: Cấu hình và Khởi động Backend
 
-1. Tạo project trên Firebase Console, tải file service account key và lưu vào:
-   `Backend/src/main/resources/firebase/firebase-adminsdk.json`
-2. Mở `application.yaml`, đảm bảo thông số Database (username/password) khớp với `docker-compose.yml`.
-3. Chạy Backend:
+Nếu không chạy Backend bằng Docker, khai báo `FIREBASE_CONFIG_PATH` trỏ tới
+service-account nằm ngoài repository, sau đó chạy:
 
 ```bash
-./mvnw clean install -DskipTests
-./mvnw spring-boot:run
+./mvnw -pl app -am install -DskipTests
+./mvnw -pl app spring-boot:run
 ```
 
 ✅ Server chạy tại: `http://localhost:8080/RideBook`
