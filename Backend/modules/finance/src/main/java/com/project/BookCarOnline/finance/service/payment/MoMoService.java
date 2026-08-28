@@ -1,6 +1,6 @@
-package com.project.BookCarOnline.app.service.payment;
+package com.project.BookCarOnline.finance.service.payment;
 
-import com.project.BookCarOnline.app.config.MoMoConfig;
+import com.project.BookCarOnline.finance.config.MoMoConfig;
 import com.project.BookCarOnline.finance.dto.request.PaymentRequest;
 import com.project.BookCarOnline.finance.dto.response.PaymentCallbackResponse;
 import com.project.BookCarOnline.finance.dto.response.PaymentResponse;
@@ -26,7 +26,7 @@ import java.util.Map;
 public class MoMoService {
 
     MoMoConfig moMoConfig;
-    PaymentCallbackService paymentCallbackService;
+    PaymentCallbackHandler paymentCallbackHandler;
     RestTemplate restTemplate = new RestTemplate();
 
     public PaymentResponse createPayment(PaymentRequest request) {
@@ -183,7 +183,7 @@ public class MoMoService {
             String statusMessage = "0".equals(errorCode) ? "Thanh toán thành công" : "Thanh toán thất bại: " + normalizedMessage;
             log.info("MoMo payment status: {} for booking: {}", paymentStatus, orderId);
             long callbackAmount = Long.parseLong(amount);
-            paymentCallbackService.process(
+            paymentCallbackHandler.process(
                     orderId,
                     callbackAmount,
                     "SUCCESS".equals(paymentStatus),

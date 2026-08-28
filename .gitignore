@@ -1,6 +1,12 @@
 .sixth
 .vscode
 **/cd.yml
-.agents
+.agents/*
+!.agents/rules/
+!.agents/rules/**
+!.agents/workflows/
+!.agents/workflows/**
+!.agents/constraints/
+!.agents/constraints/**
 .claude
 .idea

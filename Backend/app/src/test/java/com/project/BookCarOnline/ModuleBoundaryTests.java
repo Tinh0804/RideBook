@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ModuleBoundaryTests {
@@ -91,5 +92,48 @@ class ModuleBoundaryTests {
         }
 
         assertTrue(violations.isEmpty(), String.join(System.lineSeparator(), violations));
+    }
+
+    @Test
+    void paymentProviderAdaptersBelongToFinanceModule() {
+        Path current = Path.of("").toAbsolutePath();
+        Path backend = Files.isDirectory(current.resolve("app")) ? current : current.getParent();
+        Path financeSource = backend.resolve("modules/finance/src/main/java/com/project/BookCarOnline/finance");
+        Path appSource = backend.resolve("app/src/main/java/com/project/BookCarOnline/app");
+
+        assertTrue(Files.isRegularFile(financeSource.resolve("config/MoMoConfig.java")));
+        assertTrue(Files.isRegularFile(financeSource.resolve("config/VNPayConfig.java")));
+        assertTrue(Files.isRegularFile(financeSource.resolve("service/payment/MoMoService.java")));
+        assertTrue(Files.isRegularFile(financeSource.resolve("service/payment/VNPayService.java")));
+
+        assertFalse(Files.exists(appSource.resolve("config/MoMoConfig.java")));
+        assertFalse(Files.exists(appSource.resolve("config/VNPayConfig.java")));
+        assertFalse(Files.exists(appSource.resolve("service/payment/MoMoService.java")));
+        assertFalse(Files.exists(appSource.resolve("service/payment/VNPayService.java")));
+    }
+
+    @Test
+    void appDriverServiceOnlyCoordinatesCrossModuleWorkflows() throws IOException {
+        Path current = Path.of("").toAbsolutePath();
+        Path backend = Files.isDirectory(current.resolve("app")) ? current : current.getParent();
+        String source = Files.readString(backend.resolve(
+                "app/src/main/java/com/project/BookCarOnline/app/service/DriverService.java"));
+
+        List<String> identityOnlyMethods = List.of(
+                "getMyInfo(",
+                "searchDrivers(",
+                "getAllActiveDrivers(",
+                "createDriver(",
+                "updateDriver(",
+                "deleteDriver(",
+                "getDriverById(",
+                "getDriversByArea(",
+                "getDriversByVehicleType(",
+                "toggleDriverAccountStatus(",
+                "changePasswordByAdmin(");
+
+        identityOnlyMethods.forEach(method -> assertFalse(
+                source.contains(method),
+                "DriverService must not own identity-only operation " + method));
     }
 }

@@ -12,6 +12,7 @@ import com.project.BookCarOnline.identity.dto.request.UpdateDriverRequest;
 import com.project.BookCarOnline.app.dto.reporting.DailyRevenueDTO;
 import com.project.BookCarOnline.app.dto.reporting.DriverDashboardResponse;
 import com.project.BookCarOnline.identity.dto.response.DriverDetailResponse;
+import com.project.BookCarOnline.identity.service.DriverManagementService;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import com.project.BookCarOnline.booking.service.DriverCacheService;
@@ -38,12 +39,13 @@ import java.util.List;
 public class DriverController {
 
     DriverService driverService;
+    DriverManagementService driverManagementService;
     SimpMessagingTemplate messagingTemplate;
     DriverCacheService driverCacheService;
 
     @GetMapping("/my-info")
     public APIResponse<DriverDetailResponse> getMyInfo() {
-        DriverDetailResponse response = driverService.getMyInfo();
+        DriverDetailResponse response = driverManagementService.getMyInfo();
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Thông tin tài xế")
@@ -104,7 +106,7 @@ public class DriverController {
         String driverId = SecurityUtils.getCurrentProfileId()
                 .orElseThrow(() -> new AppException(ErrorCode.PROFILE_NOT_FOUND));
         log.info("REST API: PUT /drivers/my-info - Updating driver {}", driverId);
-        DriverDetailResponse driver = driverService.updateDriver(driverId, request);
+        DriverDetailResponse driver = driverManagementService.update(driverId, request);
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Cập nhật thông tin thành công")
@@ -128,7 +130,7 @@ public class DriverController {
     @GetMapping("/active")
     public APIResponse<List<DriverDetailResponse>> getActiveDrivers() {
         log.info("REST API: GET /drivers/active - Fetching active drivers");
-        List<DriverDetailResponse> drivers = driverService.getAllActiveDrivers();
+        List<DriverDetailResponse> drivers = driverManagementService.getActive();
         return APIResponse.<List<DriverDetailResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế đang hoạt động")
@@ -139,7 +141,7 @@ public class DriverController {
     @GetMapping("/area/{area}")
     public APIResponse<List<DriverDetailResponse>> getDriversByArea(@PathVariable String area) {
         log.info("REST API: GET /drivers/area/{} - Fetching drivers by area", area);
-        List<DriverDetailResponse> drivers = driverService.getDriversByArea(area);
+        List<DriverDetailResponse> drivers = driverManagementService.getActiveByArea(area);
         return APIResponse.<List<DriverDetailResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế theo khu vực: " + area)
@@ -150,7 +152,7 @@ public class DriverController {
     @GetMapping("/vehicle-type/{vehicleTypeId}")
     public APIResponse<List<DriverDetailResponse>> getDriversByVehicleType(@PathVariable String vehicleTypeId) {
         log.info("REST API: GET /drivers/vehicle-type/{} - Fetching drivers by vehicle type", vehicleTypeId);
-        List<DriverDetailResponse> drivers = driverService.getDriversByVehicleType(vehicleTypeId);
+        List<DriverDetailResponse> drivers = driverManagementService.getActiveByVehicleType(vehicleTypeId);
         return APIResponse.<List<DriverDetailResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế theo loại xe")
@@ -164,7 +166,7 @@ public class DriverController {
             throws IOException {
         log.info("REST API: POST /drivers - Creating new driver: {}", request.getEmail());
 
-        DriverDetailResponse driver = driverService.createDriver(request);
+        DriverDetailResponse driver = driverManagementService.create(request);
 
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.CREATED.value())

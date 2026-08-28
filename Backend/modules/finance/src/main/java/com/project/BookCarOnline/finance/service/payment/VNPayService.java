@@ -1,6 +1,6 @@
-package com.project.BookCarOnline.app.service.payment;
+package com.project.BookCarOnline.finance.service.payment;
 
-import com.project.BookCarOnline.app.config.VNPayConfig;
+import com.project.BookCarOnline.finance.config.VNPayConfig;
 import com.project.BookCarOnline.finance.dto.request.PaymentRequest;
 import com.project.BookCarOnline.finance.dto.response.PaymentCallbackResponse;
 import com.project.BookCarOnline.finance.dto.response.PaymentResponse;
@@ -23,7 +23,7 @@ import java.util.TreeMap;
 public class VNPayService {
 
     VNPayConfig vnPayConfig;
-    PaymentCallbackService paymentCallbackService;
+    PaymentCallbackHandler paymentCallbackHandler;
 
     public PaymentResponse createPayment(PaymentRequest request) {
         log.info("Creating VNPay payment for booking: {}", request.getReferenceId());
@@ -194,7 +194,7 @@ public class VNPayService {
         log.info("Payment status: {} - TxnRef: {}", paymentStatus, vnpTxnRef);
 
         long callbackAmount = Long.parseLong(vnpAmount) / 100;
-        paymentCallbackService.process(
+        paymentCallbackHandler.process(
                 vnpTxnRef,
                 callbackAmount,
                 "SUCCESS".equals(paymentStatus),

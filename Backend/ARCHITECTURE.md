@@ -11,8 +11,8 @@ business capability; each module uses a conventional layered package structure.
 | `modules/catalog` | Vehicle types, time slots, pricing configuration |
 | `modules/identity` | Accounts, roles, authentication, customers, driver profiles, Firebase adapter |
 | `modules/promotion` | Promotions, customer promotions, fare discount calculation |
-| `modules/finance` | Payments, wallets, wallet transactions |
-| `modules/booking` | Bookings, dispatch, driver availability cache, ratings, route calculation |
+| `modules/finance` | Payments, payment-provider adapters, wallets, wallet transactions |
+| `modules/booking` | Bookings, dispatch, driver availability cache, driver earnings policy, ratings, route calculation |
 | `modules/communication` | Notifications, chat, WebSocket messaging |
 | `app` | Spring Boot composition root, global configuration, reporting and cross-module orchestration |
 
@@ -27,21 +27,18 @@ versioned API or event contract and give it explicit data ownership.
 
 ## Infrastructure
 
-Keycloak deployment assets live together under `keycloak/`. The custom SPI is
-kept at `keycloak/providers/user-storage` as an independent Maven JAR because it
-runs inside Keycloak, not inside `app`. Do not create another top-level
-`keycloak-user-storage` directory.
+Backend currently owns authentication through `modules/identity`, Spring
+Security, signed JWTs, Redis token invalidation, and direct OAuth2 exchange.
 
-Keycloak owns a separate `keycloak` PostgreSQL database and database user. It may
-share the same PostgreSQL instance with Backend's `ridebook` database, but it
-must not share Backend's database or schema. See `keycloak/README.md` for the
-runtime configuration and legacy-user migration boundary.
+Keycloak is parked, not removed. Its realm, image, database initializer, and
+custom user-storage provider remain under `keycloak/` and `database/init/` for a
+possible future migration. The default Maven reactor, Backend Docker image, and
+Compose stacks exclude it; the marked lines must be uncommented together before
+reuse. See `keycloak/README.md` for the preserved boundaries and restore steps.
 
-`docker-compose.yml` is the self-contained local stack. It builds Backend and
-Keycloak, creates both PostgreSQL databases, and starts dependencies according
-to health checks. `docker-compose.prod.yml` contains only Backend and Keycloak;
-production PostgreSQL, Redis, TLS termination, and the proxy network are
-externally managed.
+`docker-compose.yml` is the self-contained local stack for PostgreSQL, Redis,
+and Backend. `docker-compose.prod.yml` runs Backend against externally managed
+PostgreSQL, Redis, TLS termination, and the proxy network.
 
 ## Dependency direction
 
@@ -79,6 +76,11 @@ Arrows mean "is consumed by". Domain modules must never depend on
   `driverId`, `paymentId`, and similar) instead of JPA relationships.
 - `app` coordinates workflows that span modules; it never queries a
   domain repository directly.
+- Payment-provider signing, request creation, and callback verification belong
+  to `modules/finance`. Applying a verified callback to bookings, wallets, and
+  WebSocket notifications remains an `app` orchestration responsibility.
+- Identity-only driver CRUD is exposed directly by `modules/identity`; `app`
+  keeps only driver workflows that coordinate multiple modules.
 - Keep calls synchronous until an actual asynchronous requirement appears;
   add application events only for independently handled side effects.
 
@@ -104,7 +106,8 @@ Arrows mean "is consumed by". Domain modules must never depend on
 ./mvnw test
 ```
 
-These commands also compile and test the Keycloak user-storage provider. The
-offline test suite enforces repository/entity module boundaries. Starting the
-full application context additionally requires the environment variables
-referenced by `app/src/main/resources/application.yaml`.
+These commands compile and test the active Backend modules. To validate the
+parked Keycloak provider after restoring its commented Maven module, run the
+same commands again. The offline test suite enforces repository/entity module
+boundaries. Starting the full application context additionally requires the
+environment variables referenced by `app/src/main/resources/application.yaml`.

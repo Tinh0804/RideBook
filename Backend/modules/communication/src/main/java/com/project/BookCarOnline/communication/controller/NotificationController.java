@@ -21,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+/** REST boundary for user and administrator notifications. */
 public class NotificationController {
 
     NotificationService notificationService;

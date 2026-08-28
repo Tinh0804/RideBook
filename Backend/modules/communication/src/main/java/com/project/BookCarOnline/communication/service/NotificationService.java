@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+/** Coordinates persisted, WebSocket, Redis, and push notifications. */
 public class NotificationService {
     NotificationRepository notificationRepository;
     IdentityQueryService identityQueryService;

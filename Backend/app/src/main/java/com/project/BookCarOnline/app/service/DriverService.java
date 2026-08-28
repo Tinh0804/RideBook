@@ -7,8 +7,7 @@ import com.project.BookCarOnline.app.dto.reporting.RevenueDetailDTO;
 import com.project.BookCarOnline.app.dto.reporting.RevenueSummaryDTO;
 import com.project.BookCarOnline.booking.service.BookingReportingService;
 import com.project.BookCarOnline.booking.service.DriverCacheService;
-import com.project.BookCarOnline.identity.dto.request.CreateDriverRequest;
-import com.project.BookCarOnline.identity.dto.request.UpdateDriverRequest;
+import com.project.BookCarOnline.booking.service.DriverEarningsPolicy;
 import com.project.BookCarOnline.identity.dto.response.DriverDetailResponse;
 import com.project.BookCarOnline.identity.dto.summary.DriverSummary;
 import com.project.BookCarOnline.identity.service.DriverManagementService;
@@ -17,10 +16,8 @@ import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import com.project.BookCarOnline.shared.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -32,18 +29,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DriverService {
 
-    private static final double DRIVER_REVENUE_RATE = 0.8;
-    private static final int QUEST_GOAL = 10;
-    private static final double QUEST_REWARD = 50_000;
-
     private final DriverManagementService driverManagementService;
     private final IdentityQueryService identityQueryService;
     private final BookingReportingService bookingReportingService;
     private final DriverCacheService driverCacheService;
-
-    public DriverDetailResponse getMyInfo() {
-        return driverManagementService.getMyInfo();
-    }
+    private final DriverEarningsPolicy driverEarningsPolicy;
 
     public DriverDashboardResponse getDriverDashboard() {
         BookingReportingService.DriverDashboard dashboard =
@@ -54,10 +44,6 @@ public class DriverService {
                 .todayIncome(dashboard.todayIncome())
                 .averageRating(Math.round(dashboard.averageRating()))
                 .build();
-    }
-
-    public Page<DriverDetailResponse> searchDrivers(int page, int size, String search) {
-        return driverManagementService.search(page, size, search);
     }
 
     public DriverRevenueResponse getDriverRevenue(String period) {
@@ -85,49 +71,23 @@ public class DriverService {
 
         BookingReportingService.DailyRevenue revenue =
                 bookingReportingService.dailyRevenue(currentDriverId(), targetDate);
-        double platformFee = revenue.grossRevenue() * (1 - DRIVER_REVENUE_RATE);
-        double netIncome = revenue.grossRevenue() - platformFee;
-        boolean questCompleted = revenue.totalTrips() >= QUEST_GOAL;
-        double questEarned = questCompleted ? QUEST_REWARD : 0;
+        DriverEarningsPolicy.DailyEarnings earnings = driverEarningsPolicy.calculateDaily(
+                revenue.grossRevenue(), revenue.cashIncome(), revenue.onlineIncome(), revenue.totalTrips());
 
         return DailyRevenueDTO.builder()
                 .date(targetDate.toString())
-                .grossRevenue(revenue.grossRevenue())
-                .netIncome(netIncome)
-                .platformFee(platformFee)
-                .cashIncome(revenue.cashIncome())
-                .onlineIncome(revenue.onlineIncome())
-                .totalTrips(revenue.totalTrips())
-                .questGoal(QUEST_GOAL)
-                .questReward(QUEST_REWARD)
-                .isQuestCompleted(questCompleted)
-                .questEarned(questEarned)
-                .finalIncome(netIncome + questEarned)
+                .grossRevenue(earnings.grossRevenue())
+                .netIncome(earnings.netIncome())
+                .platformFee(earnings.platformFee())
+                .cashIncome(earnings.cashIncome())
+                .onlineIncome(earnings.onlineIncome())
+                .totalTrips(earnings.totalTrips())
+                .questGoal(earnings.questGoal())
+                .questReward(earnings.questReward())
+                .isQuestCompleted(earnings.questCompleted())
+                .questEarned(earnings.questEarned())
+                .finalIncome(earnings.finalIncome())
                 .build();
-    }
-
-    public List<DriverDetailResponse> getAllActiveDrivers() {
-        return driverManagementService.getActive();
-    }
-
-    public DriverDetailResponse createDriver(CreateDriverRequest request) throws IOException {
-        return driverManagementService.create(request);
-    }
-
-    public DriverDetailResponse updateDriver(String driverId, UpdateDriverRequest request) throws IOException {
-        return driverManagementService.update(driverId, request);
-    }
-
-    public void deleteDriver(String driverId) {
-        driverManagementService.delete(driverId);
-    }
-
-    public DriverDetailResponse getDriverById(String driverId) {
-        return driverManagementService.getById(driverId);
-    }
-
-    public List<DriverDetailResponse> getDriversByArea(String area) {
-        return driverManagementService.getActiveByArea(area);
     }
 
     public boolean toggleDriverActivityStatus(String driverId, Double lat, Double lng) {
@@ -143,23 +103,11 @@ public class DriverService {
         return Boolean.TRUE.equals(driver.getActivityStatus());
     }
 
-    public boolean toggleDriverAccountStatus(String driverId) {
-        return driverManagementService.toggleAccountStatus(driverId);
-    }
-
-    public List<DriverDetailResponse> getDriversByVehicleType(String vehicleTypeId) {
-        return driverManagementService.getActiveByVehicleType(vehicleTypeId);
-    }
-
     public void updateFreeLocation(String driverId, Double lat, Double lng) {
         DriverSummary driver = identityQueryService.getDriver(driverId);
         if (Boolean.TRUE.equals(driver.activityStatus())) {
             driverCacheService.addDriverLocationGeo(driverId, driver.vehicleTypeId(), lat, lng);
         }
-    }
-
-    public void changePasswordByAdmin(String driverId, String newPassword) {
-        driverManagementService.changePassword(driverId, newPassword);
     }
 
     private List<RevenueDetailDTO> buildRevenueDetails(
@@ -184,7 +132,7 @@ public class DriverService {
                     .filter(day -> day.date().getYear() == today.getYear())
                     .forEach(day -> {
                         int month = day.date().getMonthValue() - 1;
-                        monthlyRevenue[month] += day.revenue() * DRIVER_REVENUE_RATE;
+                        monthlyRevenue[month] += driverEarningsPolicy.netRevenue(day.revenue());
                         monthlyTrips[month] += day.tripCount();
                     });
             for (int i = 0; i < 12; i++) {
@@ -203,7 +151,7 @@ public class DriverService {
         details.add(detail(
                 date.format(formatter),
                 day == null ? 0 : day.tripCount(),
-                day == null ? 0 : day.revenue() * DRIVER_REVENUE_RATE));
+                day == null ? 0 : driverEarningsPolicy.netRevenue(day.revenue())));
     }
 
     private RevenueDetailDTO detail(String label, long trips, double revenue) {

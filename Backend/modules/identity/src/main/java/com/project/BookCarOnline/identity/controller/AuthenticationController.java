@@ -21,8 +21,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
-import java.text.ParseException;
-
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -46,7 +44,7 @@ public class AuthenticationController {
 
     @PostMapping("/introspect")
     @SecurityRequirement(name = "bearerAuth")
-    APIResponse<Boolean> authenticateIntrospect() throws ParseException, JOSEException {
+    APIResponse<Boolean> authenticateIntrospect() throws JOSEException {
         String token = SecurityUtils.getCurrentToken().orElseThrow(()->new AppException(ErrorCode.TOKEN_NOT_FOUND));
         boolean isValid = service.introspect(token);
         return APIResponse.<Boolean>builder()
@@ -58,7 +56,7 @@ public class AuthenticationController {
 
     @PostMapping("/logout")
     @SecurityRequirement(name = "bearerAuth")
-    APIResponse<Boolean> logout(@RequestParam("refreshToken") String refreshToken) throws ParseException, JOSEException {
+    APIResponse<Boolean> logout(@RequestParam("refreshToken") String refreshToken) throws JOSEException {
         service.logout(refreshToken);
         return APIResponse.<Boolean>builder()
                 .result(true)
@@ -67,8 +65,7 @@ public class AuthenticationController {
                 .build();
     }
     @PostMapping("/refresh-token")
-    @SecurityRequirement(name = "bearerAuth")
-    APIResponse<AuthenticationResponse> refreshToken(@RequestParam("refreshToken") String refreshToken) throws ParseException, JOSEException {
+    APIResponse<AuthenticationResponse> refreshToken(@RequestParam("refreshToken") String refreshToken) throws JOSEException {
         AuthenticationResponse response = service.refreshToken(refreshToken);
         return APIResponse.<AuthenticationResponse>builder()
                 .result(response)

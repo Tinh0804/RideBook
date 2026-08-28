@@ -20,7 +20,8 @@
 
     <modules>
         <module>shared</module>
-        <module>keycloak/providers/user-storage</module>
+        <!-- Keycloak is parked while Backend owns authentication. Uncomment to rebuild its provider. -->
+        <!-- <module>keycloak/providers/user-storage</module> -->
         <module>modules/catalog</module>
         <module>modules/identity</module>
         <module>modules/promotion</module>
@@ -91,6 +92,11 @@
                                 <version>1.18.36</version>
                             </path>
                             <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>0.2.0</version>
+                            </path>
+                            <path>
                                 <groupId>org.mapstruct</groupId>
                                 <artifactId>mapstruct-processor</artifactId>
                                 <version>${mapstruct.version}</version>
@@ -104,5 +110,11 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 </project>

@@ -10,7 +10,8 @@ COPY modules/promotion/pom.xml modules/promotion/pom.xml
 COPY modules/finance/pom.xml modules/finance/pom.xml
 COPY modules/booking/pom.xml modules/booking/pom.xml
 COPY modules/communication/pom.xml modules/communication/pom.xml
-COPY keycloak/providers/user-storage/pom.xml keycloak/providers/user-storage/pom.xml
+# Keycloak is parked while Backend owns authentication. Uncomment with its Maven module if restored.
+# COPY keycloak/providers/user-storage/pom.xml keycloak/providers/user-storage/pom.xml
 COPY app/pom.xml app/pom.xml
 RUN ./mvnw -B -ntp -pl app -am -DskipTests dependency:go-offline
 

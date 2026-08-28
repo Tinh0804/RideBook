@@ -87,9 +87,9 @@ BookCar/
 │   ├── app/                # Composition root và cấu hình Spring Boot
 │   ├── shared/             # API response, lỗi và tiện ích dùng chung
 │   ├── modules/            # Các module nghiệp vụ của modular monolith
-│   ├── keycloak/           # Realm, image và user-storage provider
-│   ├── docker-compose.yml  # Stack local: PostgreSQL, Redis, Keycloak, Backend
-│   ├── docker-compose.prod.yml # Backend/Keycloak dùng hạ tầng production bên ngoài
+│   ├── keycloak/           # Keycloak được giữ lại nhưng đang tắt để có thể dùng sau
+│   ├── docker-compose.yml  # Stack local: PostgreSQL, Redis và Backend
+│   ├── docker-compose.prod.yml # Backend dùng hạ tầng production bên ngoài
 │   └── pom.xml             # Maven reactor
 └── WebAPP/                 # React Web App (Customer, Driver & Admin)
     ├── src/
@@ -126,8 +126,9 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Lệnh trên khởi chạy PostgreSQL, Redis, Keycloak và Backend. PostgreSQL dùng hai
-database riêng là `ridebook` và `keycloak`.
+Lệnh trên khởi chạy PostgreSQL, Redis và Backend. Backend hiện tự xử lý xác thực
+bằng Spring Security/JWT; cấu hình Keycloak được giữ lại ở trạng thái comment để
+có thể phục hồi trong tương lai.
 
 ### Bước 2: Cấu hình và Khởi động Backend
 

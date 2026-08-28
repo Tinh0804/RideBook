@@ -1,8 +1,20 @@
 # Keycloak
 
-Keycloak is deployment infrastructure, not a business module. Its custom user
-storage provider remains an independent Maven JAR under `providers/user-storage`
-because it runs inside Keycloak rather than the Spring Boot application.
+> Status: parked. RideBook Backend currently owns authentication and does not
+> build or start Keycloak by default. The assets are retained for possible reuse.
+
+Keycloak is optional deployment infrastructure, not a business module. Its
+custom user-storage provider remains an independent Maven JAR under
+`providers/user-storage` because it runs inside Keycloak rather than the Spring
+Boot application.
+
+## Restore checklist
+
+1. Uncomment the provider module in `Backend/pom.xml` and its `COPY` line in `Backend/Dockerfile`.
+2. Uncomment the Keycloak database settings, initializer mount, and service in `Backend/docker-compose.yml`.
+3. Uncomment the Keycloak service in `Backend/docker-compose.prod.yml` when production deployment is intended.
+4. Uncomment and populate the optional Keycloak entries in `Backend/.env.example` in a separate environment file.
+5. Re-run all Backend and provider tests before changing the active token issuer.
 
 ## Database ownership
 
@@ -22,17 +34,19 @@ Backend must not query or migrate Keycloak tables.
 The existing `data/h2` directory is legacy development data. It is not used by
 the PostgreSQL configuration. Export anything valuable before removing it.
 
-## Run locally
+## Run locally after restoration
 
 1. Copy `Backend/.env.example` to `Backend/.env` and replace every placeholder.
-2. Run `docker compose up --build -d` from `Backend`.
+2. Uncomment the parked local Compose sections described above.
+3. Run `docker compose up --build -d` from `Backend`.
 
 The local Compose stack creates the `ridebook` and `keycloak` databases on one
 PostgreSQL instance, starts Redis, then waits for healthy dependencies before
 starting Keycloak and Backend. All published ports bind to localhost, while the
 Keycloak management port remains inside the Docker network.
 
-Production uses external PostgreSQL/Redis and prebuilt images:
+After its parked production block is restored, production uses external
+PostgreSQL/Redis and prebuilt images:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d

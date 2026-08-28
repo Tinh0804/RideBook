@@ -15,7 +15,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.text.ParseException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 
@@ -38,14 +38,14 @@ public class CustomJwtDecoder implements JwtDecoder {
                         new OAuth2Error("invalid_token", ErrorCode.INVALID_TOKEN.getMessage(), null)
                 );
             }
-        } catch (JOSEException | ParseException e) {
+        } catch (JOSEException e) {
             throw new OAuth2AuthenticationException(
-                    new OAuth2Error("invalid_token", e.getMessage(), null)
+                    new OAuth2Error("invalid_token", ErrorCode.INVALID_TOKEN.getMessage(), null)
             );
         }
 
         if (Objects.isNull(nimbusJwtDecoder)) {
-            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");
+            SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(StandardCharsets.UTF_8), "HS512");
             nimbusJwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
                     .macAlgorithm(MacAlgorithm.HS512)
                     .build();

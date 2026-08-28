@@ -3,6 +3,7 @@ package com.project.BookCarOnline.app.service.payment;
 import com.project.BookCarOnline.booking.service.BookingService;
 import com.project.BookCarOnline.finance.entity.enums.PaymentMethod;
 import com.project.BookCarOnline.finance.service.WalletService;
+import com.project.BookCarOnline.finance.service.payment.PaymentCallbackHandler;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentCallbackService {
+public class PaymentCallbackService implements PaymentCallbackHandler {
 
     private static final String TOP_UP_PREFIX = "TOPUP_";
 
@@ -23,6 +24,7 @@ public class PaymentCallbackService {
     private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
+    @Override
     public void process(
             String orderId,
             long amount,

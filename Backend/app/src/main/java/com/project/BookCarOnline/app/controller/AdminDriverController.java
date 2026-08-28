@@ -4,7 +4,7 @@ import com.project.BookCarOnline.shared.dto.APIResponse;
 import com.project.BookCarOnline.identity.dto.request.AdminChangePasswordRequest;
 import com.project.BookCarOnline.identity.dto.request.UpdateDriverRequest;
 import com.project.BookCarOnline.identity.dto.response.DriverDetailResponse;
-import com.project.BookCarOnline.app.service.DriverService;
+import com.project.BookCarOnline.identity.service.DriverManagementService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -26,7 +26,7 @@ import java.io.IOException;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AdminDriverController {
 
-    DriverService driverService;
+    DriverManagementService driverManagementService;
 
     @GetMapping
     public APIResponse<Page<DriverDetailResponse>> getAllDrivers(
@@ -35,7 +35,7 @@ public class AdminDriverController {
             @RequestParam(value = "search", required = false) String search
     ) {
         log.info("REST API: GET /admin/drivers - Fetching all drivers");
-        Page<DriverDetailResponse> drivers = driverService.searchDrivers(page,size,search);
+        Page<DriverDetailResponse> drivers = driverManagementService.search(page, size, search);
         return APIResponse.<Page<DriverDetailResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế")
@@ -46,7 +46,7 @@ public class AdminDriverController {
     @GetMapping("/{driverId}")
     public APIResponse<DriverDetailResponse> getDriverById(@PathVariable String driverId) {
         log.info("REST API: GET /admin/drivers/{} - Fetching driver by ID", driverId);
-        DriverDetailResponse driver = driverService.getDriverById(driverId);
+        DriverDetailResponse driver = driverManagementService.getById(driverId);
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.OK.value())
                 .message("Thông tin tài xế")
@@ -60,7 +60,7 @@ public class AdminDriverController {
             @Valid @ModelAttribute UpdateDriverRequest request) throws IOException {
         log.info("REST API: PUT /admin/drivers/{} - Updating driver", driverId);
 
-        DriverDetailResponse driver = driverService.updateDriver(driverId, request);
+        DriverDetailResponse driver = driverManagementService.update(driverId, request);
         
         return APIResponse.<DriverDetailResponse>builder()
                 .status(HttpStatus.OK.value())
@@ -72,7 +72,7 @@ public class AdminDriverController {
     @DeleteMapping("/{driverId}")
     public APIResponse<Void> deleteDriver(@PathVariable String driverId) {
         log.info("REST API: DELETE /admin/drivers/{} - Deleting driver", driverId);
-        driverService.deleteDriver(driverId);
+        driverManagementService.delete(driverId);
         return APIResponse.<Void>builder()
                 .status(HttpStatus.OK.value())
                 .message("Xóa tài xế thành công")
@@ -82,7 +82,7 @@ public class AdminDriverController {
     @PutMapping("/{driverId}/account-status")
     public APIResponse<Boolean> toggleDriverAccountStatus(@PathVariable String driverId) {
         log.info("REST API: PUT /admin/drivers/{}/account-status - Toggling account status", driverId);
-        Boolean status = driverService.toggleDriverAccountStatus(driverId);
+        Boolean status = driverManagementService.toggleAccountStatus(driverId);
         return APIResponse.<Boolean>builder()
                 .status(HttpStatus.OK.value())
                 .message(status ? "Mở khóa tài khoản tài xế thành công" : "Khóa tài khoản tài xế thành công")
@@ -95,7 +95,7 @@ public class AdminDriverController {
             @PathVariable String driverId,
             @Valid @RequestBody AdminChangePasswordRequest request) {
         log.info("REST API: PUT /admin/drivers/{}/password - Changing driver password", driverId);
-        driverService.changePasswordByAdmin(driverId, request.getNewPassword());
+        driverManagementService.changePassword(driverId, request.getNewPassword());
         return APIResponse.<Boolean>builder()
                 .status(HttpStatus.OK.value())
                 .message("Đổi mật khẩu tài xế thành công")

@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+/** Owns promotion lifecycle and customer-promotion operations. */
 public class PromotionService {
     PromotionRepository promotionRepository;
     PromotionMapper promotionMapper;

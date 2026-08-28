@@ -29,8 +29,9 @@ import com.google.firebase.auth.FirebaseToken;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -41,6 +42,13 @@ import java.util.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE,makeFinal = true)
 public class AuthenticationService {
+    private static final String TOKEN_TYPE_CLAIM = "token_type";
+
+    private enum TokenType {
+        ACCESS,
+        REFRESH
+    }
+
     AccountRepository accountRepository;
     RedisTemplate<String, Object> redisTemplate;
     CustomerRepository customerRepository;
@@ -75,8 +83,8 @@ public class AuthenticationService {
         if(!account.getAccountStatus())
             throw  new AppException(ErrorCode.ACCOUNT_DISABLED);
 
-        String token = generateToken(account, VALID_DURATION);
-        String refreshToken = generateToken(account, REFRESHABLE_DURATION);
+        String token = generateAccessToken(account);
+        String refreshToken = generateRefreshToken(account);
         AccountResponse accountResponse = accountMapper.toAccountResponse(account);
         accountResponse.setAccountStatus(account.getAccountStatus());
 
@@ -88,7 +96,15 @@ public class AuthenticationService {
                 .build();
     }
 
-    String generateToken(Account account,long durationInSeconds) {
+    String generateAccessToken(Account account) {
+        return generateToken(account, VALID_DURATION, TokenType.ACCESS);
+    }
+
+    String generateRefreshToken(Account account) {
+        return generateToken(account, REFRESHABLE_DURATION, TokenType.REFRESH);
+    }
+
+    private String generateToken(Account account, long durationInSeconds, TokenType tokenType) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Customer customer = null;
         Driver driver = null;
@@ -120,6 +136,7 @@ public class AuthenticationService {
                 .expirationTime(Date.from(Instant.now().plus(durationInSeconds, ChronoUnit.SECONDS)))
                 .claim("scope",buildScope(account))
                 .claim("profile_id",userId)
+                .claim(TOKEN_TYPE_CLAIM, tokenType.name())
                 .jwtID(UUID.randomUUID().toString())
                 .build();
 
@@ -142,61 +159,82 @@ public class AuthenticationService {
     }
 
 
-    public boolean introspect(String token) throws JOSEException, ParseException {
+    public boolean introspect(String token) throws JOSEException {
        try {
-           verifyToken(token);
+           verifyToken(token, TokenType.ACCESS);
            return true;
        } catch (AppException e) {
            return false;
        }
     }
 
-    private SignedJWT verifyToken(String token) throws JOSEException, ParseException {
-        JWSVerifier verifier=new MACVerifier(SIGNER_KEY.getBytes());
-        SignedJWT signedJWT=SignedJWT.parse(token);
-        boolean verified= signedJWT.verify(verifier);
-        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+    private JWTClaimsSet verifyToken(String token, TokenType expectedType) throws JOSEException {
+        if (!StringUtils.hasText(token)) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
 
-        if(!(verified && expiryTime != null && expiryTime.after(new Date())))
-            throw  new AppException(ErrorCode.INVALID_TOKEN);
+        JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes(StandardCharsets.UTF_8));
+        try {
+            SignedJWT signedJWT = SignedJWT.parse(token);
+            if (!JWSAlgorithm.HS512.equals(signedJWT.getHeader().getAlgorithm())) {
+                throw new AppException(ErrorCode.INVALID_TOKEN);
+            }
 
-        if(Boolean.TRUE.equals(redisTemplate.hasKey("invalid_token:" + signedJWT.getJWTClaimsSet().getJWTID())))
-            throw  new AppException(ErrorCode.TOKEN_BLACKLISTED);
-        return  signedJWT;
+            boolean verified = signedJWT.verify(verifier);
+            JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
+            Date expiryTime = claims.getExpirationTime();
+
+            if (!(verified
+                    && expiryTime != null
+                    && expiryTime.after(new Date())
+                    && "BookCarOnline".equals(claims.getIssuer())
+                    && StringUtils.hasText(claims.getSubject())
+                    && StringUtils.hasText(claims.getJWTID())
+                    && expectedType.name().equals(claims.getStringClaim(TOKEN_TYPE_CLAIM)))) {
+                throw new AppException(ErrorCode.INVALID_TOKEN);
+            }
+
+            if (Boolean.TRUE.equals(redisTemplate.hasKey("invalid_token:" + claims.getJWTID()))) {
+                throw new AppException(ErrorCode.TOKEN_BLACKLISTED);
+            }
+            return claims;
+        } catch (ParseException | JOSEException e) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
     }
 
-    public void logout(String refreshToken) throws ParseException, JOSEException {
+    public void logout(String refreshToken) throws JOSEException {
         String token = SecurityUtils.getCurrentToken().orElseThrow(()->new AppException(ErrorCode.TOKEN_NOT_FOUND));
-        SignedJWT signedRefresh = verifyToken(refreshToken);
-        SignedJWT signedAccess = verifyToken(token);
+        JWTClaimsSet refreshClaims = verifyToken(refreshToken, TokenType.REFRESH);
+        JWTClaimsSet accessClaims = verifyToken(token, TokenType.ACCESS);
 
 
-        long refreshExpiry = signedRefresh.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        long refreshExpiry = refreshClaims.getExpirationTime().getTime() - System.currentTimeMillis();
         if (refreshExpiry > 0) {
-            redisTemplate.opsForValue().set("invalid_token:" + signedRefresh.getJWTClaimsSet().getJWTID(), "Logout Refresh Token", refreshExpiry, TimeUnit.MILLISECONDS);
+            redisTemplate.opsForValue().set("invalid_token:" + refreshClaims.getJWTID(), "Logout Refresh Token", refreshExpiry, TimeUnit.MILLISECONDS);
         }
 
-        long accessExpiry = signedAccess.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        long accessExpiry = accessClaims.getExpirationTime().getTime() - System.currentTimeMillis();
         if (accessExpiry > 0) {
-            redisTemplate.opsForValue().set("invalid_token:" + signedAccess.getJWTClaimsSet().getJWTID(), "Logout Access Token", accessExpiry, TimeUnit.MILLISECONDS);
+            redisTemplate.opsForValue().set("invalid_token:" + accessClaims.getJWTID(), "Logout Access Token", accessExpiry, TimeUnit.MILLISECONDS);
         }
     }
 
 
-    public AuthenticationResponse refreshToken(String refreshToken) throws ParseException, JOSEException {
-        SignedJWT signedRefresh = verifyToken(refreshToken);
+    public AuthenticationResponse refreshToken(String refreshToken) throws JOSEException {
+        JWTClaimsSet refreshClaims = verifyToken(refreshToken, TokenType.REFRESH);
 
-        long refreshExpiry = signedRefresh.getJWTClaimsSet().getExpirationTime().getTime() - System.currentTimeMillis();
+        long refreshExpiry = refreshClaims.getExpirationTime().getTime() - System.currentTimeMillis();
         if (refreshExpiry > 0) {
-            redisTemplate.opsForValue().set("invalid_token:" + signedRefresh.getJWTClaimsSet().getJWTID(), "Old Refresh Token after Refresh", refreshExpiry, TimeUnit.MILLISECONDS);
+            redisTemplate.opsForValue().set("invalid_token:" + refreshClaims.getJWTID(), "Old Refresh Token after Refresh", refreshExpiry, TimeUnit.MILLISECONDS);
         }
 
-        Account account = accountRepository.findById(signedRefresh.getJWTClaimsSet().getSubject())
+        Account account = accountRepository.findById(refreshClaims.getSubject())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         return AuthenticationResponse.builder()
-                .token(generateToken(account, VALID_DURATION))
-                .refreshToken(generateToken(account, REFRESHABLE_DURATION))
+                .token(generateAccessToken(account))
+                .refreshToken(generateRefreshToken(account))
                 .success(true)
                 .build();
     }

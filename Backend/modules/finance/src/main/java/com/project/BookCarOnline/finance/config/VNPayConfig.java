@@ -1,4 +1,4 @@
-package com.project.BookCarOnline.app.config;
+package com.project.BookCarOnline.finance.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

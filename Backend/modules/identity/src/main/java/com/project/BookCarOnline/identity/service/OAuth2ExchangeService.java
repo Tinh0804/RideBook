@@ -19,9 +19,7 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -63,14 +61,6 @@ public class OAuth2ExchangeService {
 
     RestTemplate restTemplate = new RestTemplate();
 
-    @NonFinal
-    @Value("${jwt.valid-duration}")
-    protected long VALID_DURATION;
-
-    @NonFinal
-    @Value("${jwt.refreshable-duration}")
-    protected long REFRESHABLE_DURATION;
-
     public AuthenticationResponse exchange(ExchangeTokenRequest request) {
         ClientRegistration cr = ((org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository)
                 clientRegistrationRepository).findByRegistrationId(request.getProvider());
@@ -90,10 +80,10 @@ public class OAuth2ExchangeService {
         // 3. Lưu/tìm account trong DB
         Account account = exchangeToken(request.getProvider(), user);
 
-        String token = authenticationService.generateToken(account, VALID_DURATION);
-        String refreshToken = authenticationService.generateToken(
+        String token = authenticationService.generateAccessToken(account);
+        String refreshToken = authenticationService.generateRefreshToken(
                 accountRepository.findByProviderAndProviderId(com.project.BookCarOnline.identity.entity.enums.Provider.valueOf(request.getProvider().toUpperCase()), user.getName())
-                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED)),REFRESHABLE_DURATION
+                        .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED))
         );
 
         return AuthenticationResponse.builder()
