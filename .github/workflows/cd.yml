@@ -74,19 +74,43 @@ jobs:
             # Đăng nhập Docker Hub trên VM để hỗ trợ kéo image từ Private repository
             echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE || 'tinh08042005' }}" --password-stdin || true
             
-            # Pull image backend mới nhất
-            echo "📦 Pulling new image..."
+            # 1. Đảm bảo Database (Postgres) và Cache (Redis) đang hoạt động (chỉ bật nếu chưa chạy, không recreate nếu đang chạy)
+            echo "🔍 Checking infrastructure services (PostgreSQL & Redis)..."
+            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^postgres$"; then
+              echo "🐘 Starting PostgreSQL container..."
+              sudo docker compose -f compose.prod.yml up -d postgres
+            else
+              echo "🐘 PostgreSQL is already running. Skipping recreate to preserve database state."
+            fi
+            
+            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^redis$"; then
+              echo "⚡ Starting Redis container..."
+              sudo docker compose -f compose.prod.yml up -d redis
+            else
+              echo "⚡ Redis is already running. Skipping recreate to preserve cache state."
+            fi
+            
+            # 2. Pull và triển khai duy nhất Backend container
+            echo "📦 Pulling latest Backend image..."
             sudo docker compose -f compose.prod.yml pull backend
             
-            # Khởi động toàn bộ các container (postgres, redis, backend, nginx)
-            echo "🔄 Starting services..."
-            sudo docker compose -f compose.prod.yml up -d
+            echo "🚀 Updating Backend service..."
+            sudo docker compose -f compose.prod.yml up -d --no-deps backend
             
-            # Kiểm tra trạng thái containers
+            # 3. Đảm bảo Nginx Reverse Proxy hoạt động
+            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^nginx$"; then
+              echo "🌐 Starting Nginx..."
+              sudo docker compose -f compose.prod.yml up -d nginx
+            else
+              echo "🌐 Reloading Nginx configuration..."
+              sudo docker compose -f compose.prod.yml exec -T nginx nginx -s reload 2>/dev/null || sudo docker compose -f compose.prod.yml up -d --no-deps nginx
+            fi
+            
+            # 4. Kiểm tra trạng thái toàn bộ containers
             echo "🔍 Checking container status..."
             sudo docker compose -f compose.prod.yml ps
             
-            # Dọn dẹp images cũ
+            # 5. Dọn dẹp images cũ
             echo "🧹 Cleaning up old unused images..."
             sudo docker image prune -f -a --filter "until=24h" || true
             
