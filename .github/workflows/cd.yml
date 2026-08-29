@@ -44,21 +44,9 @@ jobs:
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }} 
           port: 22
           source: "deploy/**"
-          target: "/home/ubuntu/ridebook"         
+          target: "/home/${{ secrets.GCP_VM_USER }}/ridebook"         
           strip_components: 1
           overwrite: true
-
-      # Kiểm tra Docker images trên VM
-      - name: Check Docker images on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with: 
-          host: ${{ secrets.GCP_VM_IP }}
-          username: ${{ secrets.GCP_VM_USER }} 
-          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }} 
-          port: 22
-          script: |
-            echo "🔍 Checking current Docker images..."
-            sudo docker images | grep "tinh08042005/ridebook-backend" | head -5 || echo "No images found"
 
       - name: Deploy to GCP VM
         uses: appleboy/ssh-action@v1.0.3
@@ -68,28 +56,33 @@ jobs:
           key: ${{ secrets.GCP_SSH_PRIVATE_KEY }} 
           port: 22
           script: |
+            set -euo pipefail
             echo "🚀 Start Deploying to Google Cloud VM"
             
-            cd /home/ubuntu/ridebook
+            DEPLOY_DIR="/home/${{ secrets.GCP_VM_USER }}/ridebook"
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
             
-            # Ghi mã định danh phiên bản code
+            # Ghi mã định danh phiên bản code và biến môi trường
             echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
-            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> .env
+            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE }}" >> .env
             echo "${{ secrets.ENV_PROD }}" >> .env
             
-            # Dọn dẹp chỉ khi cần thiết
-            sudo docker image prune -f -a --filter "until=24h" || true
-            
-            # Pull và deploy chỉ khi có image mới
+            # Pull image backend mới nhất
             echo "📦 Pulling new image..."
             sudo docker compose -f compose.prod.yml pull backend
             
-            echo "🔄 Recreating containers..."
-            sudo docker compose -f compose.prod.yml up -d backend nginx
+            # Khởi động toàn bộ các container (postgres, redis, backend, nginx)
+            echo "🔄 Starting services..."
+            sudo docker compose -f compose.prod.yml up -d
             
-            # Cleanup old images (giữ lại 3 images gần nhất)
-            echo "🧹 Cleaning up old images..."
-            sudo docker images | grep "tinh08042005/ridebook-backend" | grep -v "latest" | tail -n +4 | awk '{print $3}' | xargs -r sudo docker rmi -f 2>/dev/null || true
+            # Kiểm tra trạng thái containers
+            echo "🔍 Checking container status..."
+            sudo docker compose -f compose.prod.yml ps
+            
+            # Dọn dẹp images cũ
+            echo "🧹 Cleaning up old unused images..."
+            sudo docker image prune -f -a --filter "until=24h" || true
             
             echo "✅ Deploy Backend GCP Successfully"
 
