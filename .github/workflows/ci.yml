@@ -10,6 +10,8 @@ on:
 jobs:
   build-backend:
     name: Build & Test Backend (Spring Boot)
+    permissions:
+      contents: read
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: ubuntu-latest 
@@ -28,62 +30,22 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      # Cache Maven dependencies
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      # Cache Docker layers
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      # Chỉ chạy test khi có thay đổi code
-      # - name: Run tests
-      #   if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      #   run: mvn test
-
-      - name: Build with Maven (skip tests)
-        run: mvn package -DskipTests
+      - name: Run Backend tests
+        run: ./mvnw -B -ntp test
 
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3 
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3 
+      - name: Validate production Docker image
+        uses: docker/build-push-action@v5
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker Image with Cache
-        uses: docker/build-push-action@v5 
-        with:
-          context: ./Backend 
+          context: ./Backend
           file: ./Backend/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/ridebook-backend:${{ github.sha }}
-            ${{ github.ref == 'refs/heads/main' && format('{0}/ridebook-backend:latest', secrets.DOCKER_USERNAME) || '' }}
-          cache-from: |
-            type=local,src=/tmp/.buildx-cache
-            type=gha
-          cache-to: |
-            type=local,dest=/tmp/.buildx-cache-new,mode=max
-            type=gha,mode=max
-
-      # Temp fix for cache
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache || true
+          platforms: linux/amd64
+          push: false
+          tags: ridebook-backend:ci-${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
   build-frontend:
     name: Build & Test Frontend (React Vite)

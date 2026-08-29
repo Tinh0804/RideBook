@@ -1,0 +1,84 @@
+name: Deploy Production
+
+on:
+  workflow_call:
+    inputs:
+      image_ref:
+        description: Immutable Backend image reference
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: Immutable Backend image reference (repository@sha256:digest)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ridebook-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to GCP VM
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Validate immutable image reference
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
+        run: |
+          if [[ ! "$IMAGE_REF" =~ ^[a-zA-Z0-9._:/-]+@sha256:[a-f0-9]{64}$ ]]; then
+            echo "image_ref must use an immutable sha256 digest" >&2
+            exit 1
+          fi
+
+      - name: Checkout deployment bundle
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Setup Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Package deployment bundle
+        run: tar -czf "$RUNNER_TEMP/ridebook-deploy.tgz" -C deploy .
+
+      - name: Upload deployment bundle through IAP
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_ZONE: ${{ vars.GCP_ZONE }}
+          GCP_VM_NAME: ${{ vars.GCP_VM_NAME }}
+          GCP_VM_USER: ${{ vars.GCP_VM_USER }}
+        run: |
+          gcloud compute scp "$RUNNER_TEMP/ridebook-deploy.tgz" \
+            "${GCP_VM_USER}@${GCP_VM_NAME}:/tmp/ridebook-deploy-${GITHUB_SHA}.tgz" \
+            --project "$GCP_PROJECT_ID" \
+            --zone "$GCP_ZONE" \
+            --tunnel-through-iap \
+            --quiet
+
+      - name: Deploy exact Backend digest
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_ZONE: ${{ vars.GCP_ZONE }}
+          GCP_VM_NAME: ${{ vars.GCP_VM_NAME }}
+          GCP_VM_USER: ${{ vars.GCP_VM_USER }}
+        run: |
+          release_dir="/opt/ridebook/releases/${GITHUB_SHA}"
+          remote_command="mkdir -p '${release_dir}' && tar -xzf '/tmp/ridebook-deploy-${GITHUB_SHA}.tgz' -C '${release_dir}' && '${release_dir}/scripts/deploy.sh' '${IMAGE_REF}'"
+          gcloud compute ssh "${GCP_VM_USER}@${GCP_VM_NAME}" \
+            --project "$GCP_PROJECT_ID" \
+            --zone "$GCP_ZONE" \
+            --tunnel-through-iap \
+            --quiet \
+            --command "$remote_command"

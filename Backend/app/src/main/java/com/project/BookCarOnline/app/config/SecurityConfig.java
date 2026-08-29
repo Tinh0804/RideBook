@@ -1,9 +1,9 @@
 package com.project.BookCarOnline.app.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.project.BookCarOnline.shared.config.AllowedOrigins;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,15 +17,19 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 
-import static org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode.VIA_DTO;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
-    @Autowired
-    private CustomJwtDecoder jwtDecoder;
+    private final CustomJwtDecoder jwtDecoder;
+    private final String[] allowedOrigins;
+
+    public SecurityConfig(CustomJwtDecoder jwtDecoder,
+                          @Value("${app.security.allowed-origins}") String allowedOrigins) {
+        this.jwtDecoder = jwtDecoder;
+        this.allowedOrigins = AllowedOrigins.parse(allowedOrigins);
+    }
 
 
     private final String[] AUTH_ENDPOINTS = {"/auth/**","/auth/login","/auth/logout","/auth/refresh-token", "/auth/oauth2/**",
@@ -37,6 +41,9 @@ public class SecurityConfig {
     };
     private final String[] SOCKET_ENDPOINTS = {
             "/ws/**", "/topic/**", "/app/**"
+    };
+    private final String[] HEALTH_ENDPOINTS = {
+            "/actuator/health", "/actuator/health/**"
     };
     private  final String[] PAYMENT_ENDPOINTS={
             "/payments/momo/return","/payments/vnpay/return","/payments/momo/notify","/payments/vnpay/notify",
@@ -60,6 +67,7 @@ public class SecurityConfig {
                         .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                         .requestMatchers(DRIVER_ENDPOINTS).permitAll()
                         .requestMatchers(SOCKET_ENDPOINTS).permitAll()
+                        .requestMatchers(HEALTH_ENDPOINTS).permitAll()
                         .requestMatchers(PAYMENT_ENDPOINTS).permitAll()
                         .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
                         .anyRequest().authenticated()
@@ -97,15 +105,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Safari rất khắt khe với CORS khi có Credentials. Việc khai báo đích danh Origin sẽ an toàn hơn dùng Pattern "*".
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000", 
-            "http://127.0.0.1:3000", 
-            "http://localhost:5173", 
-            "http://127.0.0.1:5173",
-            "https://ridebook.tinhlelaptrinh.id.vn" // Thêm domain production
-        ));
-        configuration.setAllowedOriginPatterns(Arrays.asList("*")); // Giữ lại pattern làm fallback
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "x-auth-token"));
         configuration.setExposedHeaders(Arrays.asList("x-auth-token"));

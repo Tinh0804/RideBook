@@ -40,6 +40,11 @@ reuse. See `keycloak/README.md` for the preserved boundaries and restore steps.
 and Backend. `docker-compose.prod.yml` runs Backend against externally managed
 PostgreSQL, Redis, TLS termination, and the proxy network.
 
+The repository-level `deploy/compose.prod.yml` is the constrained single-VM
+production stack. It runs Nginx, Backend, PostgreSQL, and Redis with persistent
+data volumes and resource limits. It intentionally excludes the parked Keycloak
+infrastructure. See `docs/architecture/adr-001-single-vm-compose-deployment.md`.
+
 ## Dependency direction
 
 ```mermaid
