@@ -65,11 +65,14 @@ jobs:
             
             # Ghi mã định danh phiên bản code và biến môi trường
             echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
-            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE }}" >> .env
+            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE || 'tinh08042005' }}" >> .env
             echo "${{ secrets.ENV_PROD }}" >> .env
             
+            # Loại bỏ biến BACKEND_IMAGE tĩnh nếu có trong ENV_PROD để luôn pull đúng tag commit mới nhất
+            sed -i '/^BACKEND_IMAGE=/d' .env || true
+            
             # Đăng nhập Docker Hub trên VM để hỗ trợ kéo image từ Private repository
-            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE }}" --password-stdin || true
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE || 'tinh08042005' }}" --password-stdin || true
             
             # Pull image backend mới nhất
             echo "📦 Pulling new image..."
