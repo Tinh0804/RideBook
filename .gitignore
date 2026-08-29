@@ -10,3 +10,11 @@
 !.agents/constraints/**
 .claude
 .idea
+.env
+.env.*
+!.env.example
+deploy/**/.env
+deploy/**/release.env
+deploy/**/backups/
+deploy/**/*.dump
+deploy/**/*.rdb
