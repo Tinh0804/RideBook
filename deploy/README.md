@@ -50,7 +50,7 @@ chmod 600 .env
 ```
 
 Edit `.env` with actual production values:
-- `BACKEND_IMAGE`: Docker Hub image tag or SHA256 digest (e.g. `tinh0804/ridebook-backend:latest`).
+- `BACKEND_IMAGE`: Docker Hub image tag or SHA256 digest (e.g. `tinh08042005/ridebook-backend:latest`).
 - `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`: PostgreSQL database credentials.
 - `JWT_SIGNER_KEY`: Secure random 256-bit string.
 - `DOMAIN`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`: Your production domain names.
