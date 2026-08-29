@@ -68,6 +68,9 @@ jobs:
             echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE }}" >> .env
             echo "${{ secrets.ENV_PROD }}" >> .env
             
+            # Đăng nhập Docker Hub trên VM để hỗ trợ kéo image từ Private repository
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE }}" --password-stdin || true
+            
             # Pull image backend mới nhất
             echo "📦 Pulling new image..."
             sudo docker compose -f compose.prod.yml pull backend
