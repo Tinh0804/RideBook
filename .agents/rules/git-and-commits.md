@@ -26,7 +26,6 @@ Apply whenever inspecting diffs, preparing a change set, or drafting a commit.
 - Prefer these types: `Add`, `Fix`, `Update`, `Refactor`, `Docs`, `Test`, and `Chore`.
 - Use a short domain scope such as `Auth`, `Booking`, `Finance`, `UI`, or `Architecture`.
 - Write an imperative summary without a trailing period; explain motivation in the body when needed.
-- Include the agent attribution required by `AGENTS.md` when an AI-authored commit is requested.
 - Do not include environment files, credentials, local databases, build output, or unrelated generated files.
 
 ## Limitations

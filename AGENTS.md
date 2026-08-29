@@ -31,4 +31,4 @@
 ## Commit Attribution
 
 - Create commits only when explicitly requested and permitted by project constraints.
-- AI commits must include `Co-Authored-By: Codex <noreply@openai.com>`.
+
