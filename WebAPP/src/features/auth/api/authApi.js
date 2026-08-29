@@ -6,10 +6,12 @@ export const authApi = {
     apiClient.post('/auth/login', payload).then((r) => parseApiResponse(AuthenticationResponseSchema, r.data)),
 
   logout: (refreshToken) =>
-    apiClient.post(`/auth/logout?refreshToken=${refreshToken}`).then((r) => r.data),
+    apiClient.post('/auth/logout', null, { params: { refreshToken } }).then((r) => r.data),
 
   refreshToken: (refreshToken) =>
-    apiClient.post(`/auth/refresh-token?refreshToken=${refreshToken}`).then((r) => parseApiResponse(AuthenticationResponseSchema, r.data)),
+    apiClient
+      .post('/auth/refresh-token', null, { params: { refreshToken } })
+      .then((r) => parseApiResponse(AuthenticationResponseSchema, r.data)),
 
   resetPassword: (payload) =>
     apiClient.put('/auth/reset-password', payload).then((r) => r.data),
