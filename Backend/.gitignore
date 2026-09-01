@@ -32,5 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-*.sql
 .env
+*firebase*.json
+**/firebase*.json
+

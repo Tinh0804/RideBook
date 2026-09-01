@@ -25,17 +25,24 @@ export const driverApi = {
   getDailyRevenue: (date) =>
     apiClient.get(`/drivers/my-revenue/daily${date ? `?date=${date}` : ''}`).then((r) => parseApiResponse(DailyRevenueSchema, r.data)),
 
-  toggleStatus: () =>
-    apiClient.put('/drivers/status-activity').then((r) => r.data),
+  toggleStatus: (lat, lng) =>
+    apiClient.put('/drivers/status-activity', { lat, lng }).then((r) => r.data),
 
   getMyInfo: () =>
     apiClient.get('/drivers/my-info').then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   updateMyInfo: (payload) =>
-    apiClient.put('/drivers/my-info', payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.put('/drivers/my-info', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
 
   updateDriver: (driverId, payload) =>
-    apiClient.put(`/admin/drivers/${driverId}`, payload).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+    apiClient.put(`/admin/drivers/${driverId}`, payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => parseApiResponse(DriverProfileSchema, r.data)),
+
+  changeDriverPassword: (driverId, data) =>
+    apiClient.put(`/admin/drivers/${driverId}/password`, data).then(r => r.data),
 
   getAll: (page = 0, size = 20, search = '') =>
     apiClient.get(`/admin/drivers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then((r) => r.data?.result ?? r.data),
@@ -57,6 +64,9 @@ export const driverApi = {
 
   updateLocation: (driverId, lat, lng) =>
     apiClient.put(`/drivers/${driverId}`, { currentLat: lat, currentLng: lng }).then((r) => r.data),
+
+  updateFreeLocation: (lat, lng) =>
+    apiClient.put('/drivers/location/free', { lat, lng }).then((r) => r.data),
 
   // --- Admin Wallet Management ---
   getDriverWallet: (driverId) =>

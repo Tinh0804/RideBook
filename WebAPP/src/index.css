@@ -22,10 +22,10 @@
     --color-lime-accent: 168 255 62;
     
     /* Dark Mode Originals */
-    --color-surface-dark: 11 17 32;
-    --color-surface-card: 17 24 39;
-    --color-surface-border: 31 41 55;
-    --color-surface-muted: 55 65 81;
+    --color-surface-dark: 6 6 6;
+    --color-surface-card: 18 18 18;
+    --color-surface-border: 38 38 38;
+    --color-surface-muted: 45 45 45;
     
     --color-content-main: 255 255 255; /* white */
     --color-content-muted: 156 163 175; /* gray-400 */
@@ -110,7 +110,7 @@
   /* Input */
   .input-field {
     @apply w-full bg-surface-dark border border-surface-border rounded-xl
-           px-4 py-3 text-sm text-gray-100 placeholder-gray-600
+           px-4 py-3 text-sm text-content-main placeholder-content-muted/70
            focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50
            transition-colors duration-200;
   }

@@ -1,0 +1,142 @@
+{
+  "realm": "ridebook",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "RideBook legacy accounts",
+        "providerId": "ridebook-legacy-users"
+      }
+    ]
+  },
+  "roles": {
+    "realm": [
+      { "name": "ADMIN" },
+      { "name": "CUSTOMER" },
+      { "name": "DRIVER" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ridebook-api",
+      "name": "RideBook API",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "ridebook-provisioner",
+      "name": "RideBook User Provisioner",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KEYCLOAK_PROVISIONER_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "ridebook-web",
+      "name": "RideBook Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:5173/*",
+        "https://ridebook.tinhlelaptrinh.id.vn/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://ridebook.tinhlelaptrinh.id.vn"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "ridebook-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "ridebook-api",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "account-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "account_id",
+            "claim.name": "account_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "profile-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "profile_id",
+            "claim.name": "profile_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-ridebook-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "ridebook-provisioner",
+      "clientRoles": {
+        "realm-management": ["manage-users", "query-users", "view-users"]
+      }
+    }
+  ],
+  "identityProviders": [
+    {
+      "alias": "google",
+      "displayName": "Google",
+      "providerId": "google",
+      "enabled": true,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${GOOGLE_CLIENT_ID}",
+        "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+        "syncMode": "IMPORT",
+        "useJwksUrl": "true"
+      }
+    },
+    {
+      "alias": "facebook",
+      "displayName": "Facebook",
+      "providerId": "facebook",
+      "enabled": true,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "${FACEBOOK_CLIENT_ID}",
+        "clientSecret": "${FACEBOOK_CLIENT_SECRET}",
+        "syncMode": "IMPORT"
+      }
+    }
+  ]
+}

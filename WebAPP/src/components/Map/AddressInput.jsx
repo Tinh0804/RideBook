@@ -4,26 +4,27 @@ import { RiMapPinLine, RiCrosshairLine, RiLoader4Line, RiCloseLine } from 'react
 import Input from '@/components/Elements/Input'
 import { cn } from '@/utils/cn'
 
-const AddressInput = ({ 
-  value, 
-  onChange, 
-  placeholder = "Nhập địa điểm...", 
+const AddressInput = ({
+  value,
+  onChange,
+  placeholder = "Nhập địa điểm...",
   onLocationDetect,
   className,
   prefixIcon,
-  disabled = false
+  disabled = false,
+  showDetectButton = true
 }) => {
   const [query, setQuery] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [detectingLocation, setDetectingLocation] = useState(false)
-  
+
   const containerRef = useRef(null)
   const inputRef = useRef(null)
   const debounceRef = useRef(null)
   const isInternalChangeRef = useRef(false)
-  
+
   const autocompleteService = useRef(null)
   const geocoder = useRef(null)
   const sessionToken = useRef(null)
@@ -58,9 +59,9 @@ const AddressInput = ({
       setSuggestions([])
       return
     }
-    
+
     setLoading(true)
-    autocompleteService.current.getPlacePredictions({ 
+    autocompleteService.current.getPlacePredictions({
       input: searchText,
       sessionToken: sessionToken.current,
       componentRestrictions: { country: 'vn' }
@@ -93,19 +94,19 @@ const AddressInput = ({
 
   const handleSelectSuggestion = (suggestion) => {
     const selectedName = suggestion.structured_formatting?.main_text || suggestion.description
-    
+
     setQuery(selectedName)
     setShowDropdown(false)
     setSuggestions([])
     isInternalChangeRef.current = true
     onChange?.(selectedName)
-    
+
     if (onLocationDetect && geocoder.current) {
       geocoder.current.geocode({ placeId: suggestion.place_id }, (results, status) => {
         if (status === 'OK' && results[0]) {
           // Reset session token
           sessionToken.current = new window.google.maps.places.AutocompleteSessionToken()
-          
+
           onLocationDetect({
             name: selectedName,
             lat: results[0].geometry.location.lat(),
@@ -131,7 +132,7 @@ const AddressInput = ({
 
   const detectCurrentLocation = () => {
     setDetectingLocation(true)
-    
+
     if (!navigator.geolocation) {
       alert('Trình duyệt của bạn không hỗ trợ định vị')
       setDetectingLocation(false)
@@ -141,18 +142,18 @@ const AddressInput = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        
+
         if (geocoder.current) {
           geocoder.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
             if (status === 'OK' && results[0]) {
               const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
-              
+
               setQuery(addressName)
               setShowDropdown(false)
               setSuggestions([])
               isInternalChangeRef.current = true
               onChange?.(addressName)
-              
+
               if (onLocationDetect) {
                 onLocationDetect({
                   name: addressName,
@@ -163,20 +164,20 @@ const AddressInput = ({
                 })
               }
             } else {
-               // Fallback
-               const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
-               setQuery(fallbackName)
-               onChange?.(fallbackName)
-               if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
+              // Fallback
+              const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+              setQuery(fallbackName)
+              onChange?.(fallbackName)
+              if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
             }
             setDetectingLocation(false)
           })
         } else {
-            const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
-            setQuery(fallbackName)
-            onChange?.(fallbackName)
-            if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
-            setDetectingLocation(false)
+          const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+          setQuery(fallbackName)
+          onChange?.(fallbackName)
+          if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
+          setDetectingLocation(false)
         }
       },
       (error) => {
@@ -197,7 +198,7 @@ const AddressInput = ({
             {prefixIcon}
           </span>
         )}
-        
+
         <Input
           ref={inputRef}
           type="text"
@@ -209,9 +210,15 @@ const AddressInput = ({
           }}
           placeholder={placeholder}
           disabled={disabled}
-          className={cn("w-full", prefixIcon && "pl-10", (query || detectingLocation) && "pr-16")}
+          className={cn(
+            "w-full",
+            prefixIcon && "pl-10",
+            showDetectButton
+              ? (query || detectingLocation) && "pr-16"
+              : query && "pr-10"
+          )}
         />
-        
+
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {query && !detectingLocation && (
             <button
@@ -223,20 +230,22 @@ const AddressInput = ({
               <RiCloseLine size={16} className="text-content-muted" />
             </button>
           )}
-          
-          <button
-            type="button"
-            onClick={detectCurrentLocation}
-            disabled={detectingLocation || disabled}
-            className="p-1.5 rounded-lg hover:bg-surface-border transition-colors disabled:opacity-50"
-            title="Sử dụng vị trí hiện tại"
-          >
-            {detectingLocation ? (
-              <RiLoader4Line className="animate-spin text-brand-500" size={18} />
-            ) : (
-              <RiCrosshairLine className="text-content-muted hover:text-brand-500" size={18} />
-            )}
-          </button>
+
+          {showDetectButton && (
+            <button
+              type="button"
+              onClick={detectCurrentLocation}
+              disabled={detectingLocation || disabled}
+              className="p-1.5 rounded-lg hover:bg-surface-border transition-colors disabled:opacity-50"
+              title="Sử dụng vị trí hiện tại"
+            >
+              {detectingLocation ? (
+                <RiLoader4Line className="animate-spin text-brand-500" size={18} />
+              ) : (
+                <RiCrosshairLine className="text-content-muted hover:text-brand-500" size={18} />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

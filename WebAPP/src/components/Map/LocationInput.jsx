@@ -4,19 +4,19 @@ import { RiCrosshairLine, RiLoader4Line } from 'react-icons/ri'
 import AddressInput from './AddressInput'
 import { cn } from '@/utils/cn'
 
-const LocationInput = ({ 
-  placeholder, 
-  value, 
-  onChange, 
+const LocationInput = ({
+  placeholder,
+  value,
+  onChange,
   onLocationDetect,
   icon: Icon,
-  iconColor 
+  iconColor
 }) => {
   const [detecting, setDetecting] = useState(false)
 
   const handleDetectLocation = () => {
     setDetecting(true)
-    
+
     if (!navigator.geolocation) {
       alert('Trình duyệt không hỗ trợ định vị')
       setDetecting(false)
@@ -26,30 +26,30 @@ const LocationInput = ({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        
+
         if (window.google) {
-           const geocoder = new window.google.maps.Geocoder()
-           geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-              if (status === 'OK' && results[0]) {
-                 const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
-                 onChange(addressName)
-                 if (onLocationDetect) {
-                   onLocationDetect({ lat: latitude, lng: longitude, name: addressName, address: results[0].formatted_address })
-                 }
-              } else {
-                 onChange('Vị trí hiện tại')
-                 if (onLocationDetect) {
-                   onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
-                 }
+          const geocoder = new window.google.maps.Geocoder()
+          geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+              const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
+              onChange(addressName)
+              if (onLocationDetect) {
+                onLocationDetect({ lat: latitude, lng: longitude, name: addressName, address: results[0].formatted_address })
               }
-              setDetecting(false)
-           })
+            } else {
+              onChange('Vị trí hiện tại')
+              if (onLocationDetect) {
+                onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
+              }
+            }
+            setDetecting(false)
+          })
         } else {
-           onChange('Vị trí hiện tại')
-           if (onLocationDetect) {
-             onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
-           }
-           setDetecting(false)
+          onChange('Vị trí hiện tại')
+          if (onLocationDetect) {
+            onLocationDetect({ lat: latitude, lng: longitude, name: 'Vị trí hiện tại' })
+          }
+          setDetecting(false)
         }
       },
       (error) => {

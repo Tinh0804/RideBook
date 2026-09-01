@@ -4,8 +4,11 @@ import Spinner from '@/components/Elements/Spinner'
 import {
   RiSearchLine, RiEyeLine, RiCloseLine,
   RiLock2Line, RiLockUnlockLine, RiUserLine, RiMapPinLine,
+  RiEditLine, RiKey2Line
 } from 'react-icons/ri'
 import { cn } from '@/utils/cn'
+import AdminEditCustomerModal from '@/features/admin/components/AdminEditCustomerModal'
+import AdminChangePasswordModal from '@/features/admin/components/AdminChangePasswordModal'
 
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null
@@ -33,6 +36,10 @@ const AdminCustomersPage = () => {
 
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false)
+  const [customerToEdit, setCustomerToEdit] = useState(null)
+  const [customerToChangePassword, setCustomerToChangePassword] = useState(null)
 
   const fetchCustomers = useCallback(async (page = 0) => {
     setLoading(true)
@@ -173,6 +180,26 @@ const AdminCustomersPage = () => {
                         <td className="px-5 py-3 text-center">
                           <div className="flex justify-center gap-2">
                             <button
+                              onClick={() => {
+                                setCustomerToEdit(c)
+                                setEditModalOpen(true)
+                              }}
+                              className="p-2 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 transition-colors"
+                              title="Sửa thông tin"
+                            >
+                              <RiEditLine size={16} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setCustomerToChangePassword(c)
+                                setPasswordModalOpen(true)
+                              }}
+                              className="p-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 transition-colors"
+                              title="Đổi mật khẩu"
+                            >
+                              <RiKey2Line size={16} />
+                            </button>
+                            <button
                               onClick={() => openDetail(c)}
                               className="p-2 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
                               title="Xem chi tiết"
@@ -289,6 +316,25 @@ const AdminCustomersPage = () => {
           </div>
         )}
       </Modal>
+
+      <AdminEditCustomerModal 
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        customer={customerToEdit}
+        onSubmit={async (data) => {
+          await customerApi.updateCustomerInfo(customerToEdit.customerId, data)
+          fetchCustomers(pagination.page)
+        }}
+      />
+
+      <AdminChangePasswordModal 
+        open={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        targetName={customerToChangePassword?.customerName || customerToChangePassword?.phone}
+        onSubmit={async (data) => {
+          await customerApi.changeCustomerPassword(customerToChangePassword.customerId, data)
+        }}
+      />
     </div>
   )
 }
