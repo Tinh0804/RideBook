@@ -4,6 +4,8 @@ import com.nimbusds.jose.JOSEException;
 import com.project.BookCarOnline.shared.dto.APIResponse;
 import com.project.BookCarOnline.identity.dto.request.AuthenticationRequest;
 import com.project.BookCarOnline.identity.dto.request.ExchangeTokenRequest;
+import com.project.BookCarOnline.identity.dto.request.EmailVerificationRequest;
+import com.project.BookCarOnline.identity.dto.request.ResendEmailVerificationRequest;
 import com.project.BookCarOnline.identity.dto.request.ResetPasswordRequest;
 import com.project.BookCarOnline.identity.dto.response.AuthenticationResponse;
 import com.project.BookCarOnline.shared.exception.AppException;
@@ -29,6 +31,27 @@ import jakarta.validation.Valid;
 public class AuthenticationController {
     AuthenticationService service;
     OAuth2ExchangeService oAuth2ExchangeService;
+
+    @PostMapping("/email-verification/verify")
+    APIResponse<Boolean> verifyEmail(@Valid @RequestBody EmailVerificationRequest request) {
+        service.verifyEmail(request.getToken());
+        return APIResponse.<Boolean>builder()
+                .result(true)
+                .status(200)
+                .message("Email verified successfully")
+                .build();
+    }
+
+    @PostMapping("/email-verification/resend")
+    APIResponse<Boolean> resendEmailVerification(
+            @Valid @RequestBody ResendEmailVerificationRequest request) {
+        service.resendEmailVerification(request.getUserName());
+        return APIResponse.<Boolean>builder()
+                .result(true)
+                .status(200)
+                .message("If the account is eligible, a verification email has been sent")
+                .build();
+    }
 
 
     @PostMapping("/login")

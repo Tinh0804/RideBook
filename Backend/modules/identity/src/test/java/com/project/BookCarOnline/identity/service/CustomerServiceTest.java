@@ -56,6 +56,9 @@ class CustomerServiceTest {
     @Mock
     PasswordEncoder passwordEncoder;
 
+    @Mock
+    EmailVerificationService emailVerificationService;
+
     @InjectMocks
     CustomerService customerService;
 
@@ -95,6 +98,7 @@ class CustomerServiceTest {
                 .passWord("password123")
                 .name("Nguyen Van A")
                 .phoneNumber("0912345678")
+                .email("customer@example.com")
                 .address("123 Ha Noi")
                 .confirm("password123")
                 .build();
@@ -118,6 +122,16 @@ class CustomerServiceTest {
 
         verify(accountRepository).save(any(Account.class));
         verify(customerRepository).save(any(Customer.class));
+
+        ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
+        verify(accountRepository).save(accountCaptor.capture());
+        assertFalse(accountCaptor.getValue().isEmailVerified());
+
+        ArgumentCaptor<Customer> customerCaptor = ArgumentCaptor.forClass(Customer.class);
+        verify(customerRepository).save(customerCaptor.capture());
+        assertEquals("customer@example.com", customerCaptor.getValue().getEmail());
+        verify(emailVerificationService)
+                .sendVerificationEmail(accountCaptor.getValue(), "customer@example.com");
     }
 
     @Test

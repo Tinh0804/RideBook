@@ -24,7 +24,7 @@ const Checkbox = ({ label, error, className, ...props }) => (
       </div>
     </div>
     {label && (
-      <span className="text-sm text-content-muted group-hover:text-gray-200 transition-colors leading-5">
+      <span className="text-sm text-content-muted group-hover:text-content-main transition-colors leading-5">
         {label}
       </span>
     )}

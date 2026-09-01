@@ -16,6 +16,7 @@ public class AccountResponse {
      RoleResponse role;
      @Builder.Default
      Boolean accountStatus = true; // Default value for account status
+     boolean emailVerified;
      Date createdAt ; // Default value for created date
 
 }

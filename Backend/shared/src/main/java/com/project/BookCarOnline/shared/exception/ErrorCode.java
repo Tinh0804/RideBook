@@ -35,6 +35,12 @@ public enum ErrorCode {
     ACCOUNT_NOT_EXISTS(404,"Account not exists",HttpStatus.NOT_FOUND),
     AVATAR_NOT_FOUND(404,"Avatar not found",HttpStatus.NOT_FOUND),
     USERNAME_OR_PASSWORD_INVALID(401,"Username or password invalid",HttpStatus.UNAUTHORIZED),
+    EMAIL_NOT_VERIFIED(403,"Email has not been verified",HttpStatus.FORBIDDEN),
+    EMAIL_VERIFICATION_TOKEN_INVALID(400,"Email verification token is invalid or expired",HttpStatus.BAD_REQUEST),
+    EMAIL_ALREADY_VERIFIED(409,"Email has already been verified",HttpStatus.CONFLICT),
+    EMAIL_NOT_FOUND(400,"Email is required for verification",HttpStatus.BAD_REQUEST),
+    EMAIL_DELIVERY_FAILED(503,"Unable to send verification email",HttpStatus.SERVICE_UNAVAILABLE),
+    ACCOUNT_TEMPORARILY_LOCKED(423,"Account is temporarily locked",HttpStatus.LOCKED),
     
     // Driver related errors
     DRIVER_EMAIL_EXISTED(400,"Email tài xế đã tồn tại",HttpStatus.BAD_REQUEST),

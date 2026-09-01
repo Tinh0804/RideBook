@@ -88,7 +88,7 @@ const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {chatMessages.length === 0 && (
-          <p className="text-center text-xs text-gray-600 py-4">Bắt đầu cuộc trò chuyện</p>
+          <p className="text-center text-xs text-content-muted py-4">Bắt đầu cuộc trò chuyện</p>
         )}
         {chatMessages.map((msg) => {
           const isMine = msg.senderId === user?.id
@@ -98,13 +98,13 @@ const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
               className={cn('flex', isMine ? 'justify-end' : 'justify-start')}
             >
               <div className={cn(
-                'max-w-[75%] px-3 py-2 rounded-2xl text-sm',
+                'max-w-[75%] px-3 py-2 rounded-2xl text-sm shadow-sm',
                 isMine
-                  ? 'bg-brand-500 text-content-main rounded-br-sm'
-                  : 'bg-surface-border text-gray-200 rounded-bl-sm',
+                  ? 'bg-brand-500 text-white rounded-br-sm'
+                  : 'bg-surface-muted border border-surface-border text-content-main rounded-bl-sm',
               )}>
                 <p>{msg.content || msg.message}</p>
-                <p className={cn('text-[10px] mt-0.5', isMine ? 'text-brand-200/70 text-right' : 'text-content-muted')}>
+                <p className={cn('text-[10px] mt-0.5', isMine ? 'text-white/80 text-right' : 'text-content-muted')}>
                   {formatTime(msg.timestamp || msg.createdAt)}
                 </p>
               </div>
@@ -115,9 +115,9 @@ const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
       </div>
 
       {/* Input */}
-      <div className="flex items-center gap-2 p-3 border-t border-surface-border shrink-0">
+      <div className="flex items-center gap-2 p-3 border-t border-surface-border shrink-0 bg-surface-card">
         <input
-          className="flex-1 bg-surface-dark border border-surface-border rounded-xl px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-brand-500 transition-colors"
+          className="flex-1 bg-surface-dark border border-surface-border rounded-xl px-3 py-2 text-sm text-content-main placeholder-content-muted focus:outline-none focus:border-brand-500 transition-colors"
           placeholder="Nhắn tin..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -126,7 +126,7 @@ const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
         <button
           onClick={handleSend}
           disabled={!input.trim() || sending}
-          className="w-9 h-9 rounded-xl bg-brand-500 hover:bg-brand-400 disabled:opacity-40 flex items-center justify-center text-content-main transition-all active:scale-95 shrink-0"
+          className="w-9 h-9 rounded-xl bg-brand-500 hover:bg-brand-400 disabled:opacity-40 flex items-center justify-center text-white transition-all active:scale-95 shrink-0 shadow-sm"
         >
           <RiSendPlane2Line size={16} />
         </button>

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,7 +29,7 @@ public class CustomerController {
     CustomerService service;
 
     @PostMapping("/register")
-    APIResponse<CustomerResponse> createCustomer(@RequestBody RegisterCustomerRequest request) {
+    APIResponse<CustomerResponse> createCustomer(@Valid @RequestBody RegisterCustomerRequest request) {
         CustomerResponse customerResponse = service.createCustomer(request);
         return APIResponse.<CustomerResponse>builder()
                 .result(customerResponse)

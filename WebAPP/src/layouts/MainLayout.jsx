@@ -14,15 +14,16 @@ import { notificationApi } from '@/features/booking/api/masterDataApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { driverApi } from '@/features/driver/api/driverApi'
 import { customerApi } from '@/features/customer/api/customerApi'
-import { ROLES, BOOKING_STATUS, WS_URL } from '@/config'
+import { ROLES, BOOKING_STATUS } from '@/config'
 import { cn } from '@/utils/cn'
-import { Client } from '@stomp/stompjs'
-import SockJS from 'sockjs-client'
 import { toast } from 'react-hot-toast'
 import Modal from '@/components/Elements/Modal'
 import { formatDistanceToNow } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'motion/react'
+import { useFCM } from '@/hooks/useFCM'
+import { useWebSocket } from '@/hooks/useWebSocket'
+import { websocketService } from '@/services/websocketService'
 
 const BASE_CUSTOMER_NAV = [
   { to: '/customer/home',     icon: RiHomeLine,     label: 'Trang chủ' },
@@ -75,6 +76,25 @@ const MainLayout = () => {
       notifSoundRef.current?.pause()
     }
   }, [])
+
+  // Tích hợp Firebase Cloud Messaging (Push Notifications)
+  useFCM((payload) => {
+    const title = payload.notification?.title || payload.data?.title || 'Thông báo'
+    const message = payload.notification?.body || payload.data?.message || ''
+    const notificationId = payload.data?.notificationId || Date.now().toString()
+    
+    setNotifications(prev => [
+      {
+        notificationId,
+        title,
+        message,
+        bookingId: payload.data?.bookingId || null,
+        sentAt: new Date().toISOString(),
+        read: false,
+      },
+      ...prev
+    ])
+  })
   
   const navigate = useNavigate()
   const location = useLocation()
@@ -105,40 +125,25 @@ const MainLayout = () => {
       .catch(() => {})
   }, [setNotifCount])
 
-  // Setup WebSockets STOMP connection for real-time notifications
-  useEffect(() => {
-    if (!user?.userName) return
-
-    const client = new Client({
-      webSocketFactory: () => new SockJS(WS_URL),
-      debug: (str) => {},
-      reconnectDelay: 5000,
-      onConnect: () => {
-        client.subscribe(`/topic/notifications/${user.userName}`, (msg) => {
-          if (msg.body) {
-            try {
-              const newNotif = JSON.parse(msg.body)
-              setNotifications(prev => [newNotif, ...prev])
-              setNotifCount(prev => prev + 1)
-              if (notifSoundRef.current) {
-                notifSoundRef.current.currentTime = 0
-                notifSoundRef.current.play().catch(() => {})
-              }
-              toast.success(newNotif.title + '\n' + newNotif.message, {
-                duration: 5000,
-                icon: '🔔',
-              })
-            } catch (err) {
-              console.error('Error parsing notification:', err)
-            }
-          }
-        })
-      }
+  // Lắng nghe real-time notifications qua WebSocket Singleton
+  const onWsNotification = useCallback((topic, newNotif) => {
+    if (!newNotif) return
+    setNotifications(prev => [newNotif, ...prev])
+    setNotifCount(prev => (typeof prev === 'number' ? prev + 1 : 1))
+    if (notifSoundRef.current) {
+      notifSoundRef.current.currentTime = 0
+      notifSoundRef.current.play().catch(() => {})
+    }
+    toast.success((newNotif.title || 'Thông báo') + '\n' + (newNotif.message || ''), {
+      duration: 5000,
+      icon: '🔔',
     })
+  }, [setNotifCount])
 
-    client.activate()
-    return () => client.deactivate()
-  }, [user?.userName, setNotifCount])
+  useWebSocket(
+    user?.userName ? [`/topic/notifications/${user.userName}`] : [],
+    onWsNotification
+  )
 
   // Fetch active trips & sync driver profile/online status
   useEffect(() => {
@@ -226,15 +231,15 @@ const MainLayout = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#e8ece3] dark:bg-surface-dark font-sans text-gray-900 dark:text-white transition-colors duration-300">
+    <div className="flex h-screen overflow-hidden bg-surface-dark font-sans text-content-main transition-colors duration-300">
       
       {/* ── Sidebar (Practical + Fun Animation) ─────────────────────────────────── */}
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 280 : 80 }}
-        className="relative flex flex-col bg-[#e8ece3] dark:bg-surface-dark border-r border-[#cdd4c8] dark:border-surface-border z-30 h-full shrink-0"
+        className="relative flex flex-col bg-surface-card dark:bg-surface-dark border-r border-surface-border z-30 h-full shrink-0 shadow-sm"
       >
-        {/* Nút chiếc xe thần thánh */}
+        {/* Nút chiếc xe toggle sidebar */}
         <div className="absolute -right-5 top-10 z-40 hidden lg:block">
           <button
             onClick={handleToggleSidebar}
@@ -253,7 +258,7 @@ const MainLayout = () => {
         </div>
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-4 px-6 h-20 shrink-0 overflow-hidden whitespace-nowrap border-b border-gray-100 dark:border-surface-border group" aria-label="BookCar - Trang chủ">
+        <Link to="/" className="flex items-center gap-4 px-6 h-20 shrink-0 overflow-hidden whitespace-nowrap border-b border-surface-border group" aria-label="BookCar - Trang chủ">
           <img src="/logo.png" alt="" className="h-10 w-10 rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6 shrink-0" />
           <AnimatePresence>
             {sidebarOpen && (
@@ -262,7 +267,7 @@ const MainLayout = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.2 }}
-                className="font-display text-2xl font-bold tracking-[-0.04em] text-gray-900 dark:text-white"
+                className="font-display text-2xl font-bold tracking-[-0.04em] text-content-main"
               >
                 BookCar<span className="text-brand-500">/</span>
               </motion.span>
@@ -282,7 +287,7 @@ const MainLayout = () => {
                   'flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group overflow-hidden whitespace-nowrap',
                   isActive 
                     ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' 
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-surface-border hover:text-gray-900 dark:hover:text-white',
+                    : 'text-content-muted hover:bg-surface-muted hover:text-content-main',
                   !sidebarOpen && 'justify-center px-0'
                 )}
                 title={!sidebarOpen ? label : undefined}
@@ -306,9 +311,9 @@ const MainLayout = () => {
         </nav>
 
         {/* User profile mini area */}
-        <div className="p-4 border-t border-gray-100 dark:border-surface-border shrink-0 overflow-hidden whitespace-nowrap">
+        <div className="p-4 border-t border-surface-border shrink-0 overflow-hidden whitespace-nowrap">
           <div className={cn(
-            'flex items-center gap-3 p-2 rounded-xl bg-white/50 dark:bg-surface-dark border border-[#cdd4c8] dark:border-surface-border',
+            'flex items-center gap-3 p-2 rounded-xl bg-surface-muted/50 border border-surface-border',
             !sidebarOpen && 'justify-center p-2'
           )}>
             <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm">
@@ -322,8 +327,8 @@ const MainLayout = () => {
                   exit={{ opacity: 0 }}
                   className="flex-1 min-w-0"
                 >
-                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{userProfile?.name || user?.userName}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize truncate">{role?.toLowerCase()}</p>
+                  <p className="text-sm font-bold text-content-main truncate">{userProfile?.name || user?.userName}</p>
+                  <p className="text-xs text-content-muted capitalize truncate">{role?.toLowerCase()}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -348,7 +353,7 @@ const MainLayout = () => {
           {/* Mobile toggle */}
           <button
             onClick={toggleSidebar}
-            className="lg:hidden p-2 rounded-xl bg-white dark:bg-surface-dark border border-[#cdd4c8] dark:border-surface-border shadow-sm text-gray-600 dark:text-gray-300"
+            className="lg:hidden p-2 rounded-xl bg-surface-card border border-surface-border shadow-sm text-content-main"
           >
             <RiCarFill size={22} className="text-brand-500" />
           </button>
@@ -360,8 +365,9 @@ const MainLayout = () => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-card border border-gray-200 dark:border-surface-border text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-border transition-colors shadow-sm"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm"
               title="Đổi giao diện"
+              aria-label="Đổi giao diện"
             >
               {theme === 'dark' ? <RiSunLine size={18} /> : <RiMoonLine size={18} />}
             </button>
@@ -370,11 +376,12 @@ const MainLayout = () => {
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((o) => !o)}
-                className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-card border border-gray-200 dark:border-surface-border text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-surface-border transition-colors shadow-sm relative"
+                className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm relative"
+                aria-label="Thông báo"
               >
                 <RiNotification3Line size={18} />
                 {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-white dark:border-surface-card rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-surface-card rounded-full text-[10px] font-bold text-white flex items-center justify-center">
                     {notifCount > 9 ? '9+' : notifCount}
                   </span>
                 )}
@@ -387,31 +394,31 @@ const MainLayout = () => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 top-14 w-80 bg-white dark:bg-surface-card rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-surface-border z-50 overflow-hidden"
+                    className="absolute right-0 top-14 w-80 bg-surface-card rounded-2xl shadow-card border border-surface-border z-50 overflow-hidden"
                   >
-                    <div className="p-4 border-b border-gray-100 dark:border-surface-border flex items-center justify-between bg-gray-50/50 dark:bg-surface-dark/50">
-                      <h3 className="font-bold text-gray-900 dark:text-white">Thông báo</h3>
-                      <span className="text-xs font-semibold text-brand-500 bg-brand-500/10 px-2 py-1 rounded-full">{notifCount} mới</span>
+                    <div className="p-4 border-b border-surface-border flex items-center justify-between bg-surface-muted/30">
+                      <h3 className="font-bold text-content-main">Thông báo</h3>
+                      <span className="text-xs font-semibold text-brand-500 dark:text-brand-400 bg-brand-500/10 px-2 py-1 rounded-full">{notifCount} mới</span>
                     </div>
-                    <div className="max-h-[320px] overflow-y-auto divide-y divide-gray-100 dark:divide-surface-border">
+                    <div className="max-h-[320px] overflow-y-auto divide-y divide-surface-border">
                       {notifications.length === 0 ? (
-                        <p className="p-8 text-sm text-gray-500 dark:text-gray-400 text-center">Không có thông báo mới</p>
+                        <p className="p-8 text-sm text-content-muted text-center">Không có thông báo mới</p>
                       ) : (
                         notifications.slice(0, 8).map((n) => (
                           <div
                             key={n.notificationId}
                             onClick={() => handleNotificationClick(n)}
                             className={cn(
-                              'p-4 hover:bg-gray-50 dark:hover:bg-surface-border/50 cursor-pointer transition-colors',
-                              !n.read && 'bg-brand-50/50 dark:bg-brand-500/5'
+                              'p-4 hover:bg-surface-muted/50 cursor-pointer transition-colors',
+                              !n.read && 'bg-brand-500/5'
                             )}
                           >
                             <div className="flex items-start gap-3">
                               {!n.read && <div className="w-2 h-2 rounded-full bg-brand-500 mt-1.5 shrink-0" />}
                               <div>
-                                <p className={cn("text-sm mb-1", !n.read ? "font-bold text-gray-900 dark:text-white" : "font-semibold text-gray-700 dark:text-gray-300")}>{n.title}</p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{n.message}</p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-medium">
+                                <p className={cn("text-sm mb-1", !n.read ? "font-bold text-content-main" : "font-semibold text-content-muted")}>{n.title}</p>
+                                <p className="text-sm text-content-muted line-clamp-2 leading-relaxed">{n.message}</p>
+                                <p className="text-xs text-content-muted/70 mt-2 font-medium">
                                   {formatDistanceToNow(new Date(n.sentAt), { addSuffix: true, locale: vi })}
                                 </p>
                               </div>
@@ -428,8 +435,9 @@ const MainLayout = () => {
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-card border border-gray-200 dark:border-surface-border text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 hover:border-red-200 transition-colors shadow-sm"
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors shadow-sm"
               title="Đăng xuất"
+              aria-label="Đăng xuất"
             >
               <RiLogoutBoxLine size={18} />
             </button>
@@ -442,7 +450,7 @@ const MainLayout = () => {
             <div className="flex items-center justify-center h-full">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin" />
-                <p className="text-sm text-gray-500 font-medium animate-pulse">Đang tải dữ liệu...</p>
+                <p className="text-sm text-content-muted font-medium animate-pulse">Đang tải dữ liệu...</p>
               </div>
             </div>
           ) : (
@@ -458,13 +466,13 @@ const MainLayout = () => {
         title={selectedNotif?.title || 'Thông báo hệ thống'}
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+          <p className="text-sm text-content-main whitespace-pre-wrap leading-relaxed">
             {selectedNotif?.message}
           </p>
-          <div className="flex justify-end border-t border-gray-100 dark:border-surface-border pt-4 mt-6">
+          <div className="flex justify-end border-t border-surface-border pt-4 mt-6">
             <button
               onClick={() => setSelectedNotif(null)}
-              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold py-2.5 px-6 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md"
+              className="bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 px-6 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md"
             >
               Đóng
             </button>

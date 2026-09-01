@@ -49,11 +49,17 @@ public class AuthenticationService {
         REFRESH
     }
 
+    private record IssuedToken(String value, Instant expiresAt) {
+    }
+
     AccountRepository accountRepository;
     RedisTemplate<String, Object> redisTemplate;
     CustomerRepository customerRepository;
     DriverRepository driverRepository;
     AccountMapper accountMapper;
+    EmailVerificationService emailVerificationService;
+    LoginAttemptService loginAttemptService;
+    RefreshTokenService refreshTokenService;
 
     PasswordEncoder encoder;
 
@@ -69,19 +75,54 @@ public class AuthenticationService {
     @Value("${jwt.refreshable-duration}")
     protected long REFRESHABLE_DURATION;
 
+    public void verifyEmail(String token) {
+        emailVerificationService.verifyEmail(token);
+    }
+
+    public void resendEmailVerification(String userName) {
+        if (!StringUtils.hasText(userName)) {
+            return;
+        }
+        accountRepository.findByUserName(userName).ifPresent(account -> {
+            if (account.isEmailVerified()) {
+                return;
+            }
+            String email = switch (account.getRoleNo().getRoleName()) {
+                case CUSTOMER -> customerRepository.findByAccountId(account.getAccountId())
+                        .map(Customer::getEmail)
+                        .orElse(null);
+                case DRIVER -> driverRepository.findByAccountId(account.getAccountId())
+                        .map(Driver::getEmail)
+                        .orElse(null);
+                default -> null;
+            };
+            if (StringUtils.hasText(email)) {
+                emailVerificationService.sendVerificationEmail(account, email);
+            }
+        });
+    }
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
 
-        Account account = accountRepository.findByUserName(request.getUserName()).orElseThrow(()->new AppException(ErrorCode.USERNAME_OR_PASSWORD_INVALID));
+        if (loginAttemptService.isLocked(request.getUserName())) {
+            throw new AppException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
+        }
+
+        Account account = accountRepository.findByUserName(request.getUserName())
+                .orElseThrow(() -> invalidCredentials(request.getUserName()));
 
         if (!encoder.matches(request.getPassWord(), account.getPassWord())) {
-            throw new AppException(ErrorCode.USERNAME_OR_PASSWORD_INVALID);
+            throw invalidCredentials(request.getUserName());
         }
+        loginAttemptService.recordSuccess(request.getUserName());
 
 
         if(!account.getRoleNo().getRoleName().getRoleName().equalsIgnoreCase(request.getRoleName()))
             throw  new AppException(ErrorCode.ROLE_NOT_FOUND);
         if(!account.getAccountStatus())
             throw  new AppException(ErrorCode.ACCOUNT_DISABLED);
+        if (!account.isEmailVerified())
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
 
         String token = generateAccessToken(account);
         String refreshToken = generateRefreshToken(account);
@@ -96,15 +137,26 @@ public class AuthenticationService {
                 .build();
     }
 
+    private AppException invalidCredentials(String principal) {
+        return new AppException(loginAttemptService.recordFailure(principal)
+                ? ErrorCode.ACCOUNT_TEMPORARILY_LOCKED
+                : ErrorCode.USERNAME_OR_PASSWORD_INVALID);
+    }
+
     String generateAccessToken(Account account) {
-        return generateToken(account, VALID_DURATION, TokenType.ACCESS);
+        return generateToken(account, VALID_DURATION, TokenType.ACCESS).value();
     }
 
     String generateRefreshToken(Account account) {
-        return generateToken(account, REFRESHABLE_DURATION, TokenType.REFRESH);
+        IssuedToken refreshToken = generateToken(account, REFRESHABLE_DURATION, TokenType.REFRESH);
+        refreshTokenService.store(
+                refreshToken.value(),
+                account.getAccountId(),
+                refreshToken.expiresAt());
+        return refreshToken.value();
     }
 
-    private String generateToken(Account account, long durationInSeconds, TokenType tokenType) {
+    private IssuedToken generateToken(Account account, long durationInSeconds, TokenType tokenType) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
         Customer customer = null;
         Driver driver = null;
@@ -129,11 +181,12 @@ public class AuthenticationService {
             userId = customer.getCustomerId();
         }
 
+        Instant expiresAt = Instant.now().plus(durationInSeconds, ChronoUnit.SECONDS);
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
                 .subject(account.getAccountId())
                 .issuer("BookCarOnline")
                 .issueTime(new Date())
-                .expirationTime(Date.from(Instant.now().plus(durationInSeconds, ChronoUnit.SECONDS)))
+                .expirationTime(Date.from(expiresAt))
                 .claim("scope",buildScope(account))
                 .claim("profile_id",userId)
                 .claim(TOKEN_TYPE_CLAIM, tokenType.name())
@@ -144,7 +197,7 @@ public class AuthenticationService {
         JWSObject jwsObject=new JWSObject(header,payload);
         try {
             jwsObject.sign(new MACSigner(SIGNER_KEY));
-            return jwsObject.serialize();
+            return new IssuedToken(jwsObject.serialize(), expiresAt);
         } catch (JOSEException e) {
             throw new RuntimeException(e);
         }
@@ -208,6 +261,12 @@ public class AuthenticationService {
         JWTClaimsSet refreshClaims = verifyToken(refreshToken, TokenType.REFRESH);
         JWTClaimsSet accessClaims = verifyToken(token, TokenType.ACCESS);
 
+        if (!accessClaims.getSubject().equals(refreshClaims.getSubject())) {
+            throw new AppException(ErrorCode.INVALID_TOKEN);
+        }
+        if (!refreshTokenService.consume(refreshToken, refreshClaims.getSubject())) {
+            throw new AppException(ErrorCode.TOKEN_BLACKLISTED);
+        }
 
         long refreshExpiry = refreshClaims.getExpirationTime().getTime() - System.currentTimeMillis();
         if (refreshExpiry > 0) {
@@ -224,13 +283,22 @@ public class AuthenticationService {
     public AuthenticationResponse refreshToken(String refreshToken) throws JOSEException {
         JWTClaimsSet refreshClaims = verifyToken(refreshToken, TokenType.REFRESH);
 
+        Account account = accountRepository.findById(refreshClaims.getSubject())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
+        if (!Boolean.TRUE.equals(account.getAccountStatus())) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+        if (!account.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+        if (!refreshTokenService.consume(refreshToken, refreshClaims.getSubject())) {
+            throw new AppException(ErrorCode.TOKEN_BLACKLISTED);
+        }
+
         long refreshExpiry = refreshClaims.getExpirationTime().getTime() - System.currentTimeMillis();
         if (refreshExpiry > 0) {
             redisTemplate.opsForValue().set("invalid_token:" + refreshClaims.getJWTID(), "Old Refresh Token after Refresh", refreshExpiry, TimeUnit.MILLISECONDS);
         }
-
-        Account account = accountRepository.findById(refreshClaims.getSubject())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         return AuthenticationResponse.builder()
                 .token(generateAccessToken(account))

@@ -36,3 +36,4 @@ build/
 *firebase*.json
 **/firebase*.json
 
+keycloak/**

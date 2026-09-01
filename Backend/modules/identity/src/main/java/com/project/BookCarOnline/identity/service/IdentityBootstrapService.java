@@ -45,6 +45,7 @@ public class IdentityBootstrapService {
                 .passWord(passwordEncoder.encode(adminPassword))
                 .roleNo(adminRole)
                 .accountStatus(true)
+                .emailVerified(true)
                 .provider(Provider.LOCAL)
                 .build());
         customerRepository.save(Customer.builder()

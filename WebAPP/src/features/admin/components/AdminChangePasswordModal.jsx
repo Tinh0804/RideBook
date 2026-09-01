@@ -39,10 +39,10 @@ const AdminChangePasswordModal = ({ open, onClose, onSubmit, targetName }) => {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Đổi Mật Khẩu</h3>
-        {targetName && <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Cho: {targetName}</p>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 shadow-2xl">
+        <h3 className="text-xl font-bold text-content-main mb-2">Đổi Mật Khẩu</h3>
+        {targetName && <p className="text-sm text-content-muted mb-6">Cho: {targetName}</p>}
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <FormField label="Mật khẩu mới" error={errors.newPassword?.message}>
@@ -52,7 +52,7 @@ const AdminChangePasswordModal = ({ open, onClose, onSubmit, targetName }) => {
             <Input type="password" placeholder="Nhập lại mật khẩu mới" {...register('confirmPassword')} error={errors.confirmPassword} />
           </FormField>
 
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex gap-3 justify-end pt-4 border-t border-surface-border">
             <Button variant="outline" onClick={onClose} disabled={isSubmitting} type="button">Hủy</Button>
             <Button type="submit" loading={isSubmitting}>Đổi mật khẩu</Button>
           </div>

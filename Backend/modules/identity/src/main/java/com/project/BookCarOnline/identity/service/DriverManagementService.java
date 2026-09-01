@@ -43,6 +43,7 @@ public class DriverManagementService {
     private final PasswordEncoder passwordEncoder;
     private final FirebaseService firebaseService;
     private final VehicleTypeService vehicleTypeService;
+    private final EmailVerificationService emailVerificationService;
 
     public DriverDetailResponse getMyInfo() {
         String driverId = SecurityUtils.getCurrentProfileId()
@@ -91,6 +92,7 @@ public class DriverManagementService {
                 .roleNo(driverRole)
                 .provider(Provider.LOCAL)
                 .accountStatus(true)
+                .emailVerified(false)
                 .createdAt(new Date())
                 .build());
 
@@ -100,7 +102,9 @@ public class DriverManagementService {
             driver.setAvatar(firebaseService.uploadFile(
                     request.getAvatar(), "drivers/" + account.getAccountId() + "/avatar", null));
         }
-        return toResponse(driverRepository.save(driver));
+        Driver savedDriver = driverRepository.save(driver);
+        emailVerificationService.sendVerificationEmail(account, request.getEmail());
+        return toResponse(savedDriver);
     }
 
     @Transactional

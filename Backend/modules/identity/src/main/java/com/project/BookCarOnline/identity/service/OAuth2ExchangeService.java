@@ -161,6 +161,7 @@ public class OAuth2ExchangeService {
                                 // Cập nhật thông tin Provider cho tài khoản sẵn có
                                 existingAccount.setProvider(Provider.valueOf(provider.toUpperCase()));
                                 existingAccount.setProviderId(oAuth2User.getName());
+                                existingAccount.setEmailVerified(true);
                                 return accountRepository.save(existingAccount);
                             })
                             .orElseGet(() -> saveCustomer(email, name, picture, provider, oAuth2User.getName()));
@@ -181,6 +182,7 @@ public class OAuth2ExchangeService {
                         .roleNo(roleRepository.findByRoleName(PredefinedRole.CUSTOMER)
                                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND)))
                         .accountStatus(true)
+                        .emailVerified(true)
                         .build());
 
         var customer = customerRepository.save(

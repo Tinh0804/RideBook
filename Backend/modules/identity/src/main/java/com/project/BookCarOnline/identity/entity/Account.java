@@ -48,6 +48,10 @@ public class Account {
     @Column
      Boolean accountStatus;
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+     boolean emailVerified = false;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(length = 100)

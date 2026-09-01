@@ -14,6 +14,7 @@ import com.project.BookCarOnline.identity.repository.DriverRepository;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,15 +26,24 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.util.Optional;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
@@ -51,6 +61,12 @@ class AuthenticationServiceTest {
     AccountMapper accountMapper;
     @Mock
     PasswordEncoder passwordEncoder;
+    @Mock
+    EmailVerificationService emailVerificationService;
+    @Mock
+    LoginAttemptService loginAttemptService;
+    @Mock
+    RefreshTokenService refreshTokenService;
 
     AuthenticationService service;
     Account account;
@@ -64,6 +80,7 @@ class AuthenticationServiceTest {
                 .passWord("encoded-password")
                 .roleNo(role)
                 .accountStatus(true)
+                .emailVerified(true)
                 .build();
 
         service = new AuthenticationService(
@@ -72,12 +89,94 @@ class AuthenticationServiceTest {
                 customerRepository,
                 driverRepository,
                 accountMapper,
+                emailVerificationService,
+                loginAttemptService,
+                refreshTokenService,
                 passwordEncoder
         );
         service.SIGNER_KEY = "0123456789012345678901234567890123456789012345678901234567890123";
         service.VALID_DURATION = 3600;
         service.REFRESHABLE_DURATION = 36000;
 
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void authenticateRejectsLockedPrincipalBeforeAccountLookup() {
+        when(loginAttemptService.isLocked("customer@example.com")).thenReturn(true);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.authenticate(AuthenticationRequest.builder()
+                        .userName("customer@example.com")
+                        .passWord("password")
+                        .roleName("CUSTOMER")
+                        .build()));
+
+        assertEquals(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED, exception.getErrorCode());
+        verifyNoInteractions(accountRepository);
+    }
+
+    @Test
+    void authenticateCountsUnknownPrincipalWithoutRevealingAccountExistence() {
+        when(accountRepository.findByUserName("unknown@example.com")).thenReturn(Optional.empty());
+        when(loginAttemptService.recordFailure("unknown@example.com")).thenReturn(false);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.authenticate(AuthenticationRequest.builder()
+                        .userName("unknown@example.com")
+                        .passWord("password")
+                        .roleName("CUSTOMER")
+                        .build()));
+
+        assertEquals(ErrorCode.USERNAME_OR_PASSWORD_INVALID, exception.getErrorCode());
+        verify(loginAttemptService).recordFailure("unknown@example.com");
+    }
+
+    @Test
+    void successfulAuthenticationClearsPreviousFailures() {
+        authenticateAccount();
+
+        verify(loginAttemptService).recordSuccess("customer@example.com");
+    }
+
+    @Test
+    void fifthInvalidPasswordLocksAccount() {
+        when(accountRepository.findByUserName("customer@example.com")).thenReturn(Optional.of(account));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+        when(loginAttemptService.recordFailure("customer@example.com")).thenReturn(true);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.authenticate(AuthenticationRequest.builder()
+                        .userName("customer@example.com")
+                        .passWord("wrong-password")
+                        .roleName("CUSTOMER")
+                        .build()));
+
+        assertEquals(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED, exception.getErrorCode());
+    }
+
+    @Test
+    void authenticateRejectsUnverifiedLocalAccount() {
+        account.setEmailVerified(false);
+        when(accountRepository.findByUserName("customer@example.com")).thenReturn(Optional.of(account));
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.authenticate(AuthenticationRequest.builder()
+                        .userName("customer@example.com")
+                        .passWord("password")
+                        .roleName("CUSTOMER")
+                        .build()));
+
+        assertEquals(ErrorCode.EMAIL_NOT_VERIFIED, exception.getErrorCode());
     }
 
     @Test
@@ -87,6 +186,8 @@ class AuthenticationServiceTest {
         when(accountRepository.findById("account-id")).thenReturn(Optional.of(account));
         when(redisTemplate.hasKey(anyString())).thenReturn(false);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(refreshTokenService.consume(anyString(), eq("account-id")))
+                .thenReturn(true, true);
 
         String refreshToken = service.generateRefreshToken(account);
         service.VALID_DURATION = -1;
@@ -97,6 +198,60 @@ class AuthenticationServiceTest {
 
         assertTrue(response.isSuccess());
         assertTrue(rotatedResponse.isSuccess());
+    }
+
+    @Test
+    void issuedRefreshTokenIsRegisteredWithItsJwtExpiration() throws Exception {
+        AuthenticationResponse authentication = authenticateAccount();
+
+        verify(refreshTokenService).store(
+                eq(authentication.getRefreshToken()),
+                eq("account-id"),
+                any(Instant.class));
+    }
+
+    @Test
+    void refreshTokenCannotBeReusedAfterSuccessfulRotation() throws Exception {
+        Customer customer = Customer.builder().customerId("customer-id").build();
+        when(customerRepository.findByAccountId("account-id")).thenReturn(Optional.of(customer));
+        when(accountRepository.findById("account-id")).thenReturn(Optional.of(account));
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        String originalRefreshToken = service.generateRefreshToken(account);
+        when(refreshTokenService.consume(originalRefreshToken, "account-id"))
+                .thenReturn(true, false);
+
+        AuthenticationResponse rotated = service.refreshToken(originalRefreshToken);
+        AppException replay = assertThrows(
+                AppException.class,
+                () -> service.refreshToken(originalRefreshToken));
+
+        assertTrue(rotated.isSuccess());
+        assertEquals(ErrorCode.TOKEN_BLACKLISTED, replay.getErrorCode());
+    }
+
+    @Test
+    void logoutConsumesRefreshTokenAndBlacklistsBothTokens() throws Exception {
+        Customer customer = Customer.builder().customerId("customer-id").build();
+        when(customerRepository.findByAccountId("account-id")).thenReturn(Optional.of(customer));
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(refreshTokenService.consume(anyString(), eq("account-id"))).thenReturn(true);
+
+        String accessToken = service.generateAccessToken(account);
+        String refreshToken = service.generateRefreshToken(account);
+        Jwt jwt = Jwt.withTokenValue(accessToken)
+                .header("alg", "HS512")
+                .subject("account-id")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+
+        service.logout(refreshToken);
+
+        verify(refreshTokenService).consume(refreshToken, "account-id");
+        verify(valueOperations, times(2)).set(
+                anyString(), anyString(), anyLong(), eq(java.util.concurrent.TimeUnit.MILLISECONDS));
     }
 
     @ParameterizedTest
@@ -128,6 +283,22 @@ class AuthenticationServiceTest {
         AuthenticationResponse authentication = authenticateAccount();
 
         assertFalse(service.introspect(authentication.getRefreshToken()));
+    }
+
+    @Test
+    void refreshRejectsAccountWhoseEmailIsNotVerified() throws Exception {
+        Customer customer = Customer.builder().customerId("customer-id").build();
+        when(customerRepository.findByAccountId("account-id")).thenReturn(Optional.of(customer));
+        when(accountRepository.findById("account-id")).thenReturn(Optional.of(account));
+        when(redisTemplate.hasKey(anyString())).thenReturn(false);
+        String refreshToken = service.generateRefreshToken(account);
+        account.setEmailVerified(false);
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> service.refreshToken(refreshToken));
+
+        assertEquals(ErrorCode.EMAIL_NOT_VERIFIED, exception.getErrorCode());
     }
 
     private AuthenticationResponse authenticateAccount() {

@@ -40,9 +40,9 @@ const ChangePasswordModal = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Đổi mật khẩu</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="card w-full max-w-md p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 shadow-2xl">
+        <h3 className="text-xl font-bold text-content-main mb-4">Đổi mật khẩu</h3>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormField label="Mật khẩu hiện tại" error={errors.oldPassword?.message} required>
             <Input
@@ -71,7 +71,7 @@ const ChangePasswordModal = ({ onClose }) => {
             />
           </FormField>
 
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex gap-3 justify-end pt-4 border-t border-surface-border">
             <Button variant="outline" onClick={onClose} disabled={loading} type="button">
               Hủy
             </Button>

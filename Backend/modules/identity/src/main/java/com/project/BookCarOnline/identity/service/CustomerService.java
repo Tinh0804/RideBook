@@ -49,6 +49,7 @@ public class CustomerService {
     RoleRepository roleRepository;
     CustomerMapper mapper;
     FirebaseService firebaseService;
+    EmailVerificationService emailVerificationService;
 
     PasswordEncoder passwordEncoder;
 
@@ -67,6 +68,7 @@ public class CustomerService {
                     .roleNo(role)
                     .provider(Provider.LOCAL)
                     .accountStatus(true)
+                    .emailVerified(false)
                     .createdAt(new Date())
                     .build();
             accountRepository.save(account); // Optional: nếu cascade không tự cập nhật
@@ -75,10 +77,12 @@ public class CustomerService {
                     .phone(request.getPhoneNumber())
                     .address(request.getAddress())
                     .customerName(request.getName())
+                    .email(request.getEmail())
                     .account(account)
                     .build();
 
             customerRepository.save(khachHang);
+            emailVerificationService.sendVerificationEmail(account, request.getEmail());
 
             return mapper.toCustomerResponse(khachHang);
 
