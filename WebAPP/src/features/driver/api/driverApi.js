@@ -44,8 +44,31 @@ export const driverApi = {
   changeDriverPassword: (driverId, data) =>
     apiClient.put(`/admin/drivers/${driverId}/password`, data).then(r => r.data),
 
-  getAll: (page = 0, size = 20, search = '') =>
-    apiClient.get(`/admin/drivers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then((r) => r.data?.result ?? r.data),
+  getAll: (pageOrOptions = 0, size = 20, search = '') => {
+    let queryParams
+    if (typeof pageOrOptions === 'object' && pageOrOptions !== null) {
+      queryParams = new URLSearchParams()
+      Object.entries(pageOrOptions).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+          queryParams.append(k, v)
+        }
+      })
+    } else {
+      queryParams = new URLSearchParams({ page: pageOrOptions, size })
+      if (search) queryParams.append('search', search)
+    }
+    return apiClient.get(`/admin/drivers?${queryParams}`).then((r) => r.data?.result ?? r.data)
+  },
+
+  exportDrivers: (options = {}) => {
+    const params = new URLSearchParams()
+    Object.entries(options).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+        params.append(k, v)
+      }
+    })
+    return apiClient.get(`/admin/drivers/export?${params}`, { responseType: 'blob' })
+  },
 
   getById: (driverId) =>
     apiClient.get(`/admin/drivers/${driverId}`).then((r) => parseApiResponse(DriverProfileSchema, r.data)),

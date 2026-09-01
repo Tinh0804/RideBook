@@ -1,0 +1,538 @@
+openapi: 3.0.3
+info:
+  title: RideBook Admin Search and Export API
+  version: 1.0.0
+  description: >-
+    Frozen contract for paginated admin search, advanced filters, multi-field
+    sorting, and CSV export. Date-time bounds are inclusive and use ISO-8601.
+servers:
+  - url: /RideBook
+security:
+  - bearerAuth: []
+tags:
+  - name: Admin Bookings
+  - name: Admin Drivers
+  - name: Admin Customers
+paths:
+  /admin/bookings:
+    get:
+      tags: [Admin Bookings]
+      operationId: searchAdminBookings
+      summary: Search and filter bookings
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: >-
+            Comma-separated field:direction terms. Allowed fields:
+            bookingTime, totalPrice, bookingStatus, distance.
+          schema:
+            type: string
+            default: bookingTime:desc
+          example: bookingTime:desc,totalPrice:asc
+        - name: search
+          in: query
+          description: >-
+            Case-insensitive search across booking ID, pickup/drop-off address,
+            customer name/phone, and driver name/phone.
+          schema: { type: string, maxLength: 200 }
+        - name: statuses
+          in: query
+          description: Comma-separated booking statuses.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/BookingStatus' }
+        - name: bookingFrom
+          in: query
+          description: Inclusive lower booking-time bound.
+          schema: { type: string, format: date-time }
+        - name: bookingTo
+          in: query
+          description: Inclusive upper booking-time bound.
+          schema: { type: string, format: date-time }
+        - name: minPrice
+          in: query
+          schema: { type: number, format: double, minimum: 0 }
+        - name: maxPrice
+          in: query
+          schema: { type: number, format: double, minimum: 0 }
+        - name: minRating
+          in: query
+          schema: { type: number, format: double, minimum: 1, maximum: 5 }
+        - name: maxRating
+          in: query
+          schema: { type: number, format: double, minimum: 1, maximum: 5 }
+      responses:
+        '200':
+          description: Matching bookings.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingPageEnvelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/bookings/export:
+    get:
+      tags: [Admin Bookings]
+      operationId: exportAdminBookings
+      summary: Export filtered bookings as UTF-8 CSV
+      description: Uses the same filters and sort syntax as search; pagination is ignored.
+      parameters:
+        - $ref: '#/components/parameters/BookingSort'
+        - $ref: '#/components/parameters/BookingSearch'
+        - $ref: '#/components/parameters/BookingStatuses'
+        - $ref: '#/components/parameters/BookingFrom'
+        - $ref: '#/components/parameters/BookingTo'
+        - $ref: '#/components/parameters/MinPrice'
+        - $ref: '#/components/parameters/MaxPrice'
+        - $ref: '#/components/parameters/MinRating'
+        - $ref: '#/components/parameters/MaxRating'
+      responses:
+        '200': { $ref: '#/components/responses/CsvExport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/drivers:
+    get:
+      tags: [Admin Drivers]
+      operationId: searchAdminDrivers
+      summary: Search and filter drivers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: >-
+            Comma-separated field:direction terms. Allowed fields:
+            driverName, score, lastTripTime, area, createdAt.
+          schema: { type: string, default: driverName:asc }
+          example: score:desc,driverName:asc
+        - name: search
+          in: query
+          description: >-
+            Case-insensitive search across name, phone, email, citizen ID,
+            license plate, vehicle name, and area.
+          schema: { type: string, maxLength: 200 }
+        - name: accountStatus
+          in: query
+          schema: { type: boolean }
+        - name: activityStatus
+          in: query
+          schema: { type: boolean }
+        - name: vehicleTypeIds
+          in: query
+          description: Comma-separated vehicle type IDs.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: { type: string }
+        - name: areas
+          in: query
+          description: Comma-separated exact area values, case-insensitive.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: { type: string }
+        - name: minRating
+          in: query
+          schema: { type: number, format: double, minimum: 0, maximum: 5 }
+        - name: maxRating
+          in: query
+          schema: { type: number, format: double, minimum: 0, maximum: 5 }
+        - name: createdFrom
+          in: query
+          schema: { type: string, format: date-time }
+        - name: createdTo
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Matching drivers.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DriverPageEnvelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/drivers/export:
+    get:
+      tags: [Admin Drivers]
+      operationId: exportAdminDrivers
+      summary: Export filtered drivers as UTF-8 CSV
+      description: Uses the same filters and sort syntax as search; pagination is ignored.
+      parameters:
+        - $ref: '#/components/parameters/DriverSort'
+        - $ref: '#/components/parameters/DriverSearch'
+        - $ref: '#/components/parameters/AccountStatus'
+        - $ref: '#/components/parameters/ActivityStatus'
+        - $ref: '#/components/parameters/VehicleTypeIds'
+        - $ref: '#/components/parameters/Areas'
+        - $ref: '#/components/parameters/DriverMinRating'
+        - $ref: '#/components/parameters/DriverMaxRating'
+        - $ref: '#/components/parameters/CreatedFrom'
+        - $ref: '#/components/parameters/CreatedTo'
+      responses:
+        '200': { $ref: '#/components/responses/CsvExport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/customers:
+    get:
+      tags: [Admin Customers]
+      operationId: searchAdminCustomers
+      summary: Search and filter customers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: >-
+            Comma-separated field:direction terms. Allowed fields:
+            customerName, phone, email, birthDate, createdAt.
+          schema: { type: string, default: customerName:asc }
+          example: createdAt:desc,customerName:asc
+        - name: search
+          in: query
+          description: Case-insensitive search across name, phone, email, and address.
+          schema: { type: string, maxLength: 200 }
+        - $ref: '#/components/parameters/AccountStatus'
+        - name: genders
+          in: query
+          description: Comma-separated exact gender values, case-insensitive.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items: { type: string }
+        - $ref: '#/components/parameters/CreatedFrom'
+        - $ref: '#/components/parameters/CreatedTo'
+      responses:
+        '200':
+          description: Matching customers.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerPageEnvelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/customers/export:
+    get:
+      tags: [Admin Customers]
+      operationId: exportAdminCustomers
+      summary: Export filtered customers as UTF-8 CSV
+      description: Uses the same filters and sort syntax as search; pagination is ignored.
+      parameters:
+        - $ref: '#/components/parameters/CustomerSort'
+        - $ref: '#/components/parameters/CustomerSearch'
+        - $ref: '#/components/parameters/AccountStatus'
+        - $ref: '#/components/parameters/Genders'
+        - $ref: '#/components/parameters/CreatedFrom'
+        - $ref: '#/components/parameters/CreatedTo'
+      responses:
+        '200': { $ref: '#/components/responses/CsvExport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    BookingSort:
+      name: sort
+      in: query
+      schema: { type: string, default: bookingTime:desc }
+    BookingSearch:
+      name: search
+      in: query
+      schema: { type: string, maxLength: 200 }
+    BookingStatuses:
+      name: statuses
+      in: query
+      style: form
+      explode: false
+      schema:
+        type: array
+        items: { $ref: '#/components/schemas/BookingStatus' }
+    BookingFrom:
+      name: bookingFrom
+      in: query
+      schema: { type: string, format: date-time }
+    BookingTo:
+      name: bookingTo
+      in: query
+      schema: { type: string, format: date-time }
+    MinPrice:
+      name: minPrice
+      in: query
+      schema: { type: number, format: double, minimum: 0 }
+    MaxPrice:
+      name: maxPrice
+      in: query
+      schema: { type: number, format: double, minimum: 0 }
+    MinRating:
+      name: minRating
+      in: query
+      schema: { type: number, format: double, minimum: 1, maximum: 5 }
+    MaxRating:
+      name: maxRating
+      in: query
+      schema: { type: number, format: double, minimum: 1, maximum: 5 }
+    DriverSort:
+      name: sort
+      in: query
+      schema: { type: string, default: driverName:asc }
+    DriverSearch:
+      name: search
+      in: query
+      schema: { type: string, maxLength: 200 }
+    AccountStatus:
+      name: accountStatus
+      in: query
+      schema: { type: boolean }
+    ActivityStatus:
+      name: activityStatus
+      in: query
+      schema: { type: boolean }
+    VehicleTypeIds:
+      name: vehicleTypeIds
+      in: query
+      style: form
+      explode: false
+      schema:
+        type: array
+        items: { type: string }
+    Areas:
+      name: areas
+      in: query
+      style: form
+      explode: false
+      schema:
+        type: array
+        items: { type: string }
+    DriverMinRating:
+      name: minRating
+      in: query
+      schema: { type: number, format: double, minimum: 0, maximum: 5 }
+    DriverMaxRating:
+      name: maxRating
+      in: query
+      schema: { type: number, format: double, minimum: 0, maximum: 5 }
+    CustomerSort:
+      name: sort
+      in: query
+      schema: { type: string, default: customerName:asc }
+    CustomerSearch:
+      name: search
+      in: query
+      schema: { type: string, maxLength: 200 }
+    Genders:
+      name: genders
+      in: query
+      style: form
+      explode: false
+      schema:
+        type: array
+        items: { type: string }
+    CreatedFrom:
+      name: createdFrom
+      in: query
+      schema: { type: string, format: date-time }
+    CreatedTo:
+      name: createdTo
+      in: query
+      schema: { type: string, format: date-time }
+  responses:
+    CsvExport:
+      description: UTF-8 CSV attachment containing all rows matching the filters.
+      headers:
+        Content-Disposition:
+          schema: { type: string }
+          example: attachment; filename="bookings-20260901T120000Z.csv"
+      content:
+        text/csv:
+          schema: { type: string, format: binary }
+    BadRequest:
+      description: Invalid page, range, enum, or sort field.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: Missing or invalid access token.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Caller does not have the ADMIN role.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  schemas:
+    BookingStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, ARRIVED, IN_PROGRESS, CANCELLED, COMPLETED]
+    PageMetadata:
+      type: object
+      required: [size, number, totalElements, totalPages]
+      properties:
+        size: { type: integer, minimum: 0 }
+        number: { type: integer, minimum: 0 }
+        totalElements: { type: integer, format: int64, minimum: 0 }
+        totalPages: { type: integer, minimum: 0 }
+    BookingPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            result:
+              type: object
+              required: [content, page]
+              properties:
+                content:
+                  type: array
+                  items: { $ref: '#/components/schemas/Booking' }
+                page: { $ref: '#/components/schemas/PageMetadata' }
+    DriverPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            result:
+              type: object
+              required: [content, page]
+              properties:
+                content:
+                  type: array
+                  items: { $ref: '#/components/schemas/Driver' }
+                page: { $ref: '#/components/schemas/PageMetadata' }
+    CustomerPageEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            result:
+              type: object
+              required: [content, page]
+              properties:
+                content:
+                  type: array
+                  items: { $ref: '#/components/schemas/Customer' }
+                page: { $ref: '#/components/schemas/PageMetadata' }
+    SuccessEnvelope:
+      type: object
+      required: [status, message, result]
+      properties:
+        status: { type: integer, example: 200 }
+        message: { type: string }
+        result: { type: object }
+    ErrorEnvelope:
+      type: object
+      required: [status, message]
+      properties:
+        status: { type: integer }
+        message: { type: string }
+    Account:
+      type: object
+      properties:
+        accountId: { type: string, format: uuid }
+        userName: { type: string }
+        accountStatus: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        role:
+          type: object
+          properties:
+            roleName: { type: string, enum: [ADMIN, CUSTOMER, DRIVER] }
+            description: { type: string }
+    BookingPromotion:
+      type: object
+      properties:
+        promotionCode: { type: string }
+        promotionName: { type: string }
+        discountAmount: { type: number, format: double }
+    Booking:
+      type: object
+      properties:
+        bookingId: { type: string, format: uuid }
+        customerId: { type: string, format: uuid, nullable: true }
+        customerName: { type: string, nullable: true }
+        customerPhone: { type: string, nullable: true }
+        driverId: { type: string, format: uuid, nullable: true }
+        driverName: { type: string, nullable: true }
+        driverPhone: { type: string, nullable: true }
+        vehicleTypeName: { type: string, nullable: true }
+        vehicleTypeIcon: { type: string, nullable: true }
+        licensePlate: { type: string, nullable: true }
+        pickupLocation: { type: string }
+        dropoffLocation: { type: string }
+        pickupLat: { type: number, format: double }
+        pickupLng: { type: number, format: double }
+        dropoffLat: { type: number, format: double }
+        dropoffLng: { type: number, format: double }
+        originalPrice: { type: number, format: double, nullable: true }
+        totalPrice: { type: number, format: double, nullable: true }
+        bookingTime: { type: string, format: date-time }
+        pickupTime: { type: string, format: date-time, nullable: true }
+        arrivalTime: { type: string, format: date-time, nullable: true }
+        bookingStatus: { $ref: '#/components/schemas/BookingStatus' }
+        distance: { type: number, format: double, nullable: true }
+        duration: { type: number, format: double, nullable: true }
+        paymentMethod: { type: string, nullable: true }
+        paymentStatus: { type: boolean, nullable: true }
+        appliedPromotions:
+          type: array
+          items: { $ref: '#/components/schemas/BookingPromotion' }
+        rating: { type: integer, minimum: 1, maximum: 5, nullable: true }
+        review: { type: string, nullable: true }
+    Driver:
+      type: object
+      properties:
+        driverId: { type: string, format: uuid }
+        driverName: { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        citizenId: { type: string, nullable: true }
+        drivingLicense: { type: string, nullable: true }
+        criminalRecord: { type: string, nullable: true }
+        phone: { type: string }
+        email: { type: string, format: email, nullable: true }
+        licensePlate: { type: string, nullable: true }
+        vehicleName: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        activityStatus: { type: boolean, nullable: true }
+        gender: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        area: { type: string, nullable: true }
+        score: { type: number, format: double, nullable: true }
+        currentLat: { type: number, format: double, nullable: true }
+        currentLng: { type: number, format: double, nullable: true }
+        vehicleTypeId: { type: string, format: uuid, nullable: true }
+        vehicleTypeName: { type: string, nullable: true }
+        vehicleTypeIcon: { type: string, nullable: true }
+        pricePerKm: { type: number, format: double, nullable: true }
+        account: { $ref: '#/components/schemas/Account' }
+    Customer:
+      type: object
+      properties:
+        customerId: { type: string, format: uuid }
+        customerName: { type: string }
+        phone: { type: string }
+        address: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        gender: { type: string, nullable: true }
+        avatar: { type: string, nullable: true }
+        birthDate: { type: string, format: date, nullable: true }
+        account: { $ref: '#/components/schemas/Account' }

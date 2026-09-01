@@ -60,13 +60,36 @@ export const bookingApi = {
     apiClient.get(`/drivers/location/${bookingId}`).then((r) => r.data.result),
 
   // --- Admin APIs ---
-  getAllForAdmin: (page = 0, size = 20, status = '', search = '', fromDate = '', toDate = '') => {
-    const params = new URLSearchParams({ page, size })
-    if (status && status !== 'ALL') params.append('status', status)
-    if (search) params.append('search', search)
-    if (fromDate) params.append('fromDate', fromDate)
-    if (toDate) params.append('toDate', toDate)
+  getAllForAdmin: (pageOrOptions = 0, size = 20, status = '', search = '', fromDate = '', toDate = '', extra = {}) => {
+    let params
+    if (typeof pageOrOptions === 'object' && pageOrOptions !== null) {
+      params = new URLSearchParams()
+      Object.entries(pageOrOptions).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+          params.append(k, v)
+        }
+      })
+    } else {
+      params = new URLSearchParams({ page: pageOrOptions, size })
+      if (status && status !== 'ALL') params.append('status', status)
+      if (search) params.append('search', search)
+      if (fromDate) params.append('fromDate', fromDate)
+      if (toDate) params.append('toDate', toDate)
+      Object.entries(extra).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') params.append(k, v)
+      })
+    }
     return apiClient.get(`/admin/bookings?${params}`).then(r => r.data)
+  },
+
+  exportBookings: (options = {}) => {
+    const params = new URLSearchParams()
+    Object.entries(options).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+        params.append(k, v)
+      }
+    })
+    return apiClient.get(`/admin/bookings/export?${params}`, { responseType: 'blob' })
   },
 
   getByIdForAdmin: (bookingId) =>

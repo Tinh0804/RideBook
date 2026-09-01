@@ -1,16 +1,19 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { driverApi } from '@/features/driver/api/driverApi'
 import Spinner from '@/components/Elements/Spinner'
 import {
   RiSearchLine, RiEyeLine, RiCloseLine, RiMapPinLine,
-  RiUserLine, RiCarLine, RiTimeLine, RiDeleteBin6Line,
-  RiUserAddLine, RiCalendarLine, RiFilterLine,
+  RiUserLine, RiCarLine, RiDeleteBin6Line,
+  RiUserAddLine, RiCalendarLine, RiFilterLine, RiDownloadLine,
+  RiArrowUpDownLine, RiRefreshLine
 } from 'react-icons/ri'
 import { cn } from '@/utils/cn'
 import { BookingStatus } from '@/constants/enums'
 import { BOOKING_STATUS_LABEL } from '@/config'
 import { formatCurrency } from '@/utils/currency'
+import { useDebounce } from '@/hooks/useDebounce'
+import { exportToCSV } from '@/utils/exportUtils'
 
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null
@@ -32,6 +35,7 @@ const Modal = ({ open, onClose, title, children }) => {
 const STATUS_TABS = [
   { key: 'ALL', label: 'Tất cả' },
   { key: BookingStatus.PENDING, label: 'Đang chờ' },
+  { key: BookingStatus.QUEUED || 'QUEUED', label: 'Đã lên lịch' },
   { key: BookingStatus.ACCEPTED, label: 'Đã nhận' },
   { key: BookingStatus.ARRIVED, label: 'Đến đón' },
   { key: BookingStatus.IN_PROGRESS, label: 'Đang đi' },
@@ -41,8 +45,9 @@ const STATUS_TABS = [
 
 const STATUS_BADGE = {
   [BookingStatus.PENDING]: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  [BookingStatus.QUEUED || 'QUEUED']: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   [BookingStatus.ACCEPTED]: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  [BookingStatus.ARRIVED]: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  [BookingStatus.ARRIVED]: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
   [BookingStatus.IN_PROGRESS]: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   [BookingStatus.COMPLETED]: 'bg-green-500/10 text-green-400 border-green-500/20',
   [BookingStatus.CANCELLED]: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -53,16 +58,35 @@ const formatTime = (t) => {
   return new Date(t).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+const formatDateISO = (d) => {
+  if (!d) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 const AdminBookingsPage = () => {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [inputValue, setInputValue] = useState('')
+  const [exporting, setExporting] = useState(false)
+
+  // Search state with useDebounce
+  const [searchQuery, setSearchQuery] = useState('')
+  const debouncedSearch = useDebounce(searchQuery, 400)
+
+  // Filters state
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [datePreset, setDatePreset] = useState('all')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [sortBy, setSortBy] = useState('bookingTime:desc')
+
+  // Pagination state
   const [pagination, setPagination] = useState({ page: 0, totalPages: 1, totalElements: 0 })
 
+  // Modal states
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -73,27 +97,95 @@ const AdminBookingsPage = () => {
   const [driversLoading, setDriversLoading] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
+  // Preset Date Handlers
+  const handleDatePreset = (preset) => {
+    setDatePreset(preset)
+    const now = new Date()
+    if (preset === 'today') {
+      const todayStr = formatDateISO(now)
+      setFromDate(todayStr)
+      setToDate(todayStr)
+    } else if (preset === '7days') {
+      const past = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      setFromDate(formatDateISO(past))
+      setToDate(formatDateISO(now))
+    } else if (preset === '30days') {
+      const past = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      setFromDate(formatDateISO(past))
+      setToDate(formatDateISO(now))
+    } else if (preset === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      setFromDate(formatDateISO(startOfMonth))
+      setToDate(formatDateISO(now))
+    } else if (preset === 'all') {
+      setFromDate('')
+      setToDate('')
+    }
+  }
+
+  // Fetch Bookings with Query params + OpenAPI spec compatibility
   const fetchBookings = useCallback(async (page = 0) => {
     setLoading(true)
     try {
-      const res = await bookingApi.getAllForAdmin(page, 20, statusFilter, search, fromDate, toDate)
-      const data = res.result
-      setBookings(data?.content || [])
+      const queryPayload = {
+        page,
+        size: 20,
+        status: statusFilter !== 'ALL' ? statusFilter : undefined,
+        statuses: statusFilter !== 'ALL' ? statusFilter : undefined,
+        search: debouncedSearch || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        bookingFrom: fromDate ? `${fromDate}T00:00:00.000Z` : undefined,
+        bookingTo: toDate ? `${toDate}T23:59:59.999Z` : undefined,
+        minPrice: minPrice ? Number(minPrice) : undefined,
+        maxPrice: maxPrice ? Number(maxPrice) : undefined,
+        sort: sortBy,
+      }
+
+      const res = await bookingApi.getAllForAdmin(queryPayload)
+      const data = res?.result ?? res
+
+      let list = data?.content || (Array.isArray(data) ? data : [])
+
+      // Client-side fallback filter & sort (gracefully guards if backend hasn't finished OpenAPI filtering)
+      if (minPrice) {
+        list = list.filter(b => (b.totalPrice ?? 0) >= Number(minPrice))
+      }
+      if (maxPrice) {
+        list = list.filter(b => (b.totalPrice ?? 0) <= Number(maxPrice))
+      }
+      if (statusFilter !== 'ALL') {
+        list = list.filter(b => b.bookingStatus === statusFilter)
+      }
+
+      // Defensive sort
+      if (sortBy === 'totalPrice:desc') {
+        list = [...list].sort((a, b) => (b.totalPrice ?? 0) - (a.totalPrice ?? 0))
+      } else if (sortBy === 'totalPrice:asc') {
+        list = [...list].sort((a, b) => (a.totalPrice ?? 0) - (b.totalPrice ?? 0))
+      } else if (sortBy === 'distance:desc') {
+        list = [...list].sort((a, b) => (b.distance ?? 0) - (a.distance ?? 0))
+      } else if (sortBy === 'bookingTime:asc') {
+        list = [...list].sort((a, b) => new Date(a.bookingTime || 0) - new Date(b.bookingTime || 0))
+      } else {
+        list = [...list].sort((a, b) => new Date(b.bookingTime || 0) - new Date(a.bookingTime || 0))
+      }
+
+      setBookings(list)
       setPagination({
-        page: data?.page?.number ?? data?.number ?? 0,
+        page: data?.page?.number ?? data?.number ?? page,
         totalPages: data?.page?.totalPages ?? data?.totalPages ?? 1,
-        totalElements: data?.page?.totalElements ?? data?.totalElements ?? 0,
+        totalElements: data?.page?.totalElements ?? data?.totalElements ?? list.length,
       })
     } catch (e) {
-      console.error(e)
+      console.error('Error fetching bookings:', e)
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, search, fromDate, toDate])
+  }, [statusFilter, debouncedSearch, fromDate, toDate, minPrice, maxPrice, sortBy])
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchBookings(0), 300)
-    return () => clearTimeout(timer)
+    fetchBookings(0)
   }, [fetchBookings])
 
   const openDetail = (booking) => {
@@ -101,9 +193,15 @@ const AdminBookingsPage = () => {
     setModalOpen(true)
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    setSearch(inputValue)
+  const handleClearFilters = () => {
+    setSearchQuery('')
+    setStatusFilter('ALL')
+    setFromDate('')
+    setToDate('')
+    setDatePreset('all')
+    setMinPrice('')
+    setMaxPrice('')
+    setSortBy('bookingTime:desc')
   }
 
   const handleForceCancel = async (bookingId) => {
@@ -123,8 +221,7 @@ const AdminBookingsPage = () => {
     setAssignModalOpen(true)
     setDriversLoading(true)
     try {
-      const res = await driverApi.getAll(0, 50)
-      // driverApi.getAll already unwraps r.data?.result, so res is the Page object directly
+      const res = await driverApi.getAll(0, 100)
       const data = res?.content || (Array.isArray(res) ? res : [])
       setAvailableDrivers(data)
     } catch (e) {
@@ -147,33 +244,111 @@ const AdminBookingsPage = () => {
     }
   }
 
-  const filteredDriversForAssign = availableDrivers.filter(d =>
-    d.driverName?.toLowerCase().includes(driverSearch.toLowerCase()) ||
-    d.phone?.includes(driverSearch)
-  )
+  // Export Data to CSV
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      // 1. First try API direct export if supported
+      try {
+        const blob = await bookingApi.exportBookings({
+          status: statusFilter !== 'ALL' ? statusFilter : undefined,
+          search: debouncedSearch || undefined,
+          fromDate: fromDate || undefined,
+          toDate: toDate || undefined,
+          sort: sortBy,
+        })
+        if (blob && blob.size > 0) {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `danh-sach-chuyen-di-${Date.now()}.csv`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          return
+        }
+      } catch {
+        // Fallback to client-side exporter below
+      }
 
-  const canCancel = (status) => [BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.ARRIVED].includes(status)
-  const canAssign = (booking) => booking.bookingStatus === BookingStatus.PENDING && !booking.driverId
+      // 2. Client-side fallback exporter using exportToCSV
+      const columns = [
+        { label: 'Mã chuyến', key: 'bookingId' },
+        { label: 'Khách hàng', format: r => r.customerName || '—' },
+        { label: 'SĐT Khách', key: 'customerPhone' },
+        { label: 'Tài xế', format: r => r.driverName || 'Chưa nhận' },
+        { label: 'SĐT Tài xế', key: 'driverPhone' },
+        { label: 'Biển số', key: 'licensePlate' },
+        { label: 'Điểm đón', key: 'pickupLocation' },
+        { label: 'Điểm trả', key: 'dropoffLocation' },
+        { label: 'Khoảng cách (km)', format: r => r.distance ? r.distance.toFixed(1) : '—' },
+        { label: 'Giá tiền (VND)', format: r => r.totalPrice ? formatCurrency(r.totalPrice) : '0' },
+        { label: 'Phương thức TT', key: 'paymentMethod' },
+        { label: 'Trạng thái', format: r => BOOKING_STATUS_LABEL[r.bookingStatus] || r.bookingStatus },
+        { label: 'Thời gian đặt', format: r => formatTime(r.bookingTime) },
+        { label: 'Thời gian hẹn (nếu có)', format: r => r.scheduledAt ? formatTime(r.scheduledAt) : 'Đi ngay' },
+      ]
+
+      exportToCSV(`danh-sach-chuyen-xe-${formatDateISO(new Date())}.csv`, columns, bookings)
+    } catch (err) {
+      alert(err.message || 'Lỗi khi xuất dữ liệu')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const filteredDriversForAssign = useMemo(() => {
+    return availableDrivers.filter(d =>
+      d.driverName?.toLowerCase().includes(driverSearch.toLowerCase()) ||
+      d.phone?.includes(driverSearch)
+    )
+  }, [availableDrivers, driverSearch])
+
+  const canCancel = (status) => [BookingStatus.PENDING, BookingStatus.QUEUED, BookingStatus.ACCEPTED, BookingStatus.ARRIVED].includes(status)
+  const canAssign = (booking) => (booking.bookingStatus === BookingStatus.PENDING || booking.bookingStatus === 'QUEUED') && !booking.driverId
+  const hasActiveFilters = Boolean(searchQuery || statusFilter !== 'ALL' || fromDate || toDate || minPrice || maxPrice || sortBy !== 'bookingTime:desc')
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="section-title">Quản lý Chuyến đi</h1>
-        <p className="text-content-muted text-sm mt-1">
-          Tổng cộng <span className="text-brand-400 font-semibold">{pagination.totalElements}</span> chuyến đi
-        </p>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="section-title">Quản lý Chuyến đi</h1>
+          <p className="text-content-muted text-sm mt-1">
+            Tổng cộng <span className="text-brand-400 font-semibold">{pagination.totalElements}</span> chuyến đi
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting || bookings.length === 0}
+            className="btn-ghost flex items-center gap-2 text-sm border border-surface-border px-3.5 py-2 rounded-xl hover:bg-surface-card hover:text-brand-400 disabled:opacity-50 transition-colors"
+            title="Xuất dữ liệu ra file CSV Excel"
+          >
+            <RiDownloadLine size={16} />
+            <span>{exporting ? 'Đang xuất...' : 'Xuất Excel / CSV'}</span>
+          </button>
+          <button
+            onClick={() => fetchBookings(pagination.page)}
+            className="p-2 rounded-xl border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-card transition-colors"
+            title="Làm mới"
+          >
+            <RiRefreshLine size={18} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* Status Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {STATUS_TABS.map(tab => (
           <button
             key={tab.key}
             onClick={() => setStatusFilter(tab.key)}
             className={cn(
-              'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border',
+              'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all border shrink-0',
               statusFilter === tab.key
-                ? 'bg-brand-500/15 text-brand-400 border-brand-500/30'
+                ? 'bg-brand-500/15 text-brand-400 border-brand-500/30 shadow-sm'
                 : 'bg-surface-card text-content-muted border-surface-border hover:border-brand-500/20'
             )}
           >
@@ -182,58 +357,181 @@ const AdminBookingsPage = () => {
         ))}
       </div>
 
-      {/* Search + Date filters */}
-      <div className="card p-4 space-y-3">
-        <form onSubmit={handleSearch} className="flex items-center gap-3">
-          <RiSearchLine className="text-content-muted shrink-0" size={20} />
-          <input
-            type="text"
-            placeholder="Tìm theo tên KH, tài xế, SĐT, mã chuyến..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-sm text-content-main placeholder:text-content-muted"
-          />
-          <button type="submit" className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm font-medium transition-colors">
-            Tìm kiếm
-          </button>
-        </form>
+      {/* Search & Filter Card */}
+      <div className="card p-4 space-y-4">
+        {/* Top bar: Search input & Sort dropdown */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          {/* Real-time Debounced Search Input */}
+          <div className="flex-1 flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-surface-dark border border-surface-border focus-within:border-brand-500/50 transition-all">
+            <RiSearchLine className="text-content-muted shrink-0" size={18} />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo mã chuyến, tên KH, tài xế, SĐT, điểm đón/trả..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-sm text-content-main placeholder:text-content-muted"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="p-1 text-content-muted hover:text-content-main rounded-md transition-colors"
+                title="Xóa tìm kiếm"
+              >
+                <RiCloseLine size={16} />
+              </button>
+            )}
+          </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <RiCalendarLine className="text-content-muted" size={16} />
-            <span className="text-xs text-content-muted">Từ:</span>
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="input-field text-sm py-1.5 px-3 bg-surface-dark"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-content-muted">Đến:</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="input-field text-sm py-1.5 px-3 bg-surface-dark"
-            />
-          </div>
-          {(fromDate || toDate || search) && (
+          {/* Sort Selector */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-dark border border-surface-border text-sm">
+              <RiArrowUpDownLine className="text-content-muted" size={16} />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-transparent outline-none text-content-main cursor-pointer"
+              >
+                <option value="bookingTime:desc" className="bg-surface-card">Mới nhất (Thời gian ↓)</option>
+                <option value="bookingTime:asc" className="bg-surface-card">Cũ nhất (Thời gian ↑)</option>
+                <option value="totalPrice:desc" className="bg-surface-card">Giá cao nhất (Giá ↓)</option>
+                <option value="totalPrice:asc" className="bg-surface-card">Giá thấp nhất (Giá ↑)</option>
+                <option value="distance:desc" className="bg-surface-card">Quãng đường xa nhất</option>
+              </select>
+            </div>
+
+            {/* Toggle Advanced Filters Button */}
             <button
-              onClick={() => { setFromDate(''); setToDate(''); setSearch(''); setInputValue('') }}
-              className="px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
+                showAdvancedFilters || hasActiveFilters
+                  ? 'bg-brand-500/10 text-brand-400 border-brand-500/30'
+                  : 'bg-surface-dark text-content-muted border-surface-border hover:text-content-main'
+              )}
             >
-              Xoá bộ lọc
+              <RiFilterLine size={16} />
+              <span>Lọc nâng cao</span>
+              {hasActiveFilters && (
+                <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
+              )}
             </button>
-          )}
+          </div>
         </div>
+
+        {/* Quick Date Presets */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-surface-border/50 text-xs">
+          <span className="text-content-muted mr-1">Thời gian:</span>
+          {[
+            { id: 'all', label: 'Tất cả' },
+            { id: 'today', label: 'Hôm nay' },
+            { id: '7days', label: '7 ngày qua' },
+            { id: '30days', label: '30 ngày qua' },
+            { id: 'month', label: 'Tháng này' },
+          ].map(p => (
+            <button
+              key={p.id}
+              onClick={() => handleDatePreset(p.id)}
+              className={cn(
+                'px-2.5 py-1 rounded-lg font-medium transition-colors border',
+                datePreset === p.id && !fromDate && !toDate && p.id === 'all'
+                  ? 'bg-brand-500/20 text-brand-400 border-brand-500/30'
+                  : datePreset === p.id && p.id !== 'all'
+                    ? 'bg-brand-500/20 text-brand-400 border-brand-500/30'
+                    : 'bg-surface-dark text-content-muted border-surface-border hover:text-content-main'
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Advanced Filters Expandable Panel */}
+        {showAdvancedFilters && (
+          <div className="p-3.5 bg-surface-dark/40 rounded-xl border border-surface-border/70 space-y-3 animate-in fade-in duration-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* From Date */}
+              <div>
+                <label className="text-xs text-content-muted mb-1 block">Từ ngày:</label>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-dark border border-surface-border">
+                  <RiCalendarLine className="text-content-muted" size={15} />
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => { setFromDate(e.target.value); setDatePreset('custom') }}
+                    className="bg-transparent outline-none text-xs text-content-main w-full"
+                  />
+                </div>
+              </div>
+
+              {/* To Date */}
+              <div>
+                <label className="text-xs text-content-muted mb-1 block">Đến ngày:</label>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-dark border border-surface-border">
+                  <RiCalendarLine className="text-content-muted" size={15} />
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => { setToDate(e.target.value); setDatePreset('custom') }}
+                    className="bg-transparent outline-none text-xs text-content-main w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Min Price */}
+              <div>
+                <label className="text-xs text-content-muted mb-1 block">Giá tối thiểu (VND):</label>
+                <input
+                  type="number"
+                  placeholder="Vd: 30000"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-surface-dark border border-surface-border outline-none text-xs text-content-main placeholder:text-content-muted"
+                />
+              </div>
+
+              {/* Max Price */}
+              <div>
+                <label className="text-xs text-content-muted mb-1 block">Giá tối đa (VND):</label>
+                <input
+                  type="number"
+                  placeholder="Vd: 500000"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-surface-dark border border-surface-border outline-none text-xs text-content-main placeholder:text-content-muted"
+                />
+              </div>
+            </div>
+
+            {/* Clear Filters Action */}
+            {hasActiveFilters && (
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={handleClearFilters}
+                  className="text-xs text-red-400 hover:text-red-300 hover:underline transition-colors flex items-center gap-1"
+                >
+                  <RiCloseLine size={14} /> Xóa toàn bộ bộ lọc
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size="xl" /></div>
       ) : bookings.length === 0 ? (
-        <div className="card p-12 text-center text-content-muted">Không tìm thấy chuyến đi nào</div>
+        <div className="card p-12 text-center text-content-muted space-y-3">
+          <p>Không tìm thấy chuyến đi nào khớp với điều kiện tìm kiếm.</p>
+          {hasActiveFilters && (
+            <button
+              onClick={handleClearFilters}
+              className="px-4 py-2 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 text-xs hover:bg-brand-500/20 transition-colors"
+            >
+              Đặt lại bộ lọc
+            </button>
+          )}
+        </div>
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
@@ -289,7 +587,12 @@ const AdminBookingsPage = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-content-muted whitespace-nowrap">
-                      {formatTime(b.bookingTime)}
+                      <div>{formatTime(b.bookingTime)}</div>
+                      {b.scheduledAt && (
+                        <div className="text-[10px] text-purple-400 font-medium mt-0.5">
+                          Hẹn: {formatTime(b.scheduledAt)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
@@ -438,6 +741,11 @@ const AdminBookingsPage = () => {
               <span className={cn('badge border text-xs px-3 py-1', selectedBooking.paymentStatus ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20')}>
                 {selectedBooking.paymentStatus ? '✅ Đã thanh toán' : '⏳ Chưa thanh toán'}
               </span>
+              {selectedBooking.scheduledAt && (
+                <span className="badge bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs px-3 py-1">
+                  📅 Đặt lịch: {formatTime(selectedBooking.scheduledAt)}
+                </span>
+              )}
             </div>
 
             {/* Actions */}
@@ -453,7 +761,7 @@ const AdminBookingsPage = () => {
               {canCancel(selectedBooking.bookingStatus) && (
                 <button
                   onClick={() => handleForceCancel(selectedBooking.bookingId)}
-                  className="flex-1 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                  className="py-2.5 px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <RiDeleteBin6Line size={16} /> Huỷ chuyến
                 </button>
@@ -466,45 +774,40 @@ const AdminBookingsPage = () => {
       {/* Assign Driver Modal */}
       <Modal open={assignModalOpen} onClose={() => setAssignModalOpen(false)} title="Gán tài xế cho chuyến đi">
         <div className="space-y-4">
-          <div className="flex items-center gap-3 p-3 border border-surface-border rounded-xl">
-            <RiSearchLine className="text-content-muted" size={18} />
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-dark border border-surface-border">
+            <RiSearchLine className="text-content-muted" size={16} />
             <input
               type="text"
               placeholder="Tìm tài xế theo tên, SĐT..."
               value={driverSearch}
               onChange={(e) => setDriverSearch(e.target.value)}
-              className="flex-1 bg-transparent outline-none text-sm text-content-main placeholder:text-content-muted"
+              className="bg-transparent outline-none text-sm text-content-main placeholder:text-content-muted w-full"
             />
           </div>
 
           {driversLoading ? (
-            <div className="flex justify-center py-8"><Spinner size="lg" /></div>
+            <div className="flex justify-center py-8"><Spinner size="md" /></div>
           ) : filteredDriversForAssign.length === 0 ? (
-            <div className="text-center text-content-muted py-8 text-sm">Không tìm thấy tài xế</div>
+            <p className="text-center text-content-muted py-6 text-sm">Không tìm thấy tài xế khả dụng</p>
           ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {filteredDriversForAssign.map(d => (
-                <div key={d.driverId} className="flex items-center justify-between p-3 rounded-xl border border-surface-border hover:border-brand-500/30 transition-colors">
+            <div className="divide-y divide-surface-border max-h-72 overflow-y-auto">
+              {filteredDriversForAssign.map(driver => (
+                <div key={driver.driverId} className="flex items-center justify-between py-3 px-2 hover:bg-surface-dark/50 rounded-lg transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center">
-                      {d.avatar ? <img src={d.avatar} alt="" className="w-10 h-10 rounded-full object-cover" /> : <RiUserLine className="text-content-muted" size={18} />}
+                    <div className="w-8 h-8 rounded-full bg-surface-dark flex items-center justify-center text-sm font-bold text-content-muted">
+                      {driver.driverName?.charAt(0) || 'D'}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-content-main">{d.driverName}</p>
-                      <p className="text-xs text-content-muted">{d.phone} · {d.licensePlate || '—'}</p>
+                      <p className="text-sm font-medium text-content-main">{driver.driverName}</p>
+                      <p className="text-xs text-content-muted">{driver.phone} • ⭐ {driver.score || 5.0} • {driver.vehicleTypeName || 'Xe'}</p>
                     </div>
                   </div>
                   <button
-                    onClick={() => handleAssignDriver(d.driverId)}
-                    disabled={assigning || !d.activityStatus}
-                    className={cn(
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                      d.activityStatus
-                        ? 'bg-brand-500 hover:bg-brand-600 text-white'
-                        : 'bg-surface-dark text-content-muted cursor-not-allowed'
-                    )}
+                    disabled={assigning}
+                    onClick={() => handleAssignDriver(driver.driverId)}
+                    className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition-colors"
                   >
-                    {assigning ? 'Đang gán...' : d.activityStatus ? 'Chọn' : 'Offline'}
+                    {assigning ? 'Đang gán...' : 'Chọn'}
                   </button>
                 </div>
               ))}

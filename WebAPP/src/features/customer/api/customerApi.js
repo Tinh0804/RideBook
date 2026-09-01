@@ -1,8 +1,31 @@
 import apiClient from '@/services/apiClient'
 import { parseApiResponse, CustomerProfileSchema } from '@/schemas/dto'
 export const customerApi = {
-  getAllForAdmin: (page = 0, size = 20, search = '') =>
-    apiClient.get(`/admin/customers?page=${page}&size=${size}${search ? `&search=${encodeURIComponent(search)}` : ''}`).then(r => r.data?.result ?? r.data),
+  getAllForAdmin: (pageOrOptions = 0, size = 20, search = '') => {
+    let queryParams
+    if (typeof pageOrOptions === 'object' && pageOrOptions !== null) {
+      queryParams = new URLSearchParams()
+      Object.entries(pageOrOptions).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+          queryParams.append(k, v)
+        }
+      })
+    } else {
+      queryParams = new URLSearchParams({ page: pageOrOptions, size })
+      if (search) queryParams.append('search', search)
+    }
+    return apiClient.get(`/admin/customers?${queryParams}`).then(r => r.data?.result ?? r.data)
+  },
+
+  exportCustomers: (options = {}) => {
+    const params = new URLSearchParams()
+    Object.entries(options).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+        params.append(k, v)
+      }
+    })
+    return apiClient.get(`/admin/customers/export?${params}`, { responseType: 'blob' })
+  },
 
   getById: (customerId) =>
     apiClient.get(`/admin/customers/${customerId}`).then(r => r.data),
