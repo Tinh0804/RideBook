@@ -3,6 +3,8 @@ package com.project.BookCarOnline.identity.service;
 import com.project.BookCarOnline.catalog.dto.VehicleTypeSummary;
 import com.project.BookCarOnline.catalog.service.VehicleTypeService;
 import com.project.BookCarOnline.identity.dto.request.CreateDriverRequest;
+import com.project.BookCarOnline.identity.dto.request.AdminDriverFilter;
+import com.project.BookCarOnline.identity.dto.request.AdminDriverSearchRequest;
 import com.project.BookCarOnline.identity.dto.request.UpdateDriverRequest;
 import com.project.BookCarOnline.identity.dto.response.DriverDetailResponse;
 import com.project.BookCarOnline.identity.entity.Account;
@@ -14,13 +16,17 @@ import com.project.BookCarOnline.identity.mapper.DriverMapper;
 import com.project.BookCarOnline.identity.repository.AccountRepository;
 import com.project.BookCarOnline.identity.repository.DriverRepository;
 import com.project.BookCarOnline.identity.repository.RoleRepository;
+import com.project.BookCarOnline.identity.repository.specification.DriverSpecifications;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import com.project.BookCarOnline.shared.security.SecurityUtils;
+import com.project.BookCarOnline.shared.util.AdminSortParser;
+import com.project.BookCarOnline.shared.util.CsvUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,13 +34,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.io.Writer;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DriverManagementService {
+
+    private static final int EXPORT_PAGE_SIZE = 500;
+    private static final Map<String, String> ADMIN_SORT_FIELDS = Map.of(
+            "driverName", "driverName",
+            "score", "score",
+            "lastTripTime", "lastTripTime",
+            "area", "area",
+            "createdAt", "account.createdAt");
 
     private final DriverRepository driverRepository;
     private final AccountRepository accountRepository;
@@ -52,11 +71,62 @@ public class DriverManagementService {
 
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public Page<DriverDetailResponse> search(int page, int size, String search) {
-        var pageable = PageRequest.of(page, size, Sort.by("driverName").ascending());
-        Page<Driver> drivers = search == null || search.isBlank()
-                ? driverRepository.findAll(pageable)
-                : driverRepository.searchDrivers("%" + search.trim().toLowerCase() + "%", pageable);
-        return drivers.map(this::toResponse);
+        AdminDriverSearchRequest request = new AdminDriverSearchRequest();
+        request.setPage(page);
+        request.setSize(size);
+        request.setSearch(search);
+        return search(request);
+    }
+
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public Page<DriverDetailResponse> search(AdminDriverSearchRequest request) {
+        validate(request);
+        Pageable pageable = PageRequest.of(
+                request.getPage(), request.getSize(), parseSort(request.getSort()));
+        return driverRepository.findAll(DriverSpecifications.from(request), pageable).map(this::toResponse);
+    }
+
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public void export(AdminDriverFilter filter, Writer writer) {
+        validate(filter);
+        CsvUtils.writeBom(writer);
+        CsvUtils.writeRow(
+                writer,
+                "driverId",
+                "driverName",
+                "phone",
+                "email",
+                "citizenId",
+                "licensePlate",
+                "vehicleName",
+                "vehicleTypeId",
+                "area",
+                "score",
+                "activityStatus",
+                "accountStatus",
+                "createdAt");
+
+        int pageNumber = 0;
+        Page<Driver> drivers;
+        do {
+            Pageable pageable = PageRequest.of(pageNumber++, EXPORT_PAGE_SIZE, parseSort(filter.getSort()));
+            drivers = driverRepository.findAll(DriverSpecifications.from(filter), pageable);
+            drivers.forEach(driver -> CsvUtils.writeRow(
+                    writer,
+                    driver.getDriverId(),
+                    driver.getDriverName(),
+                    driver.getPhone(),
+                    driver.getEmail(),
+                    driver.getCitizenId(),
+                    driver.getLicensePlate(),
+                    driver.getVehicleName(),
+                    driver.getVehicleTypeId(),
+                    driver.getArea(),
+                    driver.getScore(),
+                    driver.getActivityStatus(),
+                    driver.getAccount() != null ? driver.getAccount().getAccountStatus() : null,
+                    driver.getAccount() != null ? formatDateTime(driver.getAccount().getCreatedAt()) : null));
+        } while (drivers.hasNext());
     }
 
     public List<DriverDetailResponse> getActive() {
@@ -197,5 +267,40 @@ public class DriverManagementService {
         if (oldPath != null) {
             firebaseService.deleteFile(oldPath);
         }
+    }
+
+    private Sort parseSort(String sort) {
+        return AdminSortParser.parse(sort, ADMIN_SORT_FIELDS, "driverName:asc", "driverId");
+    }
+
+    private void validate(AdminDriverFilter filter) {
+        if (filter.getCreatedFrom() != null
+                && filter.getCreatedTo() != null
+                && filter.getCreatedFrom().isAfter(filter.getCreatedTo())) {
+            throw new IllegalArgumentException("createdFrom phải nhỏ hơn hoặc bằng createdTo");
+        }
+        if (filter.getMinRating() != null
+                && filter.getMaxRating() != null
+                && filter.getMinRating() > filter.getMaxRating()) {
+            throw new IllegalArgumentException("minRating phải nhỏ hơn hoặc bằng maxRating");
+        }
+        if (filter.getMinRating() != null && (filter.getMinRating() < 0 || filter.getMinRating() > 5)
+                || filter.getMaxRating() != null && (filter.getMaxRating() < 0 || filter.getMaxRating() > 5)) {
+            throw new IllegalArgumentException("rating phải trong khoảng 0..5");
+        }
+        if (filter instanceof AdminDriverSearchRequest request
+                && (request.getPage() < 0 || request.getSize() < 1 || request.getSize() > 100)) {
+            throw new IllegalArgumentException("page phải >= 0 và size phải trong khoảng 1..100");
+        }
+    }
+
+    private String formatDateTime(Date value) {
+        if (value == null) {
+            return null;
+        }
+        LocalDateTime localDateTime = value instanceof Timestamp timestamp
+                ? timestamp.toLocalDateTime()
+                : LocalDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault());
+        return localDateTime.toString();
     }
 }

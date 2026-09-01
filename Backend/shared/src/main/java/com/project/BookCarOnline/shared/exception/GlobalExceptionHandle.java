@@ -12,6 +12,28 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandle {
+    @ExceptionHandler(value = org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<APIResponse> handleQueryParameterException(
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException exception) {
+        String message = "Tham số " + exception.getName() + " không hợp lệ";
+        return ResponseEntity.badRequest().body(APIResponse.builder()
+                .status(400)
+                .message(message)
+                .build());
+    }
+
+    @ExceptionHandler(value = org.springframework.validation.BindException.class)
+    public ResponseEntity<APIResponse> handleBindException(org.springframework.validation.BindException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .reduce((first, second) -> first + "; " + second)
+                .orElse("Tham số truy vấn không hợp lệ");
+        return ResponseEntity.badRequest().body(APIResponse.builder()
+                .status(400)
+                .message(message)
+                .build());
+    }
+
     @ExceptionHandler(value= RuntimeException.class)
     public ResponseEntity<APIResponse> handleRuntime(RuntimeException exception) {
         APIResponse apiResponse=APIResponse.builder()

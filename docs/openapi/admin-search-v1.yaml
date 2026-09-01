@@ -29,8 +29,8 @@ paths:
             bookingTime, totalPrice, bookingStatus, distance.
           schema:
             type: string
-            default: bookingTime:desc
-          example: bookingTime:desc,totalPrice:asc
+            default: 'bookingTime:desc'
+          example: 'bookingTime:desc,totalPrice:asc'
         - name: search
           in: query
           description: >-
@@ -108,8 +108,8 @@ paths:
           description: >-
             Comma-separated field:direction terms. Allowed fields:
             driverName, score, lastTripTime, area, createdAt.
-          schema: { type: string, default: driverName:asc }
-          example: score:desc,driverName:asc
+          schema: { type: string, default: 'driverName:asc' }
+          example: 'score:desc,driverName:asc'
         - name: search
           in: query
           description: >-
@@ -194,8 +194,8 @@ paths:
           description: >-
             Comma-separated field:direction terms. Allowed fields:
             customerName, phone, email, birthDate, createdAt.
-          schema: { type: string, default: customerName:asc }
-          example: createdAt:desc,customerName:asc
+          schema: { type: string, default: 'customerName:asc' }
+          example: 'createdAt:desc,customerName:asc'
         - name: search
           in: query
           description: Case-insensitive search across name, phone, email, and address.
@@ -256,7 +256,7 @@ components:
     BookingSort:
       name: sort
       in: query
-      schema: { type: string, default: bookingTime:desc }
+      schema: { type: string, default: 'bookingTime:desc' }
     BookingSearch:
       name: search
       in: query
@@ -296,7 +296,7 @@ components:
     DriverSort:
       name: sort
       in: query
-      schema: { type: string, default: driverName:asc }
+      schema: { type: string, default: 'driverName:asc' }
     DriverSearch:
       name: search
       in: query
@@ -336,7 +336,7 @@ components:
     CustomerSort:
       name: sort
       in: query
-      schema: { type: string, default: customerName:asc }
+      schema: { type: string, default: 'customerName:asc' }
     CustomerSearch:
       name: search
       in: query
@@ -363,7 +363,7 @@ components:
       headers:
         Content-Disposition:
           schema: { type: string }
-          example: attachment; filename="bookings-20260901T120000Z.csv"
+          example: attachment; filename="bookings-2026-09-01.csv"
       content:
         text/csv:
           schema: { type: string, format: binary }
@@ -485,9 +485,9 @@ components:
         dropoffLng: { type: number, format: double }
         originalPrice: { type: number, format: double, nullable: true }
         totalPrice: { type: number, format: double, nullable: true }
-        bookingTime: { type: string, format: date-time }
-        pickupTime: { type: string, format: date-time, nullable: true }
-        arrivalTime: { type: string, format: date-time, nullable: true }
+        bookingTime: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$' }
+        pickupTime: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$', nullable: true }
+        arrivalTime: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$', nullable: true }
         bookingStatus: { $ref: '#/components/schemas/BookingStatus' }
         distance: { type: number, format: double, nullable: true }
         duration: { type: number, format: double, nullable: true }
@@ -496,7 +496,7 @@ components:
         appliedPromotions:
           type: array
           items: { $ref: '#/components/schemas/BookingPromotion' }
-        rating: { type: integer, minimum: 1, maximum: 5, nullable: true }
+        rating: { type: number, format: double, minimum: 1, maximum: 5, nullable: true }
         review: { type: string, nullable: true }
     Driver:
       type: object

@@ -2,21 +2,35 @@ package com.project.BookCarOnline.app.controller;
 
 import com.project.BookCarOnline.shared.dto.APIResponse;
 import com.project.BookCarOnline.identity.dto.request.AdminChangePasswordRequest;
+import com.project.BookCarOnline.identity.dto.request.AdminDriverFilter;
+import com.project.BookCarOnline.identity.dto.request.AdminDriverSearchRequest;
 import com.project.BookCarOnline.identity.dto.request.UpdateDriverRequest;
 import com.project.BookCarOnline.identity.dto.response.DriverDetailResponse;
 import com.project.BookCarOnline.identity.service.DriverManagementService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springdoc.core.annotations.ParameterObject;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 
 @Slf4j
 @RestController
@@ -24,23 +38,57 @@ import java.io.IOException;
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Tag(name = "Admin Drivers", description = "Tìm kiếm, lọc và export tài xế dành cho admin")
 public class AdminDriverController {
 
     DriverManagementService driverManagementService;
 
     @GetMapping
+    @Operation(
+            operationId = "searchAdminDrivers",
+            summary = "Search and filter drivers",
+            description = "Phân trang, multi-field sort và kết hợp các bộ lọc tài xế dành cho admin.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Matching drivers"),
+            @ApiResponse(responseCode = "400", description = "Invalid filter or sort"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Admin role required")
+    })
     public APIResponse<Page<DriverDetailResponse>> getAllDrivers(
-            @RequestParam(value = "page",defaultValue = "0") int page,
-            @RequestParam(value = "size",defaultValue = "20") int size,
-            @RequestParam(value = "search", required = false) String search
-    ) {
+            @Valid @ParameterObject AdminDriverSearchRequest request) {
         log.info("REST API: GET /admin/drivers - Fetching all drivers");
-        Page<DriverDetailResponse> drivers = driverManagementService.search(page, size, search);
+        Page<DriverDetailResponse> drivers = driverManagementService.search(request);
         return APIResponse.<Page<DriverDetailResponse>>builder()
                 .status(HttpStatus.OK.value())
                 .message("Danh sách tài xế")
                 .result(drivers)
                 .build();
+    }
+
+    @GetMapping(value = "/export", produces = "text/csv")
+    @Operation(
+            operationId = "exportAdminDrivers",
+            summary = "Export filtered drivers as UTF-8 CSV",
+            description = "Dùng cùng filter và sort với search; không phân trang.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "UTF-8 CSV attachment"),
+            @ApiResponse(responseCode = "400", description = "Invalid filter or sort"),
+            @ApiResponse(responseCode = "401", description = "Unauthenticated"),
+            @ApiResponse(responseCode = "403", description = "Admin role required")
+    })
+    public ResponseEntity<StreamingResponseBody> exportDrivers(
+            @Valid @ParameterObject AdminDriverFilter filter) {
+        StreamingResponseBody body = outputStream -> {
+            try (OutputStreamWriter writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8)) {
+                driverManagementService.export(filter, writer);
+            }
+        };
+        String filename = "drivers-" + LocalDate.now() + ".csv";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .body(body);
     }
 
     @GetMapping("/{driverId}")

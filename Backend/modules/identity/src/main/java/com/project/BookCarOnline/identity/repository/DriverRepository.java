@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.query.Procedure;
@@ -19,7 +20,7 @@ import java.util.Optional;
 
 
 @Repository
-public interface DriverRepository extends JpaRepository<Driver,String> {
+public interface DriverRepository extends JpaRepository<Driver,String>, JpaSpecificationExecutor<Driver> {
 
 //    Optional<Driver> findByAccountNo(String accountId);
 

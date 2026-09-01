@@ -3,11 +3,15 @@ package com.project.BookCarOnline.booking.service;
 import com.project.BookCarOnline.booking.dto.response.AvailableRideResponse;
 import com.project.BookCarOnline.booking.dto.response.BookingDetailResponse;
 import com.project.BookCarOnline.booking.dto.response.BookingPromotionDTO;
+import com.project.BookCarOnline.booking.dto.request.AdminBookingSearchRequest;
+import com.project.BookCarOnline.booking.dto.request.AdminBookingFilter;
 import com.project.BookCarOnline.booking.entity.Booking;
 import com.project.BookCarOnline.booking.entity.BookingPromotion;
+import com.project.BookCarOnline.booking.entity.Rating;
 import com.project.BookCarOnline.booking.entity.enums.BookingStatus;
 import com.project.BookCarOnline.booking.repository.BookingPromotionRepository;
 import com.project.BookCarOnline.booking.repository.BookingRepository;
+import com.project.BookCarOnline.booking.repository.RatingRepository;
 import com.project.BookCarOnline.catalog.dto.VehicleTypeSummary;
 import com.project.BookCarOnline.catalog.service.VehicleTypeService;
 import com.project.BookCarOnline.finance.dto.PaymentSummary;
@@ -19,7 +23,10 @@ import com.project.BookCarOnline.promotion.dto.PromotionQuote;
 import com.project.BookCarOnline.promotion.service.PricingService;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
+import com.project.BookCarOnline.shared.util.CsvUtils;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,7 +35,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
-import java.time.LocalDate;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +49,7 @@ public class BookingQueryService {
 
     private final BookingRepository bookingRepository;
     private final BookingPromotionRepository bookingPromotionRepository;
+    private final RatingRepository ratingRepository;
     private final IdentityQueryService identityQueryService;
     private final VehicleTypeService vehicleTypeService;
     private final PaymentService paymentService;
@@ -72,29 +82,48 @@ public class BookingQueryService {
                 "totalRevenue", revenue);
     }
 
-    public Page<BookingDetailResponse> searchBookingsForAdmin(
-            int page, int size, String status, String search, String fromDate, String toDate) {
-        Pageable pageable = PageRequest.of(page, size);
-        BookingStatus bookingStatus;
-        Timestamp from;
-        Timestamp to;
-        try {
-            bookingStatus = status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)
-                    ? BookingStatus.valueOf(status.toUpperCase())
-                    : null;
-            from = fromDate != null && !fromDate.isBlank()
-                    ? Timestamp.valueOf(LocalDate.parse(fromDate).atStartOfDay())
-                    : null;
-            to = toDate != null && !toDate.isBlank()
-                    ? Timestamp.valueOf(LocalDate.parse(toDate).plusDays(1).atStartOfDay())
-                    : null;
-        } catch (RuntimeException exception) {
-            return Page.empty(pageable);
-        }
+    public Page<BookingDetailResponse> searchBookingsForAdmin(AdminBookingSearchRequest request) {
+        Pageable pageable = request.toPageable();
+        return bookingRepository.findAll(buildAdminSpecification(request), pageable).map(this::toDetail);
+    }
 
-        String searchPattern = search != null && !search.isBlank()
-                ? "%" + search.trim().toLowerCase() + "%"
-                : null;
+    public void writeAdminBookingsCsv(AdminBookingFilter request, Writer writer) {
+        request.validateRanges();
+        CsvUtils.writeBom(writer);
+        CsvUtils.writeRow(writer,
+                "bookingId", "customerId", "customerName", "customerPhone", "driverId", "driverName",
+                "driverPhone", "vehicleTypeName", "licensePlate", "pickupLocation", "dropoffLocation",
+                "originalPrice", "totalPrice", "bookingTime", "pickupTime", "arrivalTime", "bookingStatus",
+                "distance", "paymentMethod", "paymentStatus", "rating", "review");
+
+        int pageNumber = 0;
+        Page<Booking> bookings;
+        do {
+            bookings = bookingRepository.findAll(
+                    buildAdminSpecification(request), request.toExportPageable(pageNumber, 500));
+            for (Booking booking : bookings.getContent()) {
+                BookingDetailResponse row = toDetail(booking);
+                CsvUtils.writeRow(writer,
+                        row.getBookingId(), row.getCustomerId(), row.getCustomerName(), row.getCustomerPhone(),
+                        row.getDriverId(), row.getDriverName(), row.getDriverPhone(), row.getVehicleTypeName(),
+                        row.getLicensePlate(), row.getPickupLocation(), row.getDropoffLocation(),
+                        row.getOriginalPrice(), row.getTotalPrice(), row.getBookingTime(), row.getPickupTime(),
+                        row.getArrivalTime(), row.getBookingStatus(), row.getDistance(), row.getPaymentMethod(),
+                        row.getPaymentStatus(), row.getRating(), row.getReview());
+            }
+            pageNumber++;
+        } while (bookings.hasNext());
+        try {
+            writer.flush();
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    private Specification<Booking> buildAdminSpecification(AdminBookingFilter request) {
+        request.validateRanges();
+        String normalizedSearch = request.normalizedSearch();
+        String searchPattern = normalizedSearch != null ? "%" + normalizedSearch + "%" : null;
         List<String> customerIds = searchPattern != null
                 ? identityQueryService.searchCustomerIds(searchPattern)
                 : List.of();
@@ -105,25 +134,58 @@ public class BookingQueryService {
         Specification<Booking> specification = (root, query, criteriaBuilder) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
-            if (bookingStatus != null) {
-                predicates.add(criteriaBuilder.equal(root.get("bookingStatus"), bookingStatus));
+            if (request.getStatuses() != null && !request.getStatuses().isEmpty()) {
+                predicates.add(root.get("bookingStatus").in(request.getStatuses()));
             }
-            if (from != null) {
-                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("bookingTime"), from));
+            if (request.getBookingFrom() != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                        root.get("bookingTime"), Timestamp.valueOf(request.getBookingFrom())));
             }
-            if (to != null) {
-                predicates.add(criteriaBuilder.lessThan(root.get("bookingTime"), to));
+            if (request.getBookingTo() != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(
+                        root.get("bookingTime"), Timestamp.valueOf(request.getBookingTo())));
+            }
+            if (request.getMinPrice() != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("totalPrice"), request.getMinPrice()));
+            }
+            if (request.getMaxPrice() != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("totalPrice"), request.getMaxPrice()));
+            }
+            if (request.getMinRating() != null || request.getMaxRating() != null) {
+                Subquery<String> ratingSubquery = query.subquery(String.class);
+                Root<Rating> rating = ratingSubquery.from(Rating.class);
+                List<Predicate> ratingPredicates = new ArrayList<>();
+                if (request.getMinRating() != null) {
+                    ratingPredicates.add(criteriaBuilder.greaterThanOrEqualTo(
+                            rating.get("score"), request.getMinRating()));
+                }
+                if (request.getMaxRating() != null) {
+                    ratingPredicates.add(criteriaBuilder.lessThanOrEqualTo(
+                            rating.get("score"), request.getMaxRating()));
+                }
+                ratingSubquery.select(rating.get("bookingNo").get("bookingId"))
+                        .where(ratingPredicates.toArray(new Predicate[0]));
+                predicates.add(root.get("bookingId").in(ratingSubquery));
             }
             if (searchPattern != null) {
-                predicates.add(criteriaBuilder.or(
-                        root.get("customerId").in(customerIds),
-                        root.get("driverId").in(driverIds),
-                        criteriaBuilder.like(
-                                criteriaBuilder.lower(root.get("bookingId").as(String.class)), searchPattern)));
+                List<Predicate> searchPredicates = new ArrayList<>();
+                if (!customerIds.isEmpty()) {
+                    searchPredicates.add(root.get("customerId").in(customerIds));
+                }
+                if (!driverIds.isEmpty()) {
+                    searchPredicates.add(root.get("driverId").in(driverIds));
+                }
+                searchPredicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("bookingId").as(String.class)), searchPattern));
+                searchPredicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("pickupLocation")), searchPattern));
+                searchPredicates.add(criteriaBuilder.like(
+                        criteriaBuilder.lower(root.get("dropoffLocation")), searchPattern));
+                predicates.add(criteriaBuilder.or(searchPredicates.toArray(new Predicate[0])));
             }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
-        return bookingRepository.findAll(specification, pageable).map(this::toDetail);
+        return specification;
     }
 
     public BookingDetailResponse getBookingById(String bookingId) {
@@ -170,6 +232,7 @@ public class BookingQueryService {
     }
 
     BookingDetailResponse toDetail(Booking booking) {
+        Rating rating = ratingRepository.findByBookingNo_BookingId(booking.getBookingId()).orElse(null);
         List<BookingPromotion> bookingPromotions =
                 bookingPromotionRepository.findByBooking_BookingId(booking.getBookingId());
         Map<String, PromotionQuote> promotions = pricingService
@@ -229,6 +292,8 @@ public class BookingQueryService {
                         : null)
                 .paymentStatus(payment != null ? payment.paid() : null)
                 .appliedPromotions(promotionResponses)
+                .rating(rating != null ? rating.getScore() : null)
+                .review(rating != null ? rating.getReview() : null)
                 .build();
     }
 

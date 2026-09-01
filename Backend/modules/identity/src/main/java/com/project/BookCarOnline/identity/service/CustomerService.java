@@ -2,6 +2,8 @@ package com.project.BookCarOnline.identity.service;
 
 import com.project.BookCarOnline.identity.dto.request.RegisterCustomerRequest;
 import com.project.BookCarOnline.identity.dto.request.UpdateCustomerRequest;
+import com.project.BookCarOnline.identity.dto.request.AdminCustomerFilter;
+import com.project.BookCarOnline.identity.dto.request.AdminCustomerSearchRequest;
 import com.project.BookCarOnline.identity.dto.response.AccountResponse;
 import com.project.BookCarOnline.identity.dto.response.CustomerResponse;
 import com.project.BookCarOnline.identity.entity.Account;
@@ -15,8 +17,11 @@ import com.project.BookCarOnline.identity.mapper.CustomerMapper;
 import com.project.BookCarOnline.identity.repository.AccountRepository;
 import com.project.BookCarOnline.identity.repository.CustomerRepository;
 import com.project.BookCarOnline.identity.repository.RoleRepository;
+import com.project.BookCarOnline.identity.repository.specification.CustomerSpecifications;
 import com.project.BookCarOnline.identity.service.FirebaseService;
 import com.project.BookCarOnline.shared.security.SecurityUtils;
+import com.project.BookCarOnline.shared.util.AdminSortParser;
+import com.project.BookCarOnline.shared.util.CsvUtils;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -35,14 +40,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.io.Writer;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class CustomerService {
+
+    private static final int EXPORT_PAGE_SIZE = 500;
+    private static final Map<String, String> ADMIN_SORT_FIELDS = Map.of(
+            "customerName", "customerName",
+            "phone", "phone",
+            "email", "email",
+            "birthDate", "birthDate",
+            "createdAt", "account.createdAt");
 
     AccountRepository accountRepository;
     CustomerRepository customerRepository;
@@ -98,15 +116,55 @@ public class CustomerService {
 
     @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
     public Page<CustomerResponse> getAllCustomers(int page, int size, String search) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("customerName").ascending());
+        AdminCustomerSearchRequest request = new AdminCustomerSearchRequest();
+        request.setPage(page);
+        request.setSize(size);
+        request.setSearch(search);
+        return search(request);
+    }
+
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public Page<CustomerResponse> search(AdminCustomerSearchRequest request) {
+        validate(request);
+        Pageable pageable = PageRequest.of(
+                request.getPage(), request.getSize(), parseSort(request.getSort()));
+        return customerRepository.findAll(CustomerSpecifications.from(request), pageable)
+                .map(mapper::toCustomerResponse);
+    }
+
+    @PreAuthorize(PredefinedRole.HAS_ROLE_ADMIN)
+    public void export(AdminCustomerFilter filter, Writer writer) {
+        validate(filter);
+        CsvUtils.writeBom(writer);
+        CsvUtils.writeRow(
+                writer,
+                "customerId",
+                "customerName",
+                "phone",
+                "email",
+                "gender",
+                "birthDate",
+                "address",
+                "accountStatus",
+                "createdAt");
+
+        int pageNumber = 0;
         Page<Customer> customers;
-        if (search == null || search.trim().isEmpty()) {
-            customers = customerRepository.findAll(pageable);
-        } else {
-            String searchTerm = "%" + search.trim().toLowerCase() + "%";
-            customers = customerRepository.searchCustomers(searchTerm, pageable);
-        }
-        return customers.map(mapper::toCustomerResponse);
+        do {
+            Pageable pageable = PageRequest.of(pageNumber++, EXPORT_PAGE_SIZE, parseSort(filter.getSort()));
+            customers = customerRepository.findAll(CustomerSpecifications.from(filter), pageable);
+            customers.forEach(customer -> CsvUtils.writeRow(
+                    writer,
+                    customer.getCustomerId(),
+                    customer.getCustomerName(),
+                    customer.getPhone(),
+                    customer.getEmail(),
+                    customer.getGender(),
+                    formatDate(customer.getBirthDate()),
+                    customer.getAddress(),
+                    customer.getAccount() != null ? customer.getAccount().getAccountStatus() : null,
+                    customer.getAccount() != null ? formatDateTime(customer.getAccount().getCreatedAt()) : null));
+        } while (customers.hasNext());
     }
 
     @Transactional
@@ -234,5 +292,41 @@ public class CustomerService {
         Account account = customer.getAccount();
         account.setPassWord(passwordEncoder.encode(newPassword));
         accountRepository.save(account);
+    }
+
+    private Sort parseSort(String sort) {
+        return AdminSortParser.parse(sort, ADMIN_SORT_FIELDS, "customerName:asc", "customerId");
+    }
+
+    private void validate(AdminCustomerFilter filter) {
+        if (filter.getCreatedFrom() != null
+                && filter.getCreatedTo() != null
+                && filter.getCreatedFrom().isAfter(filter.getCreatedTo())) {
+            throw new IllegalArgumentException("createdFrom phải nhỏ hơn hoặc bằng createdTo");
+        }
+        if (filter instanceof AdminCustomerSearchRequest request
+                && (request.getPage() < 0 || request.getSize() < 1 || request.getSize() > 100)) {
+            throw new IllegalArgumentException("page phải >= 0 và size phải trong khoảng 1..100");
+        }
+    }
+
+    private String formatDate(Date value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof java.sql.Date sqlDate) {
+            return sqlDate.toLocalDate().toString();
+        }
+        return value.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString();
+    }
+
+    private String formatDateTime(Date value) {
+        if (value == null) {
+            return null;
+        }
+        LocalDateTime localDateTime = value instanceof Timestamp timestamp
+                ? timestamp.toLocalDateTime()
+                : LocalDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault());
+        return localDateTime.toString();
     }
 }
