@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   RiArrowLeftLine,
   RiArrowRightLine,
@@ -9,6 +9,11 @@ import {
   RiTicketLine,
   RiTimeLine,
   RiUser3Line,
+  RiCalendarLine,
+  RiCalendarEventLine,
+  RiFlashlightLine,
+  RiInformationLine,
+  RiAlertLine,
 } from 'react-icons/ri'
 import { AnimatePresence, motion } from 'motion/react'
 import toast from 'react-hot-toast'
@@ -50,6 +55,88 @@ const VehicleSelectionStep = ({
   const [isPromoModalOpen, setPromoModalOpen] = useState(false)
   const [promoInput, setPromoInput] = useState('')
   const [promoLoading, setPromoLoading] = useState(false)
+
+  // Scheduled Booking State
+  const [isScheduled, setIsScheduled] = useState(false)
+
+  const pad = (n) => String(n).padStart(2, '0')
+  const formatDateISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const formatTimeHM = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
+
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const d = new Date(Date.now() + 35 * 60 * 1000)
+    return formatDateISO(d)
+  })
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const d = new Date(Date.now() + 35 * 60 * 1000)
+    return formatTimeHM(d)
+  })
+
+  const applyTimePreset = (minutesFromNow, specificHour = null) => {
+    const d = new Date()
+    if (specificHour !== null) {
+      d.setDate(d.getDate() + 1)
+      d.setHours(specificHour, 0, 0, 0)
+    } else {
+      d.setTime(d.getTime() + minutesFromNow * 60 * 1000)
+    }
+    setScheduledDate(formatDateISO(d))
+    setScheduledTime(formatTimeHM(d))
+  }
+
+  const minDate = useMemo(() => formatDateISO(new Date()), [])
+  const maxDate = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 7)
+    return formatDateISO(d)
+  }, [])
+
+  const scheduleValidation = useMemo(() => {
+    if (!isScheduled) return { isValid: true, message: '' }
+    if (!scheduledDate || !scheduledTime) {
+      return { isValid: false, message: 'Vui lòng chọn ngày và giờ đón' }
+    }
+    const target = new Date(`${scheduledDate}T${scheduledTime}:00`)
+    if (isNaN(target.getTime())) {
+      return { isValid: false, message: 'Thời gian không hợp lệ' }
+    }
+    const diffMinutes = (target.getTime() - Date.now()) / (60 * 1000)
+    if (diffMinutes < 15) {
+      return {
+        isValid: false,
+        message: 'Thời gian đón phải sau thời điểm hiện tại ít nhất 15 phút'
+      }
+    }
+    const diffDays = diffMinutes / (60 * 24)
+    if (diffDays > 7) {
+      return {
+        isValid: false,
+        message: 'Chỉ có thể đặt trước tối đa 7 ngày'
+      }
+    }
+    const dateFormatted = scheduledDate.split('-').reverse().join('/')
+    return {
+      isValid: true,
+      message: `Tài xế sẽ được điều phối trước giờ đón khoảng 15 phút (${scheduledTime}, ngày ${dateFormatted})`
+    }
+  }, [isScheduled, scheduledDate, scheduledTime])
+
+  const formattedScheduledAt = useMemo(() => {
+    if (!isScheduled || !scheduleValidation.isValid) return null
+    return `${scheduledDate}T${scheduledTime}:00`
+  }, [isScheduled, scheduleValidation.isValid, scheduledDate, scheduledTime])
+
+  const onConfirmBooking = () => {
+    if (isScheduled) {
+      if (!scheduleValidation.isValid) {
+        toast.error(scheduleValidation.message)
+        return
+      }
+      handleBook(formattedScheduledAt)
+    } else {
+      handleBook(null)
+    }
+  }
 
   const applyPromoByCode = async () => {
     if (!promoInput.trim()) return
@@ -186,6 +273,121 @@ const VehicleSelectionStep = ({
               )}
             </section>
 
+            {/* Scheduled Booking Options */}
+            <section className="rounded-2xl border border-surface-border bg-surface-card p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-content-main">Thời gian đón</span>
+                <div className="flex p-1 rounded-xl bg-surface-dark border border-surface-border text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduled(false)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+                      !isScheduled
+                        ? 'bg-brand-500 text-white shadow-sm'
+                        : 'text-content-muted hover:text-content-main'
+                    )}
+                  >
+                    <RiFlashlightLine size={14} /> Đi ngay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsScheduled(true)}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all',
+                      isScheduled
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-content-muted hover:text-content-main'
+                    )}
+                  >
+                    <RiCalendarEventLine size={14} /> Đặt theo lịch
+                  </button>
+                </div>
+              </div>
+
+              {/* Scheduled Date/Time Picker */}
+              <AnimatePresence initial={false}>
+                {isScheduled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden space-y-3 pt-2"
+                  >
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-semibold text-content-muted uppercase tracking-wider block mb-1">
+                          Ngày đón
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-dark border border-surface-border focus-within:border-purple-500 transition-colors">
+                          <RiCalendarLine className="text-purple-400 shrink-0" size={16} />
+                          <input
+                            type="date"
+                            min={minDate}
+                            max={maxDate}
+                            value={scheduledDate}
+                            onChange={(e) => setScheduledDate(e.target.value)}
+                            className="bg-transparent outline-none text-xs text-content-main w-full font-medium cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-semibold text-content-muted uppercase tracking-wider block mb-1">
+                          Giờ đón
+                        </label>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-dark border border-surface-border focus-within:border-purple-500 transition-colors">
+                          <RiTimeLine className="text-purple-400 shrink-0" size={16} />
+                          <input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            className="bg-transparent outline-none text-xs text-content-main w-full font-medium cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick presets */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[11px] text-content-muted mr-1">Gợi ý nhanh:</span>
+                      {[
+                        { label: '+30p', action: () => applyTimePreset(30) },
+                        { label: '+1h', action: () => applyTimePreset(60) },
+                        { label: '+2h', action: () => applyTimePreset(120) },
+                        { label: 'Sáng mai (08:00)', action: () => applyTimePreset(0, 8) },
+                        { label: 'Chiều mai (14:00)', action: () => applyTimePreset(0, 14) },
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={preset.action}
+                          className="px-2 py-1 rounded-lg text-[11px] font-medium bg-surface-dark border border-surface-border text-content-muted hover:text-purple-400 hover:border-purple-500/30 transition-colors"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Validation Notice Banner */}
+                    <div className={cn(
+                      'p-2.5 rounded-xl text-xs flex items-start gap-2 border',
+                      scheduleValidation.isValid
+                        ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                    )}>
+                      {scheduleValidation.isValid ? (
+                        <RiInformationLine className="shrink-0 mt-0.5 text-purple-400" size={15} />
+                      ) : (
+                        <RiAlertLine className="shrink-0 mt-0.5 text-red-400" size={15} />
+                      )}
+                      <span className="leading-tight">{scheduleValidation.message}</span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
+
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <button
                 type="button"
@@ -285,6 +487,14 @@ const VehicleSelectionStep = ({
                   <span className="text-sm font-bold text-lime-accent">{selectedPromos.length} mã</span>
                 </div>
               )}
+              {isScheduled && (
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <span className="text-sm text-white/55">Thời gian đón</span>
+                  <span className="text-sm font-bold text-purple-400">
+                    {scheduledTime} · {scheduledDate.split('-').reverse().join('/')}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="mt-6">
@@ -330,12 +540,17 @@ const VehicleSelectionStep = ({
             <Button
               fullWidth
               size="lg"
-              onClick={handleBook}
+              onClick={onConfirmBooking}
               loading={loading}
-              disabled={countdown <= 0}
-              className="group mt-5 h-[52px] rounded-xl bg-lime-accent font-bold text-slate-950 shadow-none hover:bg-[#b8ff59] focus:ring-lime-accent"
+              disabled={countdown <= 0 || (isScheduled && !scheduleValidation.isValid)}
+              className={cn(
+                "group mt-5 h-[52px] rounded-xl font-bold shadow-none transition-all",
+                isScheduled
+                  ? "bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500"
+                  : "bg-lime-accent text-slate-950 hover:bg-[#b8ff59] focus:ring-lime-accent"
+              )}
             >
-              Xác nhận đặt xe
+              {isScheduled ? 'Xác nhận đặt lịch đón' : 'Xác nhận đặt xe'}
               <RiArrowRightLine className="transition-transform group-hover:translate-x-1" />
             </Button>
             <p className="mt-3 text-center text-xs leading-relaxed text-white/40">

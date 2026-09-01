@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import axios from 'axios'
 import {
   RiMapPinLine, RiMapPin2Line, RiUserStarLine,
-  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,RiCheckLine
+  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine, RiCheckLine,
+  RiCalendarEventLine, RiTimeLine, RiInformationLine
 } from 'react-icons/ri'
 import { useBookingStore, useAuthStore } from '@/store/rootStore'
 import { bookingApi } from '@/features/booking/api/bookingApi'
@@ -26,6 +27,7 @@ const STATUS_STEPS = [
 ]
 
 const STATUS_COLOR = {
+  [BOOKING_STATUS.QUEUED]:     'text-purple-600 bg-purple-500/10 border-purple-500/20',
   [BOOKING_STATUS.PENDING]:    'text-amber-600 bg-amber-500/10 border-amber-500/20',
   [BOOKING_STATUS.ACCEPTED]:   'text-emerald-600 bg-emerald-500/10 border-emerald-500/20',
   [BOOKING_STATUS.ARRIVED]:    'text-blue-600 bg-blue-500/10 border-blue-500/20',
@@ -143,9 +145,9 @@ const TripTrackingPage = () => {
       .catch(() => {})
   }, [bookingId, booking?.bookingStatus, booking?.driverName, driverCoord])
 
-  // Poll for status updates every 5s when pending/accepted
+  // Poll for status updates every 5s when queued/pending/accepted
   useEffect(() => {
-    const shouldPoll = [BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS]
+    const shouldPoll = [BOOKING_STATUS.QUEUED, BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED, BOOKING_STATUS.ARRIVED, BOOKING_STATUS.IN_PROGRESS]
       .includes(booking?.bookingStatus)
     if (!shouldPoll) return
     const interval = setInterval(() => {
@@ -345,6 +347,28 @@ const TripTrackingPage = () => {
                 </div>
               </div>
             </div>
+          ) : booking.bookingStatus === BOOKING_STATUS.QUEUED ? (
+            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 dark:bg-purple-500/10 p-6 text-center flex flex-col items-center justify-center relative overflow-hidden space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-1">
+                <RiCalendarEventLine size={28} />
+              </div>
+              <div>
+                <span className="inline-block px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold text-xs border border-purple-500/20 mb-2">
+                  ĐÃ LÊN LỊCH ĐÓN
+                </span>
+                <h3 className="font-display font-bold text-xl text-content-main">
+                  {booking.scheduledAt
+                    ? new Date(booking.scheduledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : 'Chờ đến giờ hẹn'}
+                </h3>
+              </div>
+              <div className="p-3 bg-surface-card rounded-xl border border-surface-border text-xs text-content-muted leading-relaxed text-left flex items-start gap-2">
+                <RiInformationLine className="shrink-0 text-purple-400 mt-0.5" size={16} />
+                <span>
+                  Hệ thống sẽ tự động quét và điều phối tài xế gần bạn nhất trước giờ đón khoảng 15 phút. Bạn có thể an tâm, chúng tôi sẽ gửi thông báo ngay khi có tài xế nhận chuyến!
+                </span>
+              </div>
+            </div>
           ) : (
             <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-[#f8faf6] dark:bg-surface-dark p-8 text-center flex flex-col items-center justify-center relative overflow-hidden min-h-[160px]">
                {/* Animated radar effect for finding driver */}
@@ -389,9 +413,14 @@ const TripTrackingPage = () => {
                 Đánh giá chuyến đi
               </Button>
             )}
-            {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
-              <Button fullWidth className="h-12 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 font-bold border-none" onClick={handleCancel} loading={cancelling}>
-                Hủy chuyến đi
+            {[BOOKING_STATUS.QUEUED, BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
+              <Button
+                fullWidth
+                className="h-12 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 font-bold border-none"
+                onClick={handleCancel}
+                loading={cancelling}
+              >
+                {booking.bookingStatus === BOOKING_STATUS.QUEUED ? 'Hủy lịch hẹn' : 'Hủy chuyến đi'}
               </Button>
             )}
             <Button variant="outline" fullWidth className="h-12 rounded-xl border-[#cdd4c8] dark:border-surface-border font-bold text-content-main hover:border-slate-400" onClick={() => {

@@ -1,5 +1,6 @@
 export const BookingStatus = Object.freeze({
     PENDING: 'PENDING',
+    QUEUED: 'QUEUED',
     ACCEPTED: 'ACCEPTED',
     ARRIVED: 'ARRIVED',
     IN_PROGRESS: 'IN_PROGRESS',

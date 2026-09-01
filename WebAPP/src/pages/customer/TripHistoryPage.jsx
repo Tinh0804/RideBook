@@ -10,9 +10,10 @@ import Button from '@/components/Elements/Button';
 import Spinner from '@/components/Elements/Spinner';
 import { cn } from '@/utils/cn';
 import { motion } from 'motion/react';
-import { RiMapPinLine, RiMapPin2Line, RiTimeLine, RiCarLine, RiStarLine } from 'react-icons/ri';
+import { RiMapPinLine, RiMapPin2Line, RiTimeLine, RiCarLine, RiStarLine, RiCalendarEventLine } from 'react-icons/ri';
 
 const statusBadge = {
+  [BOOKING_STATUS.QUEUED]:    'bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20',
   [BOOKING_STATUS.COMPLETED]: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
   [BOOKING_STATUS.CANCELLED]: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
   [BOOKING_STATUS.PENDING]:   'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
@@ -21,6 +22,7 @@ const statusBadge = {
 
 const FILTERS = [
   { value: 'ALL', label: 'Tất cả' },
+  { value: BOOKING_STATUS.QUEUED, label: 'Đã lên lịch' },
   { value: BOOKING_STATUS.COMPLETED, label: 'Hoàn thành' },
   { value: BOOKING_STATUS.CANCELLED, label: 'Đã hủy' },
 ];
@@ -146,10 +148,17 @@ const TripHistoryPage = () => {
                     )}>
                       {BOOKING_STATUS_LABEL[trip.bookingStatus]}
                     </span>
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-content-muted">
-                      <RiTimeLine size={14} />
-                      {formatDate(trip.bookingTime)}
-                    </span>
+                    {trip.scheduledAt ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded">
+                        <RiCalendarEventLine size={13} />
+                        Đón lúc: {new Date(trip.scheduledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-content-muted">
+                        <RiTimeLine size={14} />
+                        {formatDate(trip.bookingTime)}
+                      </span>
+                    )}
                   </div>
                   <span className="font-mono text-xs font-medium text-content-muted">
                     #{trip.bookingId.slice(-6).toUpperCase()}

@@ -185,12 +185,12 @@ const BookingPage = () => {
     return () => clearInterval(timer)
   }, [countdown])
 
-  const handleBook = async () => {
+  const handleBook = async (scheduledAt = null) => {
     if (!selectedVType || !pickup || !dropoff) {
-      toast.error('Vui lòng điền đầy đủ thông tin')
+      toast.error('Vui lòng chọn đầy đủ thông tin!')
       return
     }
-    if (countdown <= 0) {
+    if (!scheduledAt && countdown <= 0) {
       toast.error('Báo giá đã hết hạn, vui lòng làm mới giá')
       return
     }
@@ -211,6 +211,7 @@ const BookingPage = () => {
         vehicleTypeId:   selectedVType.vehicleTypeId,
         promotionCodes:  selectedPromos.map(p => p.promotionCode),
         quoteId:         selectedEstimate?.quoteId,
+        scheduledAt:     scheduledAt || null,
         returnUrl: `${window.location.origin}/customer/booking`
       }
       const booking = await bookingApi.createBooking(payload)
@@ -221,6 +222,9 @@ const BookingPage = () => {
 
       if (paymentMethod === PAYMENT_METHOD.ONLINE && booking.paymentUrl) {
         window.location.href = booking.paymentUrl
+      } else if (booking.bookingStatus === BOOKING_STATUS.QUEUED || scheduledAt) {
+        toast.success('Đặt lịch đón thành công! Chuyến đi đã được lên lịch hẹn.')
+        navigate(`/customer/tracking/${booking.bookingId}`, { state: { bookingId: booking.bookingId } })
       } else {
         toast.success('Đặt xe thành công! Đang tìm tài xế...')
         setStep(3)
@@ -260,8 +264,13 @@ const BookingPage = () => {
         setCurrentBooking(result)
         const isPaid = result?.paymentStatus === true || result?.paymentStatus === 'PAID' || vnpStatus === '00' || momoCode === '0'
         if (isPaid) {
-          toast.success('Thanh toán thành công! Đang tìm tài xế...')
-          setStep(3)
+          if (result?.bookingStatus === BOOKING_STATUS.QUEUED || result?.scheduledAt) {
+            toast.success('Thanh toán thành công! Chuyến đi đã được lên lịch đón.')
+            navigate(`/customer/tracking/${urlBookingId}`, { state: { bookingId: urlBookingId } })
+          } else {
+            toast.success('Thanh toán thành công! Đang tìm tài xế...')
+            setStep(3)
+          }
           setSearchParams({}, { replace: true })
         } else {
           toast.error('Thanh toán thất bại hoặc bị huỷ.')
@@ -272,14 +281,18 @@ const BookingPage = () => {
       return
     }
 
-    if (currentBooking && currentBooking.bookingStatus === BOOKING_STATUS.PENDING && step !== 3) {
+    if (currentBooking && (currentBooking.bookingStatus === BOOKING_STATUS.PENDING || currentBooking.bookingStatus === BOOKING_STATUS.QUEUED) && step !== 3) {
       const isOnline = currentBooking.paymentMethod === 'ONLINE'
       const isPaid = currentBooking.paymentStatus === true || location.state?.paymentSuccess || vnpStatus === '00' || momoCode === '0'
       if (!isOnline || isPaid) {
-        setStep(3)
+        if (currentBooking.bookingStatus === BOOKING_STATUS.QUEUED) {
+          navigate(`/customer/tracking/${currentBooking.bookingId}`, { state: { bookingId: currentBooking.bookingId } })
+        } else {
+          setStep(3)
+        }
       }
     }
-  }, [currentBooking, step, location.state, searchParams, setCurrentBooking])
+  }, [currentBooking, step, location.state, searchParams, setCurrentBooking, navigate])
 
   // --- Map Select Location logic ---
   const openMapSelection = (type) => {
