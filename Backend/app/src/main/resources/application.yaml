@@ -113,6 +113,12 @@ app:
         allowed-origins: ${CORS_ALLOWED_ORIGINS:${FRONTEND_URL:http://localhost:5173}}
     commission:
         platform-rate: 0.3
+    booking:
+        scheduling:
+            cron: ${BOOKING_SCHEDULING_CRON:0 * * * * *}
+            dispatch-before: ${BOOKING_DISPATCH_BEFORE:15m}
+            batch-size: ${BOOKING_SCHEDULING_BATCH_SIZE:100}
+            zone: ${BOOKING_SCHEDULING_ZONE:Asia/Ho_Chi_Minh}
     time-to-live:
         otp: 300000
         password-reset-token: 3600000

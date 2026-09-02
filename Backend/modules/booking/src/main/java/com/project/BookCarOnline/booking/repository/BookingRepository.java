@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -55,8 +56,39 @@ public interface BookingRepository extends JpaRepository<Booking, String>, JpaSp
     // ✅ Customer bookings
     List<Booking> findByCustomerIdOrderByBookingTimeDesc(String customerId);
 
-    @Query("SELECT b FROM Booking b WHERE b.customerId = :customerId AND b.bookingStatus IN ('PENDING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
+    @Query("SELECT b FROM Booking b WHERE b.customerId = :customerId AND b.bookingStatus IN ('QUEUED', 'PENDING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
     List<Booking> findActiveByCustomer(@Param("customerId") String customerId);
+
+    @Query("""
+            SELECT b FROM Booking b
+            WHERE b.bookingStatus = :status
+              AND b.driverId IS NULL
+              AND b.scheduledAt IS NOT NULL
+              AND b.scheduledAt <= :cutoff
+            ORDER BY b.scheduledAt ASC, b.bookingId ASC
+            """)
+    List<Booking> findDueScheduledBookings(
+            @Param("status") BookingStatus status,
+            @Param("cutoff") LocalDateTime cutoff,
+            Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query("""
+            UPDATE Booking b
+            SET b.bookingStatus = :targetStatus,
+                b.version = b.version + 1
+            WHERE b.bookingId = :bookingId
+              AND b.bookingStatus = :expectedStatus
+              AND b.driverId IS NULL
+              AND b.scheduledAt IS NOT NULL
+              AND b.scheduledAt <= :cutoff
+            """)
+    int claimScheduledBooking(
+            @Param("bookingId") String bookingId,
+            @Param("expectedStatus") BookingStatus expectedStatus,
+            @Param("targetStatus") BookingStatus targetStatus,
+            @Param("cutoff") LocalDateTime cutoff);
 
     @Query("SELECT b FROM Booking b WHERE b.driverId = :driverId AND b.bookingStatus IN ('PENDING', 'ACCEPTED', 'IN_PROGRESS', 'ARRIVED')")
     List<Booking> findActiveBookingByDriverId(@Param("driverId") String driverId);

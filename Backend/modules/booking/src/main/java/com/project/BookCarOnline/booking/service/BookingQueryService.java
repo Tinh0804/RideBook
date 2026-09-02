@@ -220,6 +220,7 @@ public class BookingQueryService {
                 .originalPrice(booking.getOriginalPrice())
                 .totalPrice(booking.getTotalPrice())
                 .bookingTime(booking.getBookingTime())
+                .scheduledAt(booking.getScheduledAt())
                 .pickupTime(booking.getPickupTime())
                 .arrivalTime(booking.getArrivalTime())
                 .bookingStatus(booking.getBookingStatus())

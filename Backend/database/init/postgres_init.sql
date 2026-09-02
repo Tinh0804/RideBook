@@ -3,7 +3,7 @@ CREATE DATABASE "RideBookDB";
 \c "RideBookDB";
 
 
-CREATE TYPE BookingStatus AS ENUM ('ACCEPTED', 'ARRIVED', 'CANCELLED', 'COMPLETED', 'IN_PROGRESS', 'PENDING');
+CREATE TYPE BookingStatus AS ENUM ('ACCEPTED', 'ARRIVED', 'CANCELLED', 'COMPLETED', 'IN_PROGRESS', 'PENDING', 'QUEUED');
 CREATE CAST (VARCHAR AS BookingStatus) WITH INOUT AS IMPLICIT;
 CREATE CAST (BookingStatus AS VARCHAR) WITH INOUT AS IMPLICIT;
 
@@ -167,9 +167,12 @@ CREATE TABLE booking (
     pickup_location VARCHAR(255),
     dropoff_location VARCHAR(255),
     booking_time TIMESTAMP(6),
+    scheduled_at TIMESTAMP(6),
     pickup_time TIMESTAMP(6),
     arrival_time TIMESTAMP(6)
 );
+
+CREATE INDEX idx_booking_status_scheduled_at ON booking (booking_status, scheduled_at);
 
 CREATE TABLE booking_rejection (
     rejection_id VARCHAR(36) PRIMARY KEY,
@@ -478,7 +481,6 @@ begin
 	order by Distance asc;
 end;
 $$;
-
 
 
 

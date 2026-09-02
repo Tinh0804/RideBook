@@ -1,6 +1,7 @@
 package com.project.BookCarOnline.booking.service;
 
 import com.google.maps.model.GeocodingResult;
+import com.project.BookCarOnline.booking.config.BookingSchedulingProperties;
 import com.project.BookCarOnline.booking.dto.request.CreateBookingRequest;
 import com.project.BookCarOnline.booking.dto.request.EstimatePriceRequest;
 import com.project.BookCarOnline.booking.dto.response.BookingDetailResponse;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -61,6 +63,7 @@ public class BookingService {
     DriverCacheService driverCacheService;
     BookingQueryService bookingQueryService;
     BookingQuoteService bookingQuoteService;
+    BookingSchedulingProperties bookingSchedulingProperties;
 
     SimpMessagingTemplate messagingTemplate;
 
@@ -74,6 +77,12 @@ public class BookingService {
 
     @Transactional
     public BookingDetailResponse createBooking(CreateBookingRequest request) {
+
+        LocalDateTime now = LocalDateTime.now(ZoneId.of(bookingSchedulingProperties.getZone()));
+        LocalDateTime scheduledAt = request.getScheduledAt();
+        if (scheduledAt != null && !scheduledAt.isAfter(now)) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
 
         FareQuote quote = bookingQuoteService.getQuote(request.getQuoteId());
 
@@ -123,8 +132,9 @@ public class BookingService {
                 .dropoffLng(request.getDropoffLng())
                 .originalPrice(quote.getOriginalPrice())
                 .totalPrice(quote.getTotalPrice())
-                .bookingTime(Timestamp.valueOf(LocalDateTime.now()))
-                .bookingStatus(BookingStatus.PENDING)
+                .bookingTime(Timestamp.valueOf(now))
+                .scheduledAt(scheduledAt)
+                .bookingStatus(scheduledAt == null ? BookingStatus.PENDING : BookingStatus.QUEUED)
                 .distance(quote.getDistance())
                 .paymentId(payment.paymentId())
                 .build();
@@ -154,9 +164,13 @@ public class BookingService {
         // Xóa quote khỏi Redis (tránh dùng lại)
         bookingQuoteService.deleteQuote(request.getQuoteId());
 
-        if (isCash) {
-            dispatcherService.dispatchNearbyDrivers(saved, pickupLat, pickupLng, Set.of());
-        } else {
+        if (scheduledAt == null) {
+            if (isCash) {
+                dispatcherService.dispatchNearbyDrivers(saved, pickupLat, pickupLng, Set.of());
+            } else {
+                paymentTimeoutService.schedulePaymentTimeout(saved.getBookingId(), 10 * 60 * 1000L);
+            }
+        } else if (!isCash) {
             paymentTimeoutService.schedulePaymentTimeout(saved.getBookingId(), 10 * 60 * 1000L);
         }
 
@@ -166,6 +180,11 @@ public class BookingService {
     public void dispatchAfterPayment(String bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getScheduledAt() != null) {
+            log.debug("[Booking] Booking={} là chuyến hẹn giờ, chờ scheduler điều phối", bookingId);
+            return;
+        }
 
         // Chỉ dispatch nếu vẫn còn PENDING
         if (!BookingStatus.PENDING.equals(booking.getBookingStatus()) || booking.getDriverId() != null) {
@@ -209,14 +228,17 @@ public class BookingService {
             }
             paymentService.markPaid(booking.getPaymentId());
         }
-        booking.setBookingStatus(BookingStatus.PENDING);
+        boolean scheduled = booking.getScheduledAt() != null;
+        booking.setBookingStatus(scheduled ? BookingStatus.QUEUED : BookingStatus.PENDING);
         bookingRepository.save(booking);
         if (booking.getCustomerId() != null) {
             messagingTemplate.convertAndSend(
                     "/topic/customer/" + booking.getCustomerId(),
                     "PAYMENT_SUCCESS:" + bookingId);
         }
-        dispatchAfterPayment(bookingId);
+        if (!scheduled) {
+            dispatchAfterPayment(bookingId);
+        }
     }
 
     public void notifyPaymentFailed(String bookingId) {
@@ -361,7 +383,8 @@ public class BookingService {
     @Transactional
     public BookingDetailResponse adminForceCancel(String bookingId) {
         Booking booking = getBookingOrThrow(bookingId);
-        Set<BookingStatus> cancellable = Set.of(BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.ARRIVED);
+        Set<BookingStatus> cancellable = Set.of(
+                BookingStatus.QUEUED, BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.ARRIVED);
         if (!cancellable.contains(booking.getBookingStatus())) {
             throw new IllegalStateException("Chỉ có thể huỷ chuyến khi chưa đón khách (trạng thái hiện tại: "
                     + booking.getBookingStatus() + ")");
@@ -461,7 +484,9 @@ public class BookingService {
             case ARRIVED -> current == BookingStatus.ACCEPTED;
             case IN_PROGRESS -> current == BookingStatus.ARRIVED;
             case COMPLETED -> current == BookingStatus.IN_PROGRESS;
-            case CANCELLED -> current == BookingStatus.PENDING || current == BookingStatus.ACCEPTED;
+            case CANCELLED -> current == BookingStatus.QUEUED
+                    || current == BookingStatus.PENDING
+                    || current == BookingStatus.ACCEPTED;
             default -> false;
         };
         if (!valid) {
