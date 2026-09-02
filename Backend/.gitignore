@@ -33,3 +33,5 @@ build/
 .vscode/
 
 .env
+*firebase*.json
+**/firebase*.json

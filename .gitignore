@@ -18,3 +18,5 @@ deploy/**/release.env
 deploy/**/backups/
 deploy/**/*.dump
 deploy/**/*.rdb
+*firebase*.json
+**/firebase*.json

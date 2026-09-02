@@ -30,6 +30,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate deployment contracts
+        working-directory: .
+        run: bash deploy/tests/deployment-contract.sh
+
       - name: Ensure release revision belongs to main
         run: |
           git fetch origin main
@@ -81,6 +85,9 @@ jobs:
     name: Deploy published image
     needs: build-and-publish
     if: github.event_name != 'workflow_dispatch' || inputs.deploy
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy-production.yml
     with:
       image_ref: ${{ needs.build-and-publish.outputs.image_ref }}

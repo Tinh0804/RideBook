@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -30,19 +30,35 @@ public class FirebaseService {
     private String credentialsPath;
 
     @PostConstruct
-    private void init() throws IOException {
+    private void init() {
         if (credentialsPath == null || credentialsPath.isBlank()) {
             log.warn("Firebase credentials are not configured; storage operations are disabled");
             return;
         }
-        InputStream classpathStream = getClass().getClassLoader().getResourceAsStream(credentialsPath);
-        try (InputStream serviceAccount = classpathStream != null
-                ? classpathStream
-                : Files.newInputStream(Path.of(credentialsPath))) {
-            this.storage = StorageOptions.newBuilder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .build()
-                    .getService();
+        try {
+            InputStream classpathStream = getClass().getClassLoader().getResourceAsStream(credentialsPath);
+            Path filePath = Path.of(credentialsPath);
+            if (classpathStream != null) {
+                try (InputStream serviceAccount = classpathStream) {
+                    this.storage = StorageOptions.newBuilder()
+                            .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                            .build()
+                            .getService();
+                    log.info("Firebase Storage initialized successfully from classpath");
+                }
+            } else if (Files.exists(filePath)) {
+                try (InputStream serviceAccount = Files.newInputStream(filePath)) {
+                    this.storage = StorageOptions.newBuilder()
+                            .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                            .build()
+                            .getService();
+                    log.info("Firebase Storage initialized successfully from path: {}", credentialsPath);
+                }
+            } else {
+                log.warn("Firebase credentials file not found at '{}'; storage operations are disabled", credentialsPath);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to initialize Firebase Storage from '{}': {}", credentialsPath, e.getMessage());
         }
     }
 
@@ -83,6 +99,11 @@ public class FirebaseService {
                 ? fileName
                 : folderPath.replaceAll("/$", "") + "/" + fileName;
 
+        if (storage == null) {
+            log.warn("Firebase Storage is not initialized; skipping upload of {}", fullPath);
+            return fullPath;
+        }
+
         BlobId blobId = BlobId.of(bucketName, fullPath);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
                 .setContentType(file.getContentType())
@@ -95,9 +116,13 @@ public class FirebaseService {
     }
 
     public byte[] getFile(String filePath) {
+        if (storage == null) {
+            log.warn("Firebase Storage is not initialized; cannot get file {}", filePath);
+            return null;
+        }
         try {
             Blob blob = storage.get(BlobId.of(bucketName, filePath));
-            return blob.getContent();
+            return blob != null ? blob.getContent() : null;
         } catch (StorageException e) {
             log.error("File not found: {}", filePath);
             return null;
@@ -105,6 +130,10 @@ public class FirebaseService {
     }
 
     public void deleteFile(String filePath) {
+        if (storage == null) {
+            log.warn("Firebase Storage is not initialized; cannot delete file {}", filePath);
+            return;
+        }
         storage.delete(BlobId.of(bucketName, filePath));
         log.info("Deleted file from Firebase: {}", filePath);
     }

@@ -20,6 +20,8 @@ if [[ ! -f "$runtime_env_file" ]]; then
     exit 1
 fi
 
+"$script_dir/validate-runtime-env.sh" "$runtime_env_file"
+
 umask 077
 mkdir -p "$state_dir"
 exec 9>"$state_dir/deploy.lock"
