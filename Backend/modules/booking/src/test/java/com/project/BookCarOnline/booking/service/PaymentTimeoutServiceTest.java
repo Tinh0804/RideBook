@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,9 @@ class PaymentTimeoutServiceTest {
     @Mock
     SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    ScheduledBookingQueue scheduledBookingQueue;
+
     @InjectMocks
     PaymentTimeoutService paymentTimeoutService;
 
@@ -41,6 +45,7 @@ class PaymentTimeoutServiceTest {
                 .customerId("customer-1")
                 .paymentId("payment-1")
                 .bookingStatus(BookingStatus.QUEUED)
+                .scheduledAt(LocalDateTime.of(2026, 9, 2, 8, 30))
                 .build();
         when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(booking));
         when(paymentService.get("payment-1"))
@@ -50,6 +55,7 @@ class PaymentTimeoutServiceTest {
 
         assertThat(booking.getBookingStatus()).isEqualTo(BookingStatus.CANCELLED);
         verify(bookingRepository).save(booking);
+        verify(scheduledBookingQueue).remove("booking-1");
         verify(messagingTemplate).convertAndSend(
                 "/topic/customer/customer-1", "PAYMENT_TIMEOUT:booking-1");
     }

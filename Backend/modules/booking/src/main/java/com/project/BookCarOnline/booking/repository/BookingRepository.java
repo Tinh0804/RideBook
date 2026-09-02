@@ -59,19 +59,6 @@ public interface BookingRepository extends JpaRepository<Booking, String>, JpaSp
     @Query("SELECT b FROM Booking b WHERE b.customerId = :customerId AND b.bookingStatus IN ('QUEUED', 'PENDING', 'ACCEPTED', 'ARRIVED', 'IN_PROGRESS') ORDER BY b.bookingTime DESC")
     List<Booking> findActiveByCustomer(@Param("customerId") String customerId);
 
-    @Query("""
-            SELECT b FROM Booking b
-            WHERE b.bookingStatus = :status
-              AND b.driverId IS NULL
-              AND b.scheduledAt IS NOT NULL
-              AND b.scheduledAt <= :cutoff
-            ORDER BY b.scheduledAt ASC, b.bookingId ASC
-            """)
-    List<Booking> findDueScheduledBookings(
-            @Param("status") BookingStatus status,
-            @Param("cutoff") LocalDateTime cutoff,
-            Pageable pageable);
-
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @Query("""

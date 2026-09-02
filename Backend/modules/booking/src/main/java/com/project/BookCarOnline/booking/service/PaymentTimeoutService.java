@@ -19,6 +19,7 @@ public class PaymentTimeoutService {
     private final BookingRepository bookingRepository;
     private final PaymentService paymentService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ScheduledBookingQueue scheduledBookingQueue;
 
     public void schedulePaymentTimeout(String bookingId, long timeoutMillis) {
         CompletableFuture.runAsync(
@@ -35,6 +36,15 @@ public class PaymentTimeoutService {
             if (!paid && awaitingPayment) {
                 booking.setBookingStatus(BookingStatus.CANCELLED);
                 bookingRepository.save(booking);
+                if (booking.getScheduledAt() != null) {
+                    try {
+                        scheduledBookingQueue.remove(bookingId);
+                    } catch (RuntimeException exception) {
+                        log.warn("[ScheduledBooking] Không thể xóa booking={} khỏi ZSET sau payment timeout",
+                                bookingId,
+                                exception);
+                    }
+                }
                 if (booking.getCustomerId() != null) {
                     messagingTemplate.convertAndSend(
                             "/topic/customer/" + booking.getCustomerId(),

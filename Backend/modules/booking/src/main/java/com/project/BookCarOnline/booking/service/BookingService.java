@@ -36,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -64,6 +66,7 @@ public class BookingService {
     BookingQueryService bookingQueryService;
     BookingQuoteService bookingQuoteService;
     BookingSchedulingProperties bookingSchedulingProperties;
+    ScheduledBookingQueue scheduledBookingQueue;
 
     SimpMessagingTemplate messagingTemplate;
 
@@ -163,6 +166,10 @@ public class BookingService {
 
         // Xóa quote khỏi Redis (tránh dùng lại)
         bookingQuoteService.deleteQuote(request.getQuoteId());
+
+        if (scheduledAt != null) {
+            scheduledBookingQueue.schedule(saved.getBookingId(), scheduledAt);
+        }
 
         if (scheduledAt == null) {
             if (isCash) {
@@ -342,6 +349,7 @@ public class BookingService {
                 .orElseThrow(() -> new AppException(ErrorCode.BOOKING_NOT_FOUND));
         booking.setBookingStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+        removeScheduledJobAfterCommit(booking);
 
         if (booking.getDriverId() != null) {
             messagingTemplate.convertAndSend(
@@ -369,6 +377,7 @@ public class BookingService {
 
         booking.setBookingStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+        removeScheduledJobAfterCommit(booking);
 
         if (booking.getCustomerId() != null) {
             messagingTemplate.convertAndSend(
@@ -391,6 +400,7 @@ public class BookingService {
         }
         booking.setBookingStatus(BookingStatus.CANCELLED);
         Booking updated = bookingRepository.save(booking);
+        removeScheduledJobAfterCommit(booking);
 
         if (booking.getDriverId() != null) {
             messagingTemplate.convertAndSend(
@@ -477,6 +487,32 @@ public class BookingService {
 
     private boolean isCashPayment(String paymentMethod) {
         return PaymentMethod.CASH.name().equalsIgnoreCase(paymentMethod != null ? paymentMethod : "ONLINE");
+    }
+
+    private void removeScheduledJobAfterCommit(Booking booking) {
+        if (booking.getScheduledAt() == null) {
+            return;
+        }
+
+        Runnable removeJob = () -> {
+            try {
+                scheduledBookingQueue.remove(booking.getBookingId());
+            } catch (RuntimeException exception) {
+                log.warn("[ScheduledBooking] Không thể xóa booking={} khỏi ZSET sau khi hủy",
+                        booking.getBookingId(),
+                        exception);
+            }
+        };
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    removeJob.run();
+                }
+            });
+        } else {
+            removeJob.run();
+        }
     }
 
     private void validateStatusTransition(BookingStatus current, BookingStatus next) {

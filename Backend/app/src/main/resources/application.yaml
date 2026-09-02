@@ -115,10 +115,17 @@ app:
         platform-rate: 0.3
     booking:
         scheduling:
-            cron: ${BOOKING_SCHEDULING_CRON:0 * * * * *}
             dispatch-before: ${BOOKING_DISPATCH_BEFORE:15m}
             batch-size: ${BOOKING_SCHEDULING_BATCH_SIZE:100}
             zone: ${BOOKING_SCHEDULING_ZONE:Asia/Ho_Chi_Minh}
+            zset-key: ${BOOKING_SCHEDULING_ZSET_KEY:ridebook:{scheduled-booking}:due}
+            stream-key: ${BOOKING_SCHEDULING_STREAM_KEY:ridebook:{scheduled-booking}:stream}
+            consumer-group: ${BOOKING_SCHEDULING_CONSUMER_GROUP:scheduled-booking-dispatchers}
+            promote-interval: ${BOOKING_SCHEDULING_PROMOTE_INTERVAL:1s}
+            listener-poll-timeout: ${BOOKING_SCHEDULING_LISTENER_POLL_TIMEOUT:2s}
+            pending-min-idle: ${BOOKING_SCHEDULING_PENDING_MIN_IDLE:30s}
+            pending-recovery-interval: ${BOOKING_SCHEDULING_PENDING_RECOVERY_INTERVAL:30s}
+            consumer-reconnect-interval: ${BOOKING_SCHEDULING_CONSUMER_RECONNECT_INTERVAL:30s}
     time-to-live:
         otp: 300000
         password-reset-token: 3600000

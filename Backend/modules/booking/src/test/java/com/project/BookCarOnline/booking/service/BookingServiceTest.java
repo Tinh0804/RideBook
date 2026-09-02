@@ -69,6 +69,9 @@ class BookingServiceTest {
     @Mock
     BookingSchedulingProperties bookingSchedulingProperties;
 
+    @Mock
+    ScheduledBookingQueue scheduledBookingQueue;
+
     @InjectMocks
     BookingService bookingService;
 
@@ -159,6 +162,7 @@ class BookingServiceTest {
         verify(bookingRepository).save(bookingCaptor.capture());
         assertThat(bookingCaptor.getValue().getScheduledAt()).isEqualTo(scheduledAt);
         assertThat(bookingCaptor.getValue().getBookingStatus()).isEqualTo(BookingStatus.QUEUED);
+        verify(scheduledBookingQueue).schedule("booking-1", scheduledAt);
         verify(rideDispatcherService, never()).dispatchNearbyDrivers(any(),
                 org.mockito.ArgumentMatchers.anyDouble(),
                 org.mockito.ArgumentMatchers.anyDouble(),

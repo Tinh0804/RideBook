@@ -10,21 +10,20 @@ import com.project.BookCarOnline.finance.service.PaymentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.RecordId;
+import org.springframework.data.redis.connection.stream.StreamRecords;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +39,9 @@ class ScheduledBookingDispatcherTest {
     @Mock
     RideDispatcherService rideDispatcherService;
 
+    @Mock
+    ScheduledBookingQueue scheduledBookingQueue;
+
     BookingSchedulingProperties properties;
     ScheduledBookingDispatcher scheduledBookingDispatcher;
 
@@ -47,70 +49,118 @@ class ScheduledBookingDispatcherTest {
     void setUp() {
         properties = new BookingSchedulingProperties();
         properties.setDispatchBefore(Duration.ofMinutes(15));
-        properties.setBatchSize(25);
         scheduledBookingDispatcher = new ScheduledBookingDispatcher(
-                bookingRepository, paymentService, rideDispatcherService, properties);
+                bookingRepository,
+                paymentService,
+                rideDispatcherService,
+                scheduledBookingQueue,
+                properties);
     }
 
     @Test
-    void dispatchesPaidBookingWhenItEntersDispatchWindow() {
+    void dispatchesAndAcknowledgesPaidBookingFromStream() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
-        LocalDateTime scheduledAt = now.plusMinutes(10);
-        Booking queued = queuedBooking(scheduledAt);
-        Booking claimed = queuedBooking(scheduledAt);
+        Booking queued = queuedBooking(now.plusMinutes(10));
+        Booking claimed = queuedBooking(now.plusMinutes(10));
         claimed.setBookingStatus(BookingStatus.PENDING);
+        MapRecord<String, String, String> message = message("booking-1");
 
-        when(bookingRepository.findDueScheduledBookings(
-                eq(BookingStatus.QUEUED), any(LocalDateTime.class), any(Pageable.class)))
-                .thenReturn(List.of(queued));
+        when(bookingRepository.findById("booking-1"))
+                .thenReturn(Optional.of(queued), Optional.of(claimed));
         when(paymentService.get("payment-1"))
                 .thenReturn(new PaymentSummary("payment-1", PaymentMethod.ONLINE, 100_000D, true));
         when(bookingRepository.claimScheduledBooking(
                 "booking-1", BookingStatus.QUEUED, BookingStatus.PENDING, now.plusMinutes(15)))
                 .thenReturn(1);
-        when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(claimed));
 
-        scheduledBookingDispatcher.dispatchDueBookings(now);
+        scheduledBookingDispatcher.handle(message, now);
 
-        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
-        verify(bookingRepository).findDueScheduledBookings(
-                eq(BookingStatus.QUEUED), eq(now.plusMinutes(15)), pageable.capture());
-        assertThat(pageable.getValue().getPageSize()).isEqualTo(25);
-        verify(rideDispatcherService).dispatchNearbyDrivers(claimed, 10.75D, 106.67D, Set.of());
+        verify(rideDispatcherService).dispatchScheduledBooking(claimed);
+        verify(scheduledBookingQueue).acknowledge(message);
     }
 
     @Test
-    void skipsQueuedOnlineBookingUntilPaymentSucceeds() {
+    void leavesMessagePendingUntilOnlinePaymentSucceeds() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
         Booking queued = queuedBooking(now.plusMinutes(5));
-        when(bookingRepository.findDueScheduledBookings(
-                eq(BookingStatus.QUEUED), any(LocalDateTime.class), any(Pageable.class)))
-                .thenReturn(List.of(queued));
+        MapRecord<String, String, String> message = message("booking-1");
+        when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(queued));
         when(paymentService.get("payment-1"))
                 .thenReturn(new PaymentSummary("payment-1", PaymentMethod.ONLINE, 100_000D, false));
 
-        scheduledBookingDispatcher.dispatchDueBookings(now);
+        scheduledBookingDispatcher.handle(message, now);
 
         verify(bookingRepository, never()).claimScheduledBooking(any(), any(), any(), any());
-        verify(rideDispatcherService, never()).dispatchNearbyDrivers(any(), any(Double.class), any(Double.class), any());
+        verify(rideDispatcherService, never()).dispatchScheduledBooking(any());
+        verify(scheduledBookingQueue, never()).acknowledge(any());
     }
 
     @Test
-    void doesNotDispatchWhenAnotherSchedulerAlreadyClaimedBooking() {
+    void retriesDispatchForClaimedScheduledBookingAfterConsumerCrash() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
-        Booking queued = queuedBooking(now.plusMinutes(5));
-        when(bookingRepository.findDueScheduledBookings(
-                eq(BookingStatus.QUEUED), any(LocalDateTime.class), any(Pageable.class)))
-                .thenReturn(List.of(queued));
-        when(paymentService.get("payment-1"))
-                .thenReturn(new PaymentSummary("payment-1", PaymentMethod.CASH, 100_000D, true));
-        when(bookingRepository.claimScheduledBooking(
-                eq("booking-1"), eq(BookingStatus.QUEUED), eq(BookingStatus.PENDING), any(LocalDateTime.class)))
-                .thenReturn(0);
+        Booking claimed = queuedBooking(now.plusMinutes(5));
+        claimed.setBookingStatus(BookingStatus.PENDING);
+        MapRecord<String, String, String> message = message("booking-1");
+        when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(claimed));
 
-        scheduledBookingDispatcher.dispatchDueBookings(now);
+        scheduledBookingDispatcher.handle(message, now);
 
-        verify(rideDispatcherService, never()).dispatchNearbyDrivers(any(), any(Double.class), any(Double.class), any());
+        verify(rideDispatcherService).dispatchScheduledBooking(claimed);
+        verify(scheduledBookingQueue).acknowledge(message);
+        verify(bookingRepository, never()).claimScheduledBooking(any(), any(), any(), any());
+    }
+
+    @Test
+    void acknowledgesStaleMessageForCancelledBooking() {
+        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
+        Booking cancelled = queuedBooking(now.plusMinutes(5));
+        cancelled.setBookingStatus(BookingStatus.CANCELLED);
+        MapRecord<String, String, String> message = message("booking-1");
+        when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(cancelled));
+
+        scheduledBookingDispatcher.handle(message, now);
+
+        verify(scheduledBookingQueue).acknowledge(message);
+        verify(rideDispatcherService, never()).dispatchScheduledBooking(any());
+    }
+
+    @Test
+    void leavesMessagePendingWhenDispatcherFailsBeforeHandoffCompletes() {
+        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
+        Booking claimed = queuedBooking(now.plusMinutes(5));
+        claimed.setBookingStatus(BookingStatus.PENDING);
+        MapRecord<String, String, String> message = message("booking-1");
+        when(bookingRepository.findById("booking-1")).thenReturn(Optional.of(claimed));
+        doThrow(new IllegalStateException("dispatch unavailable"))
+                .when(rideDispatcherService).dispatchScheduledBooking(claimed);
+
+        scheduledBookingDispatcher.handle(message, now);
+
+        verify(scheduledBookingQueue, never()).acknowledge(message);
+    }
+
+    @Test
+    void acknowledgesMessageForMissingBookingAfterCommitGracePeriod() {
+        LocalDateTime now = LocalDateTime.of(2026, 9, 1, 8, 0);
+        MapRecord<String, String, String> message = StreamRecords.newRecord()
+                .ofMap(Map.of(ScheduledBookingQueue.BOOKING_ID_FIELD, "missing-booking"))
+                .withStreamKey(properties.getStreamKey())
+                .withId(RecordId.of(now.minusMinutes(1)
+                        .atZone(java.time.ZoneId.of(properties.getZone()))
+                        .toInstant()
+                        .toEpochMilli(), 0));
+        when(bookingRepository.findById("missing-booking")).thenReturn(Optional.empty());
+
+        scheduledBookingDispatcher.handle(message, now);
+
+        verify(scheduledBookingQueue).acknowledge(message);
+    }
+
+    private MapRecord<String, String, String> message(String bookingId) {
+        return StreamRecords.newRecord()
+                .ofMap(Map.of(ScheduledBookingQueue.BOOKING_ID_FIELD, bookingId))
+                .withStreamKey(properties.getStreamKey())
+                .withId(RecordId.of("1725152400000-0"));
     }
 
     private Booking queuedBooking(LocalDateTime scheduledAt) {

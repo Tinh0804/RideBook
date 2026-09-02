@@ -26,4 +26,19 @@ public class BookingSchedulingProperties {
 
     @NotBlank
     private String zone = "Asia/Ho_Chi_Minh";
+
+    @NotBlank
+    private String zsetKey = "ridebook:{scheduled-booking}:due";
+
+    @NotBlank
+    private String streamKey = "ridebook:{scheduled-booking}:stream";
+
+    @NotBlank
+    private String consumerGroup = "scheduled-booking-dispatchers";
+
+    @NotNull
+    private Duration listenerPollTimeout = Duration.ofSeconds(2);
+
+    @NotNull
+    private Duration pendingMinIdle = Duration.ofSeconds(30);
 }

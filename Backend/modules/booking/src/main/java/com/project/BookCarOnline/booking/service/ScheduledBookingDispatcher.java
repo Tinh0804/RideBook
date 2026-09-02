@@ -7,14 +7,12 @@ import com.project.BookCarOnline.booking.repository.BookingRepository;
 import com.project.BookCarOnline.finance.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -24,54 +22,79 @@ public class ScheduledBookingDispatcher {
     private final BookingRepository bookingRepository;
     private final PaymentService paymentService;
     private final RideDispatcherService rideDispatcherService;
+    private final ScheduledBookingQueue scheduledBookingQueue;
     private final BookingSchedulingProperties properties;
 
-    @Scheduled(
-            cron = "${app.booking.scheduling.cron:0 * * * * *}",
-            zone = "${app.booking.scheduling.zone:Asia/Ho_Chi_Minh}")
-    public void dispatchDueBookings() {
-        dispatchDueBookings(LocalDateTime.now(ZoneId.of(properties.getZone())));
+    public void onMessage(MapRecord<String, String, String> message) {
+        handle(message, LocalDateTime.now(ZoneId.of(properties.getZone())));
     }
 
-    void dispatchDueBookings(LocalDateTime now) {
-        LocalDateTime cutoff = now.plus(properties.getDispatchBefore());
-        List<Booking> dueBookings = bookingRepository.findDueScheduledBookings(
-                BookingStatus.QUEUED,
-                cutoff,
-                PageRequest.of(0, properties.getBatchSize()));
-
-        for (Booking candidate : dueBookings) {
-            dispatchIfEligible(candidate, cutoff);
+    void handle(MapRecord<String, String, String> message, LocalDateTime now) {
+        String bookingId = message.getValue().get(ScheduledBookingQueue.BOOKING_ID_FIELD);
+        if (bookingId == null || bookingId.isBlank()) {
+            log.warn("[ScheduledBooking] Bỏ qua stream message={} thiếu bookingId", message.getId());
+            scheduledBookingQueue.acknowledge(message);
+            return;
         }
-    }
 
-    private void dispatchIfEligible(Booking candidate, LocalDateTime cutoff) {
         try {
-            if (!hasSuccessfulPayment(candidate)) {
-                log.debug("[ScheduledBooking] Booking={} đang chờ thanh toán", candidate.getBookingId());
+            Optional<Booking> existing = bookingRepository.findById(bookingId);
+            if (existing.isEmpty()) {
+                if (message.getId().getTimestamp() != null
+                        && message.getId().getTimestamp() + properties.getPendingMinIdle().toMillis()
+                        <= now.atZone(ZoneId.of(properties.getZone())).toInstant().toEpochMilli()) {
+                    log.warn("[ScheduledBooking] Xóa stale message={} cho booking={} không tồn tại",
+                            message.getId(),
+                            bookingId);
+                    scheduledBookingQueue.acknowledge(message);
+                } else {
+                    log.warn("[ScheduledBooking] Booking={} chưa khả dụng; giữ message để retry", bookingId);
+                }
+                return;
+            }
+
+            Booking booking = existing.get();
+            if (isRetryableClaimedBooking(booking)) {
+                dispatch(booking);
+                scheduledBookingQueue.acknowledge(message);
+                return;
+            }
+            if (!BookingStatus.QUEUED.equals(booking.getBookingStatus())) {
+                scheduledBookingQueue.acknowledge(message);
+                return;
+            }
+            if (!hasSuccessfulPayment(booking)) {
+                log.debug("[ScheduledBooking] Booking={} đang chờ thanh toán", bookingId);
                 return;
             }
 
             int claimed = bookingRepository.claimScheduledBooking(
-                    candidate.getBookingId(),
+                    bookingId,
                     BookingStatus.QUEUED,
                     BookingStatus.PENDING,
-                    cutoff);
+                    now.plus(properties.getDispatchBefore()));
             if (claimed == 0) {
                 return;
             }
 
-            bookingRepository.findById(candidate.getBookingId()).ifPresentOrElse(
-                    booking -> rideDispatcherService.dispatchNearbyDrivers(
-                            booking,
-                            booking.getPickupLat(),
-                            booking.getPickupLng(),
-                            Set.of()),
-                    () -> log.warn("[ScheduledBooking] Không tìm thấy booking={} sau khi claim",
-                            candidate.getBookingId()));
+            Booking claimedBooking = bookingRepository.findById(bookingId).orElseThrow();
+            dispatch(claimedBooking);
+            scheduledBookingQueue.acknowledge(message);
         } catch (RuntimeException exception) {
-            log.error("[ScheduledBooking] Không thể dispatch booking={}", candidate.getBookingId(), exception);
+            log.error("[ScheduledBooking] Dispatch thất bại cho booking={}; giữ message để retry",
+                    bookingId,
+                    exception);
         }
+    }
+
+    private boolean isRetryableClaimedBooking(Booking booking) {
+        return BookingStatus.PENDING.equals(booking.getBookingStatus())
+                && booking.getScheduledAt() != null
+                && booking.getDriverId() == null;
+    }
+
+    private void dispatch(Booking booking) {
+        rideDispatcherService.dispatchScheduledBooking(booking);
     }
 
     private boolean hasSuccessfulPayment(Booking booking) {
