@@ -35,4 +35,3 @@ build/
 .env
 *firebase*.json
 **/firebase*.json
-

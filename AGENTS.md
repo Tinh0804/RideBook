@@ -31,4 +31,3 @@
 ## Commit Attribution
 
 - Create commits only when explicitly requested and permitted by project constraints.
-

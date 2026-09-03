@@ -1,169 +1,20 @@
-name: CD Pipeline
-run-name: ${{ github.actor }}
+name: Legacy CD (disabled)
 
-# Chạy song song và cancel job cũ nếu có job mới
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+# Legacy workflow retained temporarily so existing GitHub references remain valid.
+# Production releases are owned exclusively by release-backend.yml and
+# deploy-production.yml.
 on:
-  workflow_run: 
-    workflows:
-      - "CI Pipeline" 
-    types: 
-      - completed 
-    branches: ['main','master','test']
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  deploy-backend:
-    name: 🚀 Deploy Backend 
+  migration-notice:
+    name: Legacy CD is disabled
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 15
-    steps: 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 1
-
-      # Cache SSH keys để giảm thời gian kết nối
-      - name: Cache SSH known hosts
-        uses: actions/cache@v3
-        with:
-          path: ~/.ssh/known_hosts
-          key: ${{ runner.os }}-ssh-known-hosts-${{ secrets.GCP_VM_IP }}
-          restore-keys: |
-            ${{ runner.os }}-ssh-known-hosts
-
-      - name: Copy deployment files to GCP VM
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.GCP_VM_IP }}         
-          username: ${{ secrets.GCP_VM_USER }}  
-          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }} 
-          port: 22
-          source: "deploy/**"
-          target: "/home/${{ secrets.GCP_VM_USER }}/ridebook"         
-          strip_components: 1
-          overwrite: true
-
-      - name: Deploy to GCP VM
-        uses: appleboy/ssh-action@v1.0.3
-        with: 
-          host: ${{ secrets.GCP_VM_IP }}
-          username: ${{ secrets.GCP_VM_USER }} 
-          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }} 
-          port: 22
-          script: |
-            set -euo pipefail
-            echo "🚀 Start Deploying to Google Cloud VM"
-            
-            DEPLOY_DIR="/home/${{ secrets.GCP_VM_USER }}/ridebook"
-            mkdir -p "$DEPLOY_DIR"
-            cd "$DEPLOY_DIR"
-            
-            # Ghi mã định danh phiên bản code và biến môi trường
-            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" > .env
-            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE || 'tinh08042005' }}" >> .env
-            echo "${{ secrets.ENV_PROD }}" >> .env
-            
-            # Loại bỏ biến BACKEND_IMAGE tĩnh nếu có trong ENV_PROD để luôn pull đúng tag commit mới nhất
-            sed -i '/^BACKEND_IMAGE=/d' .env || true
-            
-            # Đăng nhập Docker Hub trên VM để hỗ trợ kéo image từ Private repository
-            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME || vars.DOCKER_NAMESPACE || 'tinh08042005' }}" --password-stdin || true
-            
-            # 1. Đảm bảo Database (Postgres) và Cache (Redis) đang hoạt động (chỉ bật nếu chưa chạy, không recreate nếu đang chạy)
-            echo "🔍 Checking infrastructure services (PostgreSQL & Redis)..."
-            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^postgres$"; then
-              echo "🐘 Starting PostgreSQL container..."
-              sudo docker compose -f compose.prod.yml up -d postgres
-            else
-              echo "🐘 PostgreSQL is already running. Skipping recreate to preserve database state."
-            fi
-            
-            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^redis$"; then
-              echo "⚡ Starting Redis container..."
-              sudo docker compose -f compose.prod.yml up -d redis
-            else
-              echo "⚡ Redis is already running. Skipping recreate to preserve cache state."
-            fi
-            
-            # 2. Pull và triển khai duy nhất Backend container
-            echo "📦 Pulling latest Backend image..."
-            sudo docker compose -f compose.prod.yml pull backend
-            
-            echo "🚀 Updating Backend service..."
-            sudo docker compose -f compose.prod.yml up -d --no-deps backend
-            
-            # 3. Đảm bảo Nginx Reverse Proxy hoạt động
-            if ! sudo docker compose -f compose.prod.yml ps --status running --services | grep -q "^nginx$"; then
-              echo "🌐 Starting Nginx..."
-              sudo docker compose -f compose.prod.yml up -d nginx
-            else
-              echo "🌐 Reloading Nginx configuration..."
-              sudo docker compose -f compose.prod.yml exec -T nginx nginx -s reload 2>/dev/null || sudo docker compose -f compose.prod.yml up -d --no-deps nginx
-            fi
-            
-            # 4. Kiểm tra trạng thái toàn bộ containers
-            echo "🔍 Checking container status..."
-            sudo docker compose -f compose.prod.yml ps
-            
-            # 5. Dọn dẹp images cũ
-            echo "🧹 Cleaning up old unused images..."
-            sudo docker image prune -f -a --filter "until=24h" || true
-            
-            echo "✅ Deploy Backend GCP Successfully"
-
-  deploy-frontend:
-    name: 🚀 Deploy Frontend
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 5
     steps:
-      # Checkout code để truy cập file package-lock.json
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 1
-
-      # Setup Node với cache đúng đường dẫn
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './WebAPP/package-lock.json'
-
-      # Kiểm tra xem frontend có thay đổi không
-      - name: Check if frontend changed
-        id: check-changes
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: files } = await github.rest.repos.compareCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              base: '${{ github.event.workflow_run.head_sha }}^',
-              head: '${{ github.event.workflow_run.head_sha }}'
-            });
-            const frontendChanged = files.files.some(file => 
-              file.filename.startsWith('WebAPP/') || 
-              file.filename.startsWith('deploy/nginx/')
-            );
-            return frontendChanged;
-
-      # Trigger Vercel nếu có thay đổi
-      - name: Trigger Vercel Deployment
-        if: steps.check-changes.outputs.result == 'true'
+      - name: Explain the supported release path
         run: |
-          echo "🚀 Triggering Vercel deployment..."
-          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}" -d ""
-          echo "✅ Vercel deployment triggered"
-
-      - name: Skip deployment
-        if: steps.check-changes.outputs.result == 'false'
-        run: |
-          echo "⏭️ No frontend changes, skipping Vercel deployment"
+          echo "Legacy CD is disabled."
+          echo "Run the Release Backend workflow to deploy an immutable image digest."
