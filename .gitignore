@@ -20,4 +20,3 @@ deploy/**/*.dump
 deploy/**/*.rdb
 *firebase*.json
 **/firebase*.json
-

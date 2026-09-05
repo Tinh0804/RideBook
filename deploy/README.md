@@ -10,7 +10,10 @@ deploy/
   │   ├── conf.d/
   │   │   └── api.conf        # API reverse proxy, WebSocket & SSL routing rules
   │   └── nginx.conf          # Master Nginx configuration (worker, gzip, logs)
-  ├── .env.example            # Template for all production environment variables
+  ├── scripts/
+  │   ├── deploy.sh           # Deploy an immutable Backend image and verify health
+  │   └── rollback.sh         # Roll back to the previously healthy image
+  ├── .env.example            # Template only; never used directly by production
   ├── compose.prod.yml        # Docker Compose configuration for production services
   └── README.md               # Deployment instructions and operational manual
 ```
@@ -40,21 +43,36 @@ The production stack runs 4 coordinated containers:
 
 ## 4. Deployment Steps
 
-### Step 1: Prepare Environment Configuration
-Navigate to the `deploy/` directory, create your `.env` file from the template, and configure your secrets:
+### Step 1: Provision the Runtime Environment Once
+
+Production has one runtime configuration source of truth:
+`/etc/ridebook/ridebook.env`. Deployment workflows do not create or overwrite
+this file. Install it once from the template, then replace every placeholder
+with the real production value:
 
 ```bash
-cd deploy
-cp .env.example .env
-chmod 600 .env
+sudo groupadd --force ridebook-deploy
+sudo usermod -aG ridebook-deploy "$USER"
+sudo install -d -o root -g ridebook-deploy -m 750 /etc/ridebook
+sudo install -d -o "$USER" -g ridebook-deploy -m 750 \
+  /opt/ridebook /opt/ridebook/releases /opt/ridebook/state
+sudo install -o root -g ridebook-deploy -m 640 \
+  deploy/.env.example /etc/ridebook/ridebook.env
+sudoedit /etc/ridebook/ridebook.env
+deploy/scripts/validate-runtime-env.sh /etc/ridebook/ridebook.env
 ```
 
-Edit `.env` with actual production values:
-- `BACKEND_IMAGE`: Docker Hub image tag or SHA256 digest (e.g. `tinh08042005/ridebook-backend:latest`).
+Start a new SSH session after adding the deployment user to the group. Edit the
+runtime file with actual production values:
+
 - `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`: PostgreSQL database credentials.
 - `JWT_SIGNER_KEY`: Secure random 256-bit string.
 - `DOMAIN`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`: Your production domain names.
 - OAuth2, VNPay, MoMo, Firebase, and Google Maps credentials.
+
+The deployed Backend digest is intentionally stored separately in
+`/opt/ridebook/state/release.env`; never add `BACKEND_IMAGE` or `IMAGE_TAG` to
+the runtime environment file.
 
 ### Step 2: SSL Certificate Setup
 
@@ -65,15 +83,23 @@ If obtaining the certificate for the first time before starting Nginx:
 sudo certbot certonly --standalone -d api.yourdomain.com
 ```
 
-Ensure certificate paths in `.env` and `/etc/nginx/conf.d/api.conf` match your Let's Encrypt live path (default: `/etc/letsencrypt/live/api.yourdomain.com/fullchain.pem`).
+Ensure certificate paths in the deployment Nginx configuration match your
+Let's Encrypt live path.
 
 ### Step 3: Start Services
 
-Validate the Compose configuration and launch all containers in detached mode:
+Production deployment is owned by `.github/workflows/release-backend.yml`. It
+builds one image, captures its immutable digest, waits for the GitHub production
+environment approval, and invokes `.github/workflows/deploy-production.yml`.
+
+For an authorized manual verification on the VM, use both environment files:
 
 ```bash
-docker compose -f compose.prod.yml config
-docker compose -f compose.prod.yml up -d
+docker compose \
+  --env-file /etc/ridebook/ridebook.env \
+  --env-file /opt/ridebook/state/release.env \
+  -f /opt/ridebook/releases/current/compose.prod.yml \
+  config --quiet
 ```
 
 ### Step 4: Verify Health
@@ -81,7 +107,11 @@ docker compose -f compose.prod.yml up -d
 Check container status and health checks:
 
 ```bash
-docker compose -f compose.prod.yml ps
+docker compose \
+  --env-file /etc/ridebook/ridebook.env \
+  --env-file /opt/ridebook/state/release.env \
+  -f /opt/ridebook/releases/current/compose.prod.yml \
+  ps
 ```
 
 All 4 services should report `healthy` or `running`.
@@ -97,31 +127,50 @@ curl -i http://localhost/nginx-health
 
 ### View Logs
 ```bash
+compose=(docker compose
+  --env-file /etc/ridebook/ridebook.env
+  --env-file /opt/ridebook/state/release.env
+  -f /opt/ridebook/releases/current/compose.prod.yml)
+
 # View all service logs
-docker compose -f compose.prod.yml logs -f
+"${compose[@]}" logs -f
 
 # View backend logs specifically
-docker compose -f compose.prod.yml logs -f backend
+"${compose[@]}" logs -f backend
 
 # View Nginx access & error logs
-docker compose -f compose.prod.yml logs -f nginx
+"${compose[@]}" logs -f nginx
 ```
 
-### Update Backend to New Version
+### Release a New Backend Version
+
+Create an approved `v*` tag or manually run the `Release Backend` workflow.
+Do not run the legacy `CD Pipeline`; it is retained only as a disabled migration
+notice.
+
+### Manual Rollback
+
 ```bash
-# Set new image in .env or via environment variable
-docker compose -f compose.prod.yml pull backend
-docker compose -f compose.prod.yml up -d --no-deps backend
+/opt/ridebook/releases/current/scripts/rollback.sh
 ```
 
 ### Stop / Restart Services
 ```bash
 # Restart all services
-docker compose -f compose.prod.yml restart
+docker compose \
+  --env-file /etc/ridebook/ridebook.env \
+  --env-file /opt/ridebook/state/release.env \
+  -f /opt/ridebook/releases/current/compose.prod.yml restart
 
 # Stop all services gracefully
-docker compose -f compose.prod.yml stop
+docker compose \
+  --env-file /etc/ridebook/ridebook.env \
+  --env-file /opt/ridebook/state/release.env \
+  -f /opt/ridebook/releases/current/compose.prod.yml stop
 
 # Stop and remove containers (preserves named volumes)
-docker compose -f compose.prod.yml down
+docker compose \
+  --env-file /etc/ridebook/ridebook.env \
+  --env-file /opt/ridebook/state/release.env \
+  -f /opt/ridebook/releases/current/compose.prod.yml down
 ```
