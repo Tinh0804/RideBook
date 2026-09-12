@@ -110,7 +110,7 @@ google:
 
 app:
     security:
-        allowed-origins: ${CORS_ALLOWED_ORIGINS:${FRONTEND_URL:http://localhost:5173}}
+        allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,${FRONTEND_URL:http://localhost:3000}}
     commission:
         platform-rate: 0.3
     time-to-live:
@@ -120,7 +120,7 @@ app:
     max-login-attempts: 5
 
 frontend:
-    url: ${FRONTEND_URL}
+    url: ${FRONTEND_URL:http://localhost:5173}
 
 management:
     endpoints:

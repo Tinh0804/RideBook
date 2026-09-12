@@ -30,6 +30,9 @@ export const notificationApi = {
 
   sendAdminNotification: (payload) =>
     apiClient.post('/notifications/admin/send', payload).then((r) => r.data),
+
+  registerDeviceToken: (fcmToken, deviceType = 'WEB') =>
+    apiClient.post('/notifications/token', { fcmToken, deviceType }).then((r) => r.data),
 }
 
 export const masterDataApi = {

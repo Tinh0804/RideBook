@@ -7,6 +7,7 @@ import { customerApi } from '@/features/customer/api/customerApi'
 import { driverApi } from '@/features/driver/api/driverApi'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { ROLES, TOKEN_KEY, REFRESH_TOKEN_KEY, BOOKING_STATUS } from '@/config'
+import { websocketService } from '@/services/websocketService'
 
 export const useAuth = () => {
   const { user, userProfile, isAuth, accessToken, refreshToken, login, logout, updateUser, setUserProfile } =
@@ -105,6 +106,7 @@ export const useAuth = () => {
     navigate(`/login/${currentRole}`, { replace: true })
 
     try {
+      websocketService.disconnect()
       if (refreshToken) await authApi.logout(refreshToken)
     } catch (_) { /* ignore */ }
     logout()

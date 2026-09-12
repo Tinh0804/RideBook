@@ -71,9 +71,9 @@ const AdminEditDriverModal = ({ open, onClose, onSubmit, driver, vehicleTypes })
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Sửa thông tin Tài xế</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 shadow-2xl">
+        <h3 className="text-xl font-bold text-content-main mb-6">Sửa thông tin Tài xế</h3>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           
           <div className="grid grid-cols-2 gap-4">
@@ -100,7 +100,7 @@ const AdminEditDriverModal = ({ open, onClose, onSubmit, driver, vehicleTypes })
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Giới tính" error={errors.gender?.message}>
-              <select {...register('gender')} className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 outline-none transition-all dark:text-white">
+              <select {...register('gender')} className="w-full h-11 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
                 <option value="">Chọn giới tính</option>
                 <option value="Nam">Nam</option>
                 <option value="Nữ">Nữ</option>
@@ -122,7 +122,7 @@ const AdminEditDriverModal = ({ open, onClose, onSubmit, driver, vehicleTypes })
           </div>
 
           <FormField label="Loại xe" error={errors.vehicleTypeId?.message}>
-            <select {...register('vehicleTypeId')} className="w-full h-11 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-2 focus:ring-primary/20 outline-none transition-all dark:text-white">
+            <select {...register('vehicleTypeId')} className="w-full h-11 px-4 rounded-xl border border-surface-border bg-surface-dark text-content-main focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all">
               <option value="">Chọn loại xe</option>
               {vehicleTypes?.map(vt => (
                 <option key={vt.vehicleTypeId} value={vt.vehicleTypeId}>{vt.vehicleTypeName}</option>
@@ -138,11 +138,11 @@ const AdminEditDriverModal = ({ open, onClose, onSubmit, driver, vehicleTypes })
                   setAvatarFile(e.target.files[0])
                 }
               }}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 transition-colors"
+              className="w-full text-sm text-content-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-500/10 file:text-brand-500 hover:file:bg-brand-500/20 transition-colors cursor-pointer"
             />
           </FormField>
 
-          <div className="flex gap-3 justify-end pt-4">
+          <div className="flex gap-3 justify-end pt-4 border-t border-surface-border">
             <Button variant="outline" onClick={onClose} disabled={loading} type="button">Hủy</Button>
             <Button type="submit" loading={loading}>Lưu thay đổi</Button>
           </div>
