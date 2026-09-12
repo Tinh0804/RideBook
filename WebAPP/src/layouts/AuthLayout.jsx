@@ -7,14 +7,15 @@ const AuthLayout = () => {
   const pathname = useLocation().pathname
   const isLogin = pathname.startsWith('/login/')
   const isWelcome = pathname === '/welcome'
-  const isSplit = isLogin || isWelcome
+  const isRegisterCustomer = pathname === '/register/customer'
+  const isSplit = isLogin || isWelcome || isRegisterCustomer
 
   return (
     <div className="min-h-[100dvh] bg-surface-dark text-content-main selection:bg-lime-accent/30">
       <header className="absolute inset-x-0 top-0 z-30 flex h-20 items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link to="/" className="group flex items-center gap-3" aria-label="BookCar - Trang chủ">
           <img src="/logo.png" alt="" className="h-10 w-10 rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6" />
-          <span className={`font-display text-xl font-bold tracking-[-0.04em] ${isSplit ? 'lg:text-white' : ''} ${isWelcome ? 'text-white' : ''}`}>
+          <span className={`font-display text-xl font-bold tracking-[-0.04em] ${isLogin ? 'lg:text-white' : ''} ${isWelcome ? 'text-white' : ''}`}>
             BookCar<span className="text-lime-accent">/</span>
           </span>
         </Link>
@@ -22,7 +23,7 @@ const AuthLayout = () => {
         <button
           type="button"
           onClick={toggleTheme}
-          className={`grid h-10 w-10 place-items-center rounded-full border border-surface-border bg-surface-card/80 text-content-muted backdrop-blur transition hover:border-content-main/30 hover:text-content-main active:scale-95 ${isWelcome ? 'border-white/20 bg-slate-950/35 text-white hover:border-white/40 hover:text-white' : ''}`}
+          className={`grid h-10 w-10 place-items-center rounded-full border border-surface-border bg-surface-card/80 text-content-muted backdrop-blur transition hover:border-content-main/30 hover:text-content-main active:scale-95 ${isWelcome ? 'border-white/20 bg-slate-950/35 text-white hover:border-white/40 hover:text-white' : ''} ${isRegisterCustomer ? 'lg:border-white/20 lg:bg-slate-950/35 lg:text-white lg:hover:border-white/40 lg:hover:text-white' : ''}`}
           title="Đổi giao diện"
           aria-label="Đổi giao diện sáng tối"
         >

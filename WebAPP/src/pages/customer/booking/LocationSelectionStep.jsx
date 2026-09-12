@@ -4,7 +4,10 @@ import {
   RiFocus3Line,
   RiMapPin2Line,
   RiMapPinLine,
+  RiCrosshairLine,
+  RiLoader4Line
 } from 'react-icons/ri'
+import { useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Button from '@/components/Elements/Button'
 import AddressInput from '@/components/Map/AddressInput'
@@ -23,6 +26,15 @@ const LocationSelectionStep = ({
   openMapSelection,
   handleNextStep,
 }) => {
+  const pickupInputRef = useRef(null)
+  const [detectingPickup, setDetectingPickup] = useState(false)
+
+  const handleDetectLocation = async () => {
+    setDetectingPickup(true)
+    await pickupInputRef.current?.detectCurrentLocation()
+    setDetectingPickup(false)
+  }
+
   if (selectingLocationFor) {
     const isPickup = selectingLocationFor === 'pickup'
 
@@ -118,6 +130,7 @@ const LocationSelectionStep = ({
                 <label className="mb-1.5 block text-sm font-semibold text-content-muted">Điểm đón</label>
                 <div className="flex gap-2">
                   <AddressInput
+                    ref={pickupInputRef}
                     placeholder="Tìm điểm đón..."
                     value={pickup?.name || ''}
                     onChange={(name) => setPickup((prev) => ({ ...prev, name }))}
@@ -127,12 +140,16 @@ const LocationSelectionStep = ({
                   />
                   <button
                     type="button"
-                    onClick={() => openMapSelection('pickup')}
-                    disabled={mapLoading === 'pickup'}
+                    onClick={handleDetectLocation}
+                    disabled={detectingPickup || mapLoading === 'pickup'}
                     className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-surface-border bg-surface-dark text-content-muted transition hover:border-brand-500 hover:text-brand-500 active:scale-95"
-                    title="Chọn điểm đón trên bản đồ"
+                    title="Sử dụng vị trí hiện tại"
                   >
-                    {mapLoading === 'pickup' ? <Spinner size="sm" /> : <RiFocus3Line size={20} />}
+                    {detectingPickup ? (
+                      <RiLoader4Line className="animate-spin text-brand-500" size={20} />
+                    ) : (
+                      <RiCrosshairLine size={20} />
+                    )}
                   </button>
                 </div>
               </div>
@@ -175,7 +192,7 @@ const LocationSelectionStep = ({
           disabled={!pickup || !dropoff}
           className="group h-14 rounded-xl font-bold"
         >
-          Xem xe và giá
+          Tiếp tục
           <RiArrowRightLine className="transition-transform group-hover:translate-x-1" />
         </Button>
       </motion.div>

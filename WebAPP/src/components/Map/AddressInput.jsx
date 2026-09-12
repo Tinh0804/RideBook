@@ -1,10 +1,10 @@
 // components/Map/AddressInput.jsx
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { RiMapPinLine, RiCrosshairLine, RiLoader4Line, RiCloseLine } from 'react-icons/ri'
 import Input from '@/components/Elements/Input'
 import { cn } from '@/utils/cn'
 
-const AddressInput = ({
+const AddressInput = forwardRef(({
   value,
   onChange,
   placeholder = "Nhập địa điểm...",
@@ -13,12 +13,17 @@ const AddressInput = ({
   prefixIcon,
   disabled = false,
   showDetectButton = true
-}) => {
+}, ref) => {
   const [query, setQuery] = useState(value || '')
   const [suggestions, setSuggestions] = useState([])
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [detectingLocation, setDetectingLocation] = useState(false)
+
+  useImperativeHandle(ref, () => ({
+    detectCurrentLocation,
+    isDetecting: detectingLocation
+  }))
 
   const containerRef = useRef(null)
   const inputRef = useRef(null)
@@ -131,63 +136,69 @@ const AddressInput = ({
   }
 
   const detectCurrentLocation = () => {
-    setDetectingLocation(true)
+    return new Promise((resolve) => {
+      setDetectingLocation(true)
 
-    if (!navigator.geolocation) {
-      alert('Trình duyệt của bạn không hỗ trợ định vị')
-      setDetectingLocation(false)
-      return
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords
-
-        if (geocoder.current) {
-          geocoder.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-              const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
-
-              setQuery(addressName)
-              setShowDropdown(false)
-              setSuggestions([])
-              isInternalChangeRef.current = true
-              onChange?.(addressName)
-
-              if (onLocationDetect) {
-                onLocationDetect({
-                  name: addressName,
-                  lat: latitude,
-                  lng: longitude,
-                  address: results[0].formatted_address,
-                  isCurrentLocation: true
-                })
-              }
-            } else {
-              // Fallback
-              const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
-              setQuery(fallbackName)
-              onChange?.(fallbackName)
-              if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
-            }
-            setDetectingLocation(false)
-          })
-        } else {
-          const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
-          setQuery(fallbackName)
-          onChange?.(fallbackName)
-          if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
-          setDetectingLocation(false)
-        }
-      },
-      (error) => {
-        let errorMessage = 'Không thể xác định vị trí'
-        if (error.code === error.PERMISSION_DENIED) errorMessage = 'Vui lòng cấp quyền truy cập vị trí để sử dụng tính năng này'
-        alert(errorMessage)
+      if (!navigator.geolocation) {
+        alert('Trình duyệt của bạn không hỗ trợ định vị')
         setDetectingLocation(false)
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    )
+        resolve(false)
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+
+          if (geocoder.current) {
+            geocoder.current.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+              if (status === 'OK' && results[0]) {
+                const addressName = results[0].address_components[0]?.long_name + ' ' + (results[0].address_components[1]?.long_name || '') || results[0].formatted_address
+
+                setQuery(addressName)
+                setShowDropdown(false)
+                setSuggestions([])
+                isInternalChangeRef.current = true
+                onChange?.(addressName)
+
+                if (onLocationDetect) {
+                  onLocationDetect({
+                    name: addressName,
+                    lat: latitude,
+                    lng: longitude,
+                    address: results[0].formatted_address,
+                    isCurrentLocation: true
+                  })
+                }
+              } else {
+                // Fallback
+                const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+                setQuery(fallbackName)
+                onChange?.(fallbackName)
+                if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
+              }
+              setDetectingLocation(false)
+              resolve(true)
+            })
+          } else {
+            const fallbackName = `Vị trí hiện tại (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+            setQuery(fallbackName)
+            onChange?.(fallbackName)
+            if (onLocationDetect) onLocationDetect({ name: fallbackName, lat: latitude, lng: longitude, isCurrentLocation: true })
+            setDetectingLocation(false)
+            resolve(true)
+          }
+        },
+        (error) => {
+          let errorMessage = 'Không thể xác định vị trí'
+          if (error.code === error.PERMISSION_DENIED) errorMessage = 'Vui lòng cấp quyền truy cập vị trí để sử dụng tính năng này'
+          alert(errorMessage)
+          setDetectingLocation(false)
+          resolve(false)
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      )
+    })
   }
 
   return (
@@ -285,6 +296,6 @@ const AddressInput = ({
       )}
     </div>
   )
-}
+})
 
 export default AddressInput

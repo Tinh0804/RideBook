@@ -26,10 +26,28 @@ const STATUS_FLOW = [
   { status: BOOKING_STATUS.IN_PROGRESS, label: 'Đang trên đường', next: BOOKING_STATUS.COMPLETED, action: 'Hoàn thành chuyến đi' },
 ]
 
+const CANCEL_REASONS = [
+  "Khách hàng không xuất hiện",
+  "Khách hàng mang theo quá nhiều hành lý/thú cưng",
+  "Xe gặp sự cố kỹ thuật/hỏng hóc",
+  "Kẹt xe nghiêm trọng/đường cấm",
+  "Lý do khác"
+]
+
 const playSound = (audio) => {
   if (!audio) return
   audio.currentTime = 0
   audio.play().catch(() => { })
+}
+
+const splitAddress = (address) => {
+  if (!address) return { main: '', sub: '' }
+  const parts = address.split(',').map(s => s.trim())
+  if (parts.length <= 1) return { main: address, sub: '' }
+  return {
+    main: parts[0],
+    sub: parts.slice(1).join(', ')
+  }
 }
 
 const DriverTripFlowPage = () => {
@@ -41,11 +59,18 @@ const DriverTripFlowPage = () => {
   const [incomingTrip, setIncomingTrip] = useState(null)
   const [accepting, setAccepting] = useState(false)
   const [togglingOnline, setTogglingOnline] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+  const [totalTimeout, setTotalTimeout] = useState(15)
 
   // State for Active Trip phase
   const [loadingTrip, setLoadingTrip] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [cancelingTrip, setCancelingTrip] = useState(false)
+  
+  // Cancel Modal states
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [selectedCancelReason, setSelectedCancelReason] = useState('')
+  const [otherCancelReason, setOtherCancelReason] = useState('')
   const [chatOpen, setChatOpen] = useState(false)
 
   // Coords states for active trip — start null, always geocode from trip data
@@ -190,15 +215,23 @@ const DriverTripFlowPage = () => {
       if (!isOnline || currentTrip) return
 
       if (payload.startsWith('NEW_RIDE:')) {
-        const bookingId = payload.split(':')[1]
+        const parts = payload.split(':')
+        const bookingId = parts[1]
+        const timeout = parseInt(parts[2], 10) || 20
         bookingApi.getById(bookingId)
-          .then(b => setIncomingTrip(b))
+          .then(b => {
+             setTotalTimeout(timeout)
+             setCountdown(timeout)
+             setIncomingTrip(b)
+          })
           .catch(() => toast.error('Lỗi khi tải thông tin cuốc xe mới'))
         return
       }
     }
 
     if (payload?.type === 'NEW_BOOKING' && payload?.booking) {
+      setTotalTimeout(20)
+      setCountdown(20)
       setIncomingTrip(payload.booking)
       // Optional: play sound here
     } else if (payload?.type === 'BOOKING_TAKEN' || payload?.type === 'BOOKING_CANCELLED') {
@@ -213,6 +246,26 @@ const DriverTripFlowPage = () => {
       }
     }
   }, [isOnline, currentTrip, incomingTrip])
+
+  // Countdown effect for incoming trip
+  useEffect(() => {
+    let timer
+    if (incomingTrip && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown(c => {
+          if (c <= 1) {
+            clearInterval(timer)
+            setIncomingTrip(null)
+            return 0
+          }
+          return c - 1
+        })
+      }, 1000)
+    }
+    return () => {
+      if (timer) clearInterval(timer)
+    }
+  }, [incomingTrip, countdown])
 
   // Listen to global available bookings and personal driver topic
   const driverId = userProfile?.driverId || userProfile?.id || user?.id
@@ -342,14 +395,26 @@ const DriverTripFlowPage = () => {
     }
   }
 
-  const handleCancelTrip = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn huỷ chuyến đi này không?')) return;
+  const handleConfirmCancel = async () => {
+    if (!selectedCancelReason) {
+      toast.error('Vui lòng chọn lý do hủy chuyến')
+      return
+    }
+    if (selectedCancelReason === 'Lý do khác' && !otherCancelReason.trim()) {
+      toast.error('Vui lòng nhập chi tiết lý do hủy')
+      return
+    }
 
     setCancelingTrip(true);
     try {
-      await bookingApi.cancelBookingByDriver(currentTrip.bookingId, driverId);
+      // In the future, we can pass finalReason to the backend here
+      const finalReason = selectedCancelReason === 'Lý do khác' ? otherCancelReason.trim() : selectedCancelReason;
+      await bookingApi.cancelBookingByDriver(currentTrip.bookingId, user.id);
       toast.success('Đã huỷ chuyến thành công');
       clearCurrentTrip();
+      setIsCancelModalOpen(false);
+      setSelectedCancelReason('');
+      setOtherCancelReason('');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Lỗi khi huỷ chuyến');
     } finally {
@@ -423,76 +488,101 @@ const DriverTripFlowPage = () => {
         </div>
 
         {/* Incoming Trip Popup Modal */}
-        <Modal isOpen={!!incomingTrip} onClose={handleReject} title="🚀 Có chuyến mới!" size="sm" closeOnOverlayClick={false}>
+        <Modal isOpen={!!incomingTrip} onClose={handleReject} title="🚀 Có chuyến mới!" size="md" closeOnOverlayClick={false}>
           {incomingTrip && (
-            <div className="space-y-6">
-              <div className="flex items-start justify-between gap-3 p-4 bg-gray-50 dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-surface-border">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Thu nhập dự kiến</div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-3xl font-bold text-brand-500">
-                      {formatCurrency(incomingTrip.totalPrice || incomingTrip.price)}
-                    </span>
+            <div className="space-y-4 animate-fade-in-up bg-gray-50 dark:bg-surface-dark p-2 -mx-4 -mb-4">
+              {/* Price Card */}
+              <div className="bg-white dark:bg-surface-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-surface-border flex justify-between items-start">
+                <div>
+                  <div className="text-xs font-semibold text-gray-500 mb-1">Cước phí</div>
+                  <div className="font-display text-3xl font-bold text-gray-900 dark:text-white">
+                    {formatCurrency(incomingTrip.totalPrice || incomingTrip.price)}
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    {incomingTrip.paymentMethod && (
-                      <span className={cn(
-                        'px-2 py-1 rounded-md text-[11px] font-bold',
-                        incomingTrip.paymentMethod === 'CASH' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-                      )}>
+                  {incomingTrip.paymentMethod && (
+                    <div className="mt-2">
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 text-xs font-semibold">
                         {incomingTrip.paymentMethod === 'CASH' ? 'Tiền mặt' : 'Online'}
                       </span>
-                    )}
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded-md">
-                      {formatDistance(incomingTrip.distance)}
-                    </span>
-                  </div>
+                    </div>
+                  )}
                 </div>
-                <div className="w-16 h-16 rounded-full border-4 border-brand-500/20 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(34,197,94,0.2)] bg-white dark:bg-surface-card">
-                  <span className="text-xl animate-pulse text-brand-500 font-bold">15s</span>
+                
+                {/* Circular Progress Countdown */}
+                <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+                  <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-100 dark:text-gray-800" />
+                    <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" 
+                      strokeDasharray="176" 
+                      strokeDashoffset={176 - (176 * countdown) / totalTimeout} 
+                      className={cn("transition-all duration-1000 ease-linear", countdown <= 5 ? "text-red-500" : "text-brand-500")} />
+                  </svg>
+                  <span className={cn("text-xl font-bold font-display absolute", countdown <= 5 ? "text-red-500 animate-pulse" : "text-gray-900 dark:text-white")}>
+                    {countdown}s
+                  </span>
                 </div>
               </div>
 
-              {/* Route */}
-              <div className="relative">
-                <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200 dark:bg-surface-border"></div>
-                <div className="space-y-6 relative z-10">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 flex items-center justify-center shrink-0">
-                      <RiMapPinLine size={20} className="text-brand-500" />
-                    </div>
-                    <div className="pt-1">
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Điểm đón</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{incomingTrip.pickupLocation}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
-                      <RiMapPin2Line size={20} className="text-red-500" />
-                    </div>
-                    <div className="pt-1">
-                      <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Điểm đến</p>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white leading-snug">{incomingTrip.dropoffLocation}</p>
+              {/* Route Card */}
+              <div className="bg-white dark:bg-surface-card rounded-xl shadow-sm border border-gray-100 dark:border-surface-border overflow-hidden">
+                <div className="py-3 text-center border-b border-gray-100 dark:border-surface-border bg-gray-50/50 dark:bg-surface-dark/50">
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                    {formatDistance(incomingTrip.distance)} - {incomingTrip.vehicleTypeName || 'Ô tô'}
+                  </span>
+                </div>
+                
+                <div className="p-4">
+                  <div className="relative">
+                    <div className="absolute left-[11px] top-4 bottom-4 w-0 border-l-2 border-dotted border-gray-300 dark:border-gray-600"></div>
+                    <div className="space-y-6 relative z-10">
+                      <div className="flex items-start gap-4">
+                        <div className="w-6 h-6 rounded-full bg-black dark:bg-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm ring-4 ring-white dark:ring-surface-card">
+                          <div className="w-2 h-2 rounded-full bg-white dark:bg-black" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug truncate">
+                            {splitAddress(incomingTrip.pickupLocation).main}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {splitAddress(incomingTrip.pickupLocation).sub || 'Điểm đón'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-4">
+                        <div className="w-6 h-6 rounded-full bg-brand-500 flex items-center justify-center shrink-0 mt-0.5 shadow-sm ring-4 ring-white dark:ring-surface-card">
+                          <div className="w-2 h-2 rounded-full bg-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white leading-snug truncate">
+                            {splitAddress(incomingTrip.dropoffLocation).main}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5 truncate">
+                            {splitAddress(incomingTrip.dropoffLocation).sub || 'Điểm đến'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-surface-border">
+              <div className="flex gap-3 pt-2 pb-2 px-2">
                 <button
                   onClick={handleReject}
                   disabled={accepting}
-                  className="flex-1 py-3.5 rounded-xl font-bold border-2 border-red-100 text-red-500 bg-red-50 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+                  className="w-14 h-14 shrink-0 rounded-xl flex items-center justify-center border border-gray-200 dark:border-surface-border text-gray-500 hover:bg-gray-100 dark:hover:bg-surface-border transition-colors active:scale-95 bg-white dark:bg-surface-card shadow-sm"
+                  title="Bỏ qua"
                 >
-                  <RiCloseLine size={20} /> Bỏ qua
+                  <RiCloseLine size={24} />
                 </button>
                 <button
                   onClick={handleAccept}
                   disabled={accepting}
-                  className="flex-[2] py-3.5 rounded-xl font-bold bg-brand-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:bg-brand-400 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 h-14 rounded-xl font-bold text-lg bg-brand-500 hover:bg-brand-600 text-white shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-70"
                 >
-                  {accepting ? <Spinner size="sm" /> : <RiCheckLine size={20} />} Nhận chuyến
+                  {accepting ? <Spinner size="sm" color="white" /> : <RiCheckLine size={24} />} 
+                  Nhận chuyến ngay
                 </button>
               </div>
             </div>
@@ -587,16 +677,26 @@ const DriverTripFlowPage = () => {
                   <div className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0 mt-0.5">
                     <RiMapPinLine size={14} className="text-brand-500" />
                   </div>
-                  <div>
-                    <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.pickupLocation}</p>
+                  <div className="flex-1">
+                    <p className="text-gray-900 dark:text-white text-sm font-semibold leading-tight">
+                      {splitAddress(currentTrip.pickupLocation).main}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {splitAddress(currentTrip.pickupLocation).sub || 'Điểm đón'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <div className="w-6 h-6 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0 mt-0.5">
                     <RiMapPin2Line size={14} className="text-red-500" />
                   </div>
-                  <div>
-                    <p className="text-gray-900 dark:text-white text-sm font-semibold">{currentTrip.dropoffLocation}</p>
+                  <div className="flex-1">
+                    <p className="text-gray-900 dark:text-white text-sm font-semibold leading-tight">
+                      {splitAddress(currentTrip.dropoffLocation).main}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {splitAddress(currentTrip.dropoffLocation).sub || 'Điểm đến'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -641,7 +741,7 @@ const DriverTripFlowPage = () => {
 
             {currentTrip && currentTrip.bookingStatus !== BOOKING_STATUS.IN_PROGRESS && (
               <button
-                onClick={handleCancelTrip}
+                onClick={() => setIsCancelModalOpen(true)}
                 disabled={cancelingTrip || updating}
                 className="w-full py-4 rounded-xl font-bold text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
               >
@@ -674,6 +774,71 @@ const DriverTripFlowPage = () => {
           />
         </div>
       )}
+
+      {/* Cancel Trip Modal */}
+      <Modal isOpen={isCancelModalOpen} onClose={() => !cancelingTrip && setIsCancelModalOpen(false)} title="Lý do hủy chuyến" size="md">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Việc hủy chuyến thường xuyên có thể ảnh hưởng đến tỷ lệ nhận chuyến của bạn. Vui lòng chọn lý do hủy:
+          </p>
+
+          <div className="space-y-3 mt-4">
+            {CANCEL_REASONS.map((reason) => (
+              <div
+                key={reason}
+                onClick={() => setSelectedCancelReason(reason)}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                  selectedCancelReason === reason
+                    ? "border-red-500 bg-red-50 dark:bg-red-500/10"
+                    : "border-gray-200 dark:border-surface-border hover:bg-gray-50 dark:hover:bg-surface-hover"
+                )}
+              >
+                <div className={cn(
+                  "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
+                  selectedCancelReason === reason ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                )}>
+                  {selectedCancelReason === reason && <div className="w-2.5 h-2.5 rounded-full bg-red-500" />}
+                </div>
+                <span className={cn(
+                  "text-sm font-medium",
+                  selectedCancelReason === reason ? "text-red-700 dark:text-red-400" : "text-gray-700 dark:text-gray-300"
+                )}>
+                  {reason}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {selectedCancelReason === 'Lý do khác' && (
+            <textarea
+              className="w-full mt-3 p-3 text-sm rounded-xl border border-gray-200 dark:border-surface-border bg-white dark:bg-surface-dark text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none transition-all"
+              rows={3}
+              placeholder="Nhập lý do hủy chuyến của bạn..."
+              value={otherCancelReason}
+              onChange={(e) => setOtherCancelReason(e.target.value)}
+            />
+          )}
+
+          <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-surface-border mt-6">
+            <button
+              onClick={() => setIsCancelModalOpen(false)}
+              disabled={cancelingTrip}
+              className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-300 dark:hover:bg-surface-border transition-colors"
+            >
+              Quay lại
+            </button>
+            <button
+              onClick={handleConfirmCancel}
+              disabled={cancelingTrip || !selectedCancelReason || (selectedCancelReason === 'Lý do khác' && !otherCancelReason.trim())}
+              className="flex-1 py-3 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-colors flex items-center justify-center gap-2"
+            >
+              {cancelingTrip ? <Spinner size="sm" color="white" /> : 'Xác nhận hủy'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }

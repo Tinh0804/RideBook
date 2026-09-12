@@ -98,9 +98,10 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
   const mapCenter = useMemo(() => {
     if (initialCenter) return { lat: initialCenter[0], lng: initialCenter[1] }
     if (pickup?.lat && pickup?.lng) return { lat: Number(pickup.lat), lng: Number(pickup.lng) }
+    if (dropoff?.lat && dropoff?.lng) return { lat: Number(dropoff.lat), lng: Number(dropoff.lng) }
     if (driver?.lat && driver?.lng) return { lat: Number(driver.lat), lng: Number(driver.lng) }
     return defaultCenter
-  }, [initialCenter, pickup?.lat, pickup?.lng, driver?.lat, driver?.lng, defaultCenter])
+  }, [initialCenter, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng, driver?.lat, driver?.lng, defaultCenter])
 
   const onMapLoad = useCallback((map) => {
     mapRef.current = map
@@ -114,22 +115,22 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
 
     if (mapRef.current && !selectingMode) {
       const bounds = new window.google.maps.LatLngBounds()
-      let hasPoints = false
+      let pointsCount = 0
 
       if (pickup?.lat && pickup?.lng) {
         bounds.extend({ lat: Number(pickup.lat), lng: Number(pickup.lng) })
-        hasPoints = true
+        pointsCount++
       }
       if (dropoff?.lat && dropoff?.lng) {
         bounds.extend({ lat: Number(dropoff.lat), lng: Number(dropoff.lng) })
-        hasPoints = true
+        pointsCount++
       }
-      if (!pickup && !dropoff && driver?.lat && driver?.lng) {
+      if (driver?.lat && driver?.lng) {
         bounds.extend({ lat: Number(driver.lat), lng: Number(driver.lng) })
-        hasPoints = true
+        pointsCount++
       }
 
-      if (hasPoints && !boundsFittedRef.current) {
+      if (pointsCount >= 2 && !boundsFittedRef.current) {
         boundsFittedRef.current = true
         setTimeout(() => {
           if (mapRef.current) {
@@ -225,12 +226,14 @@ const InteractiveMap = ({ pickup, dropoff, driver, className, selectingMode = fa
         {pickup && !selectingMode && !directions && (
           <Marker
             position={{ lat: Number(pickup.lat), lng: Number(pickup.lng) }}
+            label="A"
           />
         )}
 
         {dropoff && !selectingMode && !directions && (
           <Marker
             position={{ lat: Number(dropoff.lat), lng: Number(dropoff.lng) }}
+            label="B"
           />
         )}
 

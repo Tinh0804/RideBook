@@ -201,8 +201,8 @@ const BookingPage = () => {
       const payload = {
         customerId:      user?.id,
         paymentMethod,
-        pickupLocation:  pickup.name,
-        dropoffLocation: dropoff.name,
+        pickupLocation:  pickup.address || pickup.name,
+        dropoffLocation: dropoff.address || dropoff.name,
         pickupLat:       pickup.lat,
         pickupLng:       pickup.lng,
         dropoffLat:      dropoff.lat,
@@ -318,8 +318,8 @@ const BookingPage = () => {
           : "relative order-1 h-[34dvh] min-h-64 shrink-0 lg:order-2 lg:h-full lg:min-h-0 lg:flex-1"
       )}>
         <MemoizedMap
-          pickup={selectingLocationFor === 'pickup' ? null : (isValidLocation(pickup) ? pickup : { name: pickup?.name, ...DEFAULT_COORDINATES })}
-          dropoff={selectingLocationFor === 'dropoff' ? null : (isValidLocation(dropoff) ? dropoff : { name: dropoff?.name, ...DEFAULT_COORDINATES })}
+          pickup={selectingLocationFor === 'pickup' ? null : (isValidLocation(pickup) ? pickup : null)}
+          dropoff={selectingLocationFor === 'dropoff' ? null : (isValidLocation(dropoff) ? dropoff : null)}
           selectingMode={!!selectingLocationFor}
           initialCenter={tempMapLocation ? [tempMapLocation.lat, tempMapLocation.lng] : null}
           onLocationSelect={selectingLocationFor ? handleLocationSelect : undefined}

@@ -83,7 +83,9 @@ export const useBookingStore = create(
       activePromotion:   null,
       estimatedPrice:    null,
 
-      setCurrentBooking:  (booking)   => set({ currentBooking: booking }),
+      setCurrentBooking:  (booking)   => set((state) => ({
+        currentBooking: typeof booking === 'function' ? booking(state.currentBooking) : booking
+      })),
       clearCurrentBooking:()           => set({ currentBooking: null, estimatedPrice: null }),
       setVehicleTypes:    (types)     => set({ vehicleTypes: types }),
       setActivePromotion: (promo)     => set({ activePromotion: promo }),

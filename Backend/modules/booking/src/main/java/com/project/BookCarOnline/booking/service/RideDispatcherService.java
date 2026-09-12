@@ -189,9 +189,9 @@ public class RideDispatcherService {
 
     private void sendRideRequestToDriver(String bookingId, String driverId) {
         String destination = "/topic/driver/" + driverId;
-        String payload     = "NEW_RIDE:" + bookingId;
+        String payload     = "NEW_RIDE:" + bookingId + ":" + dispatchPolicy.getDISPATCH_TIMEOUT_SECONDS();
         messagingTemplate.convertAndSend(destination, payload);
-        log.info("[Dispatch] Đã gửi cuốc xe {} → tài xế {}", bookingId, driverId);
+        log.info("[Dispatch] Đã gửi cuốc xe {} → tài xế {} với timeout {}s", bookingId, driverId, dispatchPolicy.getDISPATCH_TIMEOUT_SECONDS());
     }
 
     private void notifyCustomerDriverAssigned(String bookingId) {

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import axios from 'axios'
 import {
   RiMapPinLine, RiMapPin2Line, RiUserStarLine,
-  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,RiCheckLine
+  RiPhoneLine, RiMessage2Line, RiStarLine, RiCarLine,RiCheckLine, RiCloseLine
 } from 'react-icons/ri'
 import { useBookingStore, useAuthStore } from '@/store/rootStore'
 import { bookingApi } from '@/features/booking/api/bookingApi'
@@ -15,6 +15,7 @@ import Button from '@/components/Elements/Button'
 import Spinner from '@/components/Elements/Spinner'
 import ChatDialog from '@/features/chat/components/ChatDialog'
 import InteractiveMap from '@/components/Map/InteractiveMap'
+import Modal from '@/components/Elements/Modal'
 import { cn } from '@/utils/cn'
 
 const STATUS_STEPS = [
@@ -34,6 +35,16 @@ const STATUS_COLOR = {
   [BOOKING_STATUS.CANCELLED]:  'text-red-600 bg-red-500/10 border-red-500/20',
 }
 
+const splitAddress = (address) => {
+  if (!address) return { main: '', sub: '' }
+  const parts = address.split(',').map(s => s.trim())
+  if (parts.length <= 1) return { main: address, sub: '' }
+  return {
+    main: parts[0],
+    sub: parts.slice(1).join(', ')
+  }
+}
+
 const TripTrackingPage = () => {
   const location  = useLocation()
   const navigate  = useNavigate()
@@ -47,6 +58,7 @@ const TripTrackingPage = () => {
   const [loading,    setLoading]    = useState(!currentBooking)
   const [chatOpen,   setChatOpen]   = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
 
   // Âm thanh khi tài xế huỷ chuyến & khi hoàn thành chuyến
   const cancelBookingSoundRef = useRef(null)
@@ -231,13 +243,13 @@ const TripTrackingPage = () => {
   ].filter(Boolean), onWsMessage)
 
   const handleCancel = () => {
-    if (!window.confirm('Bạn có chắc muốn hủy chuyến này?')) return
     setCancelling(true)
     bookingApi.cancelBooking(bookingId)
       .then((res) => {
         toast.success('Đã hủy chuyến')
         setBooking(res)
         clearCurrentBooking()
+        setIsCancelModalOpen(false)
       })
       .catch(() => toast.error('Không thể hủy chuyến lúc này'))
       .finally(() => setCancelling(false))
@@ -285,7 +297,7 @@ const TripTrackingPage = () => {
               <div className="absolute top-1/2 left-0 w-full h-1 bg-surface-muted -translate-y-1/2 rounded-full" />
               <div 
                 className="absolute top-1/2 left-0 h-1 bg-slate-950 dark:bg-white -translate-y-1/2 rounded-full transition-all duration-700 ease-out" 
-                style={{ width: `${(Math.max(0, stepIndex) / (STATUS_STEPS.length - 2)) * 100}%` }}
+                style={{ width: `${Math.min(100, (Math.max(0, stepIndex) / (STATUS_STEPS.length - 2)) * 100)}%` }}
               />
               <div className="relative flex justify-between">
                 {STATUS_STEPS.slice(0, -1).map((s, i) => {
@@ -366,13 +378,23 @@ const TripTrackingPage = () => {
               <div className="relative">
                 <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-[3px] border-surface-card bg-slate-950 dark:bg-white shadow-sm" />
                 <p className="text-[10px] text-content-muted uppercase font-bold tracking-wider mb-0.5">Điểm đón</p>
-                <p className="text-content-main text-sm font-bold leading-tight">{booking.pickupLocation}</p>
+                <p className="text-content-main text-sm font-bold leading-tight">
+                  {splitAddress(booking.pickupLocation).main}
+                </p>
+                <p className="text-content-muted text-xs mt-0.5">
+                  {splitAddress(booking.pickupLocation).sub}
+                </p>
               </div>
 
               <div className="relative">
                 <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-[3px] border-surface-card bg-brand-500 shadow-sm" />
                 <p className="text-[10px] text-content-muted uppercase font-bold tracking-wider mb-0.5">Điểm đến</p>
-                <p className="text-content-main text-sm font-bold leading-tight">{booking.dropoffLocation}</p>
+                <p className="text-content-main text-sm font-bold leading-tight">
+                  {splitAddress(booking.dropoffLocation).main}
+                </p>
+                <p className="text-content-muted text-xs mt-0.5">
+                  {splitAddress(booking.dropoffLocation).sub}
+                </p>
               </div>
             </div>
             
@@ -390,7 +412,7 @@ const TripTrackingPage = () => {
               </Button>
             )}
             {[BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
-              <Button fullWidth className="h-12 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 font-bold border-none" onClick={handleCancel} loading={cancelling}>
+              <Button fullWidth className="h-12 rounded-xl bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 font-bold border-none" onClick={() => setIsCancelModalOpen(true)} loading={cancelling}>
                 Hủy chuyến đi
               </Button>
             )}
@@ -428,6 +450,35 @@ const TripTrackingPage = () => {
           />
         </div>
       )}
+
+      {/* Cancel Confirmation Modal */}
+      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} title="Xác nhận hủy chuyến" size="sm">
+        <div className="space-y-6">
+          <div className="text-center">
+            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+              <RiCloseLine size={32} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Hủy chuyến đi này?</h3>
+            <p className="text-gray-500 dark:text-gray-400">Bạn có chắc chắn muốn hủy chuyến đi này không? Việc hủy chuyến nhiều lần có thể ảnh hưởng đến tài khoản của bạn.</p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsCancelModalOpen(false)}
+              disabled={cancelling}
+              className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-surface-dark dark:text-gray-300 dark:hover:bg-surface-border transition-colors"
+            >
+              Quay lại
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="flex-1 py-3 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-colors flex items-center justify-center gap-2"
+            >
+              {cancelling ? <Spinner size="sm" color="white" /> : 'Xác nhận hủy'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
