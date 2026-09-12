@@ -55,6 +55,18 @@ public class RideDispatcherService {
 
     @Async
     public void dispatchNearbyDrivers(Booking booking, double latitude, double longitude, Set<String> blacklist) {
+        dispatchNearbyDriversNow(booking, latitude, longitude, blacklist);
+    }
+
+    public void dispatchScheduledBooking(Booking booking) {
+        dispatchNearbyDriversNow(booking, booking.getPickupLat(), booking.getPickupLng(), Set.of());
+    }
+
+    private void dispatchNearbyDriversNow(
+            Booking booking,
+            double latitude,
+            double longitude,
+            Set<String> blacklist) {
         String vehicleTypeId = booking.getVehicleTypeId();
         List<DriverGeoResult> nearbyDrivers = driverCacheService.findNearbyDrivers(
                 vehicleTypeId, latitude, longitude, dispatchPolicy.getSEARCH_RADIUS_KM());

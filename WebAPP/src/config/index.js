@@ -15,6 +15,7 @@ export const ROLES = {
 
 export const BOOKING_STATUS = {
   PENDING:    'PENDING',
+  QUEUED:     'QUEUED',
   ACCEPTED:   'ACCEPTED',
   ARRIVED:    'ARRIVED',
   IN_PROGRESS:'IN_PROGRESS',
@@ -24,6 +25,7 @@ export const BOOKING_STATUS = {
 
 export const BOOKING_STATUS_LABEL = {
   PENDING:    'Đang tìm tài xế',
+  QUEUED:     'Chờ tới giờ (Đã hẹn)',
   ACCEPTED:   'Tài xế đã nhận',
   ARRIVED:    'Đang đến đón',
   IN_PROGRESS:'Đang trên đường',

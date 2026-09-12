@@ -11,6 +11,7 @@ import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.validator.constraints.UUID;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 @Entity
 @Builder
 @AllArgsConstructor
@@ -66,6 +67,9 @@ public class Booking {
 
     @Column
      Timestamp bookingTime;
+
+    @Column(name = "scheduled_at")
+    LocalDateTime scheduledAt;
 
     @Column
      Timestamp pickupTime;

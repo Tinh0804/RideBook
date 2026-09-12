@@ -9,6 +9,9 @@ import com.project.BookCarOnline.booking.dto.response.EstimatePriceResponse;
 import com.project.BookCarOnline.booking.entity.enums.BookingStatus;
 import com.project.BookCarOnline.booking.service.BookingService;
 import com.project.BookCarOnline.booking.service.BookingQueryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -139,6 +142,18 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            summary = "Tạo booking tức thời hoặc hẹn giờ",
+            description = "scheduledAt là optional. Nếu bỏ trống, booking ở PENDING và được điều phối ngay sau khi thanh toán; nếu có, booking ở QUEUED và được điều phối trước giờ hẹn theo cấu hình (mặc định 15 phút).")
+    @io.swagger.v3.oas.annotations.responses.ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Tạo booking thành công",
+                    content = @Content(schema = @Schema(implementation = BookingDetailResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "scheduledAt không hợp lệ hoặc dữ liệu đầu vào không hợp lệ")
+    })
     public APIResponse<BookingDetailResponse> createBooking(@Valid @RequestBody CreateBookingRequest request) {
         log.info("REST API: POST /bookings - Creating new booking for customer: {}", request.getCustomerId());
         BookingDetailResponse booking = bookingService.createBooking(request);

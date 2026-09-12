@@ -1,10 +1,13 @@
 package com.project.BookCarOnline.booking.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -12,6 +15,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@Schema(description = "Dữ liệu tạo chuyến tức thời hoặc chuyến hẹn giờ")
 public class CreateBookingRequest {
 
     @NotBlank(message = "ID khách hàng không được để trống")
@@ -45,5 +49,13 @@ public class CreateBookingRequest {
     String paymentMethod;
 
     String returnUrl;
+
+    @Schema(
+            description = "Giờ đón dự kiến theo múi giờ Asia/Ho_Chi_Minh. Bỏ trống để đặt chuyến ngay; phải nằm trong tương lai khi được cung cấp.",
+            type = "string",
+            format = "date-time",
+            example = "2026-09-02T08:30:00",
+            requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    LocalDateTime scheduledAt;
 
 }

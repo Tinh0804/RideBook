@@ -1,0 +1,120 @@
+openapi: 3.0.3
+info:
+  title: RideBook Scheduled Booking API
+  version: 1.0.0
+  description: Contract for creating immediate and scheduled bookings.
+servers:
+  - url: /RideBook
+paths:
+  /bookings:
+    post:
+      operationId: createBooking
+      summary: Create an immediate or scheduled booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetailEnvelope'
+        '400':
+          description: Invalid request or scheduledAt is not in the future
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateBookingRequest:
+      type: object
+      required:
+        - customerId
+        - pickupLocation
+        - dropoffLocation
+        - distance
+        - vehicleTypeId
+      properties:
+        customerId:
+          type: string
+        paymentId:
+          type: string
+          nullable: true
+        promotionCodes:
+          type: array
+          items:
+            type: string
+        quoteId:
+          type: string
+        pickupLocation:
+          type: string
+        dropoffLocation:
+          type: string
+        pickupLat:
+          type: number
+          format: double
+          nullable: true
+        pickupLng:
+          type: number
+          format: double
+          nullable: true
+        dropoffLat:
+          type: number
+          format: double
+          nullable: true
+        dropoffLng:
+          type: number
+          format: double
+          nullable: true
+        distance:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        vehicleTypeId:
+          type: string
+        paymentMethod:
+          type: string
+          enum: [CASH, ONLINE]
+        returnUrl:
+          type: string
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-09-02T08:30:00'
+          description: Optional local date-time in Asia/Ho_Chi_Minh. Omit for immediate dispatch; when supplied it must be in the future.
+    BookingDetailEnvelope:
+      type: object
+      properties:
+        status:
+          type: integer
+          example: 201
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/BookingDetail'
+    BookingDetail:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        bookingStatus:
+          $ref: '#/components/schemas/BookingStatus'
+    BookingStatus:
+      type: string
+      enum: [QUEUED, PENDING, ACCEPTED, ARRIVED, IN_PROGRESS, CANCELLED, COMPLETED]
+      description: QUEUED means a scheduled booking waiting to enter the dispatch window.
