@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Backend/**'
+      - 'deploy/**'
+      - '.github/workflows/release-backend.yml'
+      - '.github/workflows/deploy-production.yml'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -48,6 +53,12 @@ jobs:
           distribution: temurin
           cache: maven
 
+      - name: Cache Maven wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: ${{ runner.os }}-maven-wrapper-${{ hashFiles('Backend/.mvn/wrapper/maven-wrapper.properties') }}
+
       - name: Run Backend tests
         run: ./mvnw -B -ntp test
 
@@ -89,7 +100,6 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.deploy
     permissions:
       contents: read
-      id-token: write
     uses: ./.github/workflows/deploy-production.yml
     with:
       image_ref: ${{ needs.build-and-publish.outputs.image_ref }}

@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: ridebook-production
@@ -40,45 +39,36 @@ jobs:
       - name: Checkout deployment bundle
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
-
-      - name: Setup Google Cloud CLI
-        uses: google-github-actions/setup-gcloud@v3
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$VM_HOST" ]; then
+            echo "Error: GCP_SSH_PRIVATE_KEY and GCP_VM_IP must be set in GitHub secrets or variables." >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Package deployment bundle
         run: tar -czf "$RUNNER_TEMP/ridebook-deploy.tgz" -C deploy .
 
-      - name: Upload deployment bundle through IAP
+      - name: Upload deployment bundle to VM
         env:
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          GCP_ZONE: ${{ vars.GCP_ZONE }}
-          GCP_VM_NAME: ${{ vars.GCP_VM_NAME }}
-          GCP_VM_USER: ${{ vars.GCP_VM_USER }}
+          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
+          VM_USER: ${{ secrets.GCP_VM_USER || vars.GCP_VM_USER || 'ubuntu' }}
         run: |
-          gcloud compute scp "$RUNNER_TEMP/ridebook-deploy.tgz" \
-            "${GCP_VM_USER}@${GCP_VM_NAME}:/tmp/ridebook-deploy-${GITHUB_SHA}.tgz" \
-            --project "$GCP_PROJECT_ID" \
-            --zone "$GCP_ZONE" \
-            --tunnel-through-iap \
-            --quiet
+          scp -i ~/.ssh/id_rsa "$RUNNER_TEMP/ridebook-deploy.tgz" "${VM_USER}@${VM_HOST}:/tmp/ridebook-deploy-${GITHUB_SHA}.tgz"
 
       - name: Deploy exact Backend digest
         env:
           IMAGE_REF: ${{ inputs.image_ref }}
-          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-          GCP_ZONE: ${{ vars.GCP_ZONE }}
-          GCP_VM_NAME: ${{ vars.GCP_VM_NAME }}
-          GCP_VM_USER: ${{ vars.GCP_VM_USER }}
+          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
+          VM_USER: ${{ secrets.GCP_VM_USER || vars.GCP_VM_USER || 'ubuntu' }}
         run: |
           release_dir="/opt/ridebook/releases/${GITHUB_SHA}"
           remote_command="mkdir -p '${release_dir}' && tar -xzf '/tmp/ridebook-deploy-${GITHUB_SHA}.tgz' -C '${release_dir}' && '${release_dir}/scripts/deploy.sh' '${IMAGE_REF}'"
-          gcloud compute ssh "${GCP_VM_USER}@${GCP_VM_NAME}" \
-            --project "$GCP_PROJECT_ID" \
-            --zone "$GCP_ZONE" \
-            --tunnel-through-iap \
-            --quiet \
-            --command "$remote_command"
+          ssh -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" "$remote_command"
