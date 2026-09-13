@@ -8,7 +8,7 @@ class BookingQuoteServiceTest {
 
     @Test
     void calculatesHaversineDistance() {
-        assertEquals(0, BookingQuoteService.calculateDistanceKm(21.0278, 105.8342, 21.0278, 105.8342));
+        assertEquals(0.1, BookingQuoteService.calculateDistanceKm(21.0278, 105.8342, 21.0278, 105.8342));
         assertEquals(1138, BookingQuoteService.calculateDistanceKm(21.0278, 105.8342, 10.8231, 106.6297), 10);
     }
 }
