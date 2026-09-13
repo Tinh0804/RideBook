@@ -101,7 +101,7 @@ const CustomerHomePage = () => {
         {/* User Greeting & Status */}
         <div className="flex items-center justify-between mb-8">
           <div className="bg-white/90 dark:bg-surface-card/90 backdrop-blur-md px-4 py-2 rounded-full shadow-sm border border-gray-100 dark:border-surface-border">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+            <h1 className="text-fluid-lg font-bold text-gray-900 dark:text-white">
               {greeting}, {userProfile?.name || user?.userName?.split(' ')[0] || 'Khách hàng'}!
             </h1>
           </div>
@@ -117,11 +117,11 @@ const CustomerHomePage = () => {
         </div>
 
         {/* 2. Floating Search Card (Where to?) */}
-        <div className="bg-white dark:bg-surface-card rounded-2xl shadow-lg border border-gray-100 dark:border-surface-border p-5 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Bạn muốn đến đâu?</h2>
+        <div className="bg-white dark:bg-surface-card rounded-2xl shadow-lg border border-gray-100 dark:border-surface-border p-fluid mb-8">
+          <h2 className="text-fluid-xl font-bold text-gray-900 dark:text-white mb-4">Bạn muốn đến đâu?</h2>
           <div 
             onClick={() => navigate('/customer/booking')}
-            className="flex items-center h-14 w-full bg-gray-100 dark:bg-surface-dark rounded-xl px-4 cursor-text hover:bg-gray-200 dark:hover:bg-surface-border transition-colors mb-4"
+            className="flex items-center h-11 sm:h-14 w-full bg-gray-100 dark:bg-surface-dark rounded-xl px-4 cursor-text hover:bg-gray-200 dark:hover:bg-surface-border transition-colors mb-4"
           >
             <div className="w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-brand-500">
               <RiNavigationFill size={20} />
@@ -154,16 +154,16 @@ const CustomerHomePage = () => {
         </div>
 
         {/* 3. Main Services Grid (Image based) */}
-        <div className="grid grid-cols-4 gap-3 md:gap-6 mb-10">
+        <div className="grid grid-cols-4 gap-fluid mb-10">
           {/* Car Ride */}
           <div 
             onClick={() => navigate('/customer/booking')}
             className="flex flex-col items-center gap-2 cursor-pointer group"
           >
-            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
+            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-2 sm:p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
               <img src="/assets/images/icon_car.jpg" alt="Car" className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl" />
             </div>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Ô tô</span>
+            <span className="text-fluid-sm font-semibold text-gray-800 dark:text-gray-200">Ô tô</span>
           </div>
           
           {/* Bike Ride */}
@@ -171,10 +171,10 @@ const CustomerHomePage = () => {
             onClick={() => navigate('/customer/booking')}
             className="flex flex-col items-center gap-2 cursor-pointer group"
           >
-            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
+            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-2 sm:p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
               <img src="/assets/images/icon_bike.jpg" alt="Bike" className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl" />
             </div>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Xe máy</span>
+            <span className="text-fluid-sm font-semibold text-gray-800 dark:text-gray-200">Xe máy</span>
           </div>
 
           {/* Payment */}
@@ -182,10 +182,10 @@ const CustomerHomePage = () => {
             onClick={() => navigate('/customer/payment')}
             className="flex flex-col items-center gap-2 cursor-pointer group"
           >
-            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
+            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-2 sm:p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
               <img src="/assets/images/icon_payment.jpg" alt="Payment" className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl scale-110" />
             </div>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Thanh toán</span>
+            <span className="text-fluid-sm font-semibold text-gray-800 dark:text-gray-200">Thanh toán</span>
           </div>
 
           {/* Promos */}
@@ -193,10 +193,10 @@ const CustomerHomePage = () => {
             onClick={() => navigate('/customer/promotions')}
             className="flex flex-col items-center gap-2 cursor-pointer group"
           >
-            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
+            <div className="w-full aspect-square bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border flex items-center justify-center p-2 sm:p-3 group-hover:shadow-md group-active:scale-95 transition-all overflow-hidden">
               <img src="/assets/images/icon_promo.jpg" alt="Promo" className="w-full h-full object-contain mix-blend-multiply dark:mix-blend-normal rounded-xl" />
             </div>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Ưu đãi</span>
+            <span className="text-fluid-sm font-semibold text-gray-800 dark:text-gray-200">Ưu đãi</span>
           </div>
         </div>
 
@@ -264,11 +264,11 @@ const CustomerHomePage = () => {
                   alt="Promotion" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex flex-col justify-end p-6">
-                  <h4 className="text-white text-xl md:text-2xl font-bold mb-2">Giảm 50% chuyến đầu</h4>
-                  <p className="text-white/90 mb-4 text-sm md:text-base">Mã ưu đãi: BOOKCAR50</p>
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex flex-col justify-end p-fluid">
+                  <h4 className="text-white text-fluid-xl md:text-fluid-2xl font-bold mb-2">Giảm 50% chuyến đầu</h4>
+                  <p className="text-white/90 mb-4 text-fluid-sm md:text-fluid-base">Mã ưu đãi: BOOKCAR50</p>
                   <div>
-                    <span className="bg-brand-500 text-white px-4 py-2 rounded-lg font-bold text-sm">Dùng ngay</span>
+                    <span className="bg-brand-500 text-white px-fluid py-2 rounded-lg font-bold text-fluid-sm">Dùng ngay</span>
                   </div>
                 </div>
               </div>
@@ -278,7 +278,7 @@ const CustomerHomePage = () => {
 
           {/* Right Col: Recent Rides */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-surface-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-surface-border h-full">
+            <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid shadow-sm border border-gray-100 dark:border-surface-border h-full">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Chuyến đi gần đây</h3>
                 <button onClick={() => navigate('/customer/history')} className="text-brand-500 font-semibold text-sm hover:underline">Tất cả</button>
@@ -312,7 +312,7 @@ const CustomerHomePage = () => {
                       
                       <Button
                         onClick={() => navigate('/customer/booking', { state: { pickup: { name: trip.pickupLocation }, dropoff: { name: trip.dropoffLocation } } })}
-                        className="mt-4 w-full py-2 bg-gray-100 dark:bg-surface-dark text-gray-900 dark:text-white hover:bg-brand-500 hover:text-white border border-gray-200 dark:border-surface-border rounded-xl text-sm font-semibold transition-colors"
+                        className="mt-4 w-full py-fluid bg-gray-100 dark:bg-surface-dark text-gray-900 dark:text-white hover:bg-brand-500 hover:text-white border border-gray-200 dark:border-surface-border rounded-xl text-fluid-sm font-semibold transition-colors"
                       >
                         Đặt lại chuyến
                       </Button>
@@ -346,7 +346,7 @@ const CustomerHomePage = () => {
                 }
                 navigate(`/customer/tracking/${overlayTrip.bookingId}`)
               }}
-              className="w-full md:w-[340px] bg-white/95 dark:bg-surface-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-brand-500/30 p-5 cursor-pointer pointer-events-auto flex flex-col gap-4 hover:shadow-2xl transition-all active:scale-[0.98]"
+              className="w-full md:w-[340px] max-w-[95vw] bg-white/95 dark:bg-surface-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-brand-500/30 p-fluid cursor-pointer pointer-events-auto flex flex-col gap-4 hover:shadow-2xl transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">

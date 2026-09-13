@@ -111,11 +111,11 @@ const DriverProfilePage = () => {
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-4xl space-y-8 p-5 pb-12 lg:p-8"
+        className="mx-auto w-full max-w-4xl space-y-8 p-fluid pb-12"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Hồ sơ tài xế</h1>
+            <h1 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white tracking-tight">Hồ sơ tài xế</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Quản lý thông tin cá nhân và phương tiện hoạt động</p>
           </div>
           {!editing && (
@@ -131,7 +131,7 @@ const DriverProfilePage = () => {
         </div>
 
         {/* Full width Avatar & Score */}
-        <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 flex flex-col items-center text-center shadow-sm relative overflow-hidden mb-8">
+        <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 flex flex-col items-center text-center shadow-sm relative overflow-hidden mb-8">
           <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-brand-600 to-brand-400" />
           <div className="relative mb-4 mt-8">
             <div className="h-32 w-32 rounded-full border-4 border-white dark:border-surface-card bg-gray-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center text-5xl font-bold text-brand-500 shadow-md">
@@ -152,7 +152,7 @@ const DriverProfilePage = () => {
             )}
           </div>
           <div className="text-center">
-            <h2 className="font-display text-3xl font-bold text-gray-900 dark:text-white">{profile?.driverName || profile?.name}</h2>
+            <h2 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white">{profile?.driverName || profile?.name}</h2>
             {avgScore > 0 ? (
               <div className="flex flex-col items-center mt-3 gap-1">
                 <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ const DriverProfilePage = () => {
           {/* Left Column: Personal Info */}
           <div className="space-y-6">
             {/* Editable info */}
-            <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm h-full">
+            <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 shadow-sm h-full">
               <h3 className="font-bold text-lg mb-6 text-gray-900 dark:text-white">Thông tin cá nhân</h3>
               <div className="space-y-5">
                 {[
@@ -222,7 +222,7 @@ const DriverProfilePage = () => {
           {/* Right Column: Vehicle & Ratings */}
           <div className="space-y-6">
             {/* Vehicle info */}
-            <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center">
                   <RiCarLine size={24} className="text-brand-500" />
@@ -231,7 +231,7 @@ const DriverProfilePage = () => {
               </div>
 
               {/* Vehicle highlight card */}
-              <div className="flex items-center gap-4 bg-brand-50 dark:bg-brand-500/5 border border-brand-100 dark:border-brand-500/15 rounded-2xl p-5 mb-6">
+              <div className="flex items-center gap-4 bg-brand-50 dark:bg-brand-500/5 border border-brand-100 dark:border-brand-500/15 rounded-2xl p-fluid md:p-5 mb-6">
                 <div className="w-14 h-14 rounded-2xl bg-white dark:bg-brand-500/15 shadow-sm flex items-center justify-center shrink-0">
                   <RiMotorbikeLine size={28} className="text-brand-500" />
                 </div>
@@ -293,7 +293,7 @@ const DriverProfilePage = () => {
 
             {/* Recent ratings */}
             {ratings.length > 0 && (
-              <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm">
+              <div className="rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 shadow-sm">
                 <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">Đánh giá gần đây</h3>
                 <div className="space-y-4">
                   {ratings.slice(0, 5).map((r, index) => (
@@ -320,7 +320,7 @@ const DriverProfilePage = () => {
           <div className="mt-8">
             <button 
               onClick={() => navigate('/driver/loyalty')}
-              className="w-full text-left rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm transition-transform hover:scale-[1.01]"
+              className="w-full text-left rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 shadow-sm transition-transform hover:scale-[1.01]"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 
@@ -331,11 +331,11 @@ const DriverProfilePage = () => {
                   </h3>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
+                    <div className="p-fluid rounded-xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
                       <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Điểm hiện có</p>
                       <p className="text-xl font-black text-brand-600 dark:text-brand-400">{loyalty.currentPoints?.toLocaleString()}</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
+                    <div className="p-fluid rounded-xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
                       <p className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Giảm phí nền tảng</p>
                       <p className="text-xl font-black text-green-600 dark:text-green-400">{loyalty.tierBenefits?.discountRate || 0}%</p>
                     </div>
@@ -358,7 +358,7 @@ const DriverProfilePage = () => {
                 </div>
 
                 {/* Right Side: Benefits Annotation */}
-                <div className="bg-brand-50/50 dark:bg-brand-900/10 rounded-xl p-5 border border-brand-100 dark:border-brand-900/30 h-full">
+                <div className="bg-brand-50/50 dark:bg-brand-900/10 rounded-xl p-fluid md:p-5 border border-brand-100 dark:border-brand-900/30 h-full">
                   <h4 className="font-bold text-brand-700 dark:text-brand-400 mb-3 text-sm uppercase tracking-wider">
                     Quyền lợi hạng
                   </h4>

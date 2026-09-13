@@ -22,28 +22,30 @@ const App = () => {
   return (
     <LoadScript googleMapsApiKey={MAPS_KEY} libraries={libraries} region="VN" language="vi">
       <BrowserRouter>
-        <AppRoutes />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3500,
-            style: {
-              background: '#111827',
-              color: '#f9fafb',
-              border: '1px solid #1F2937',
-              borderRadius: '12px',
-              fontSize: '14px',
-              fontFamily: 'Outfit, sans-serif',
-              padding: '12px 16px',
-            },
-            success: {
-              iconTheme: { primary: '#22c55e', secondary: '#fff' },
-            },
-            error: {
-              iconTheme: { primary: '#ef4444', secondary: '#fff' },
-            },
-          }}
-        />
+        <div className="overflow-x-hidden w-full relative min-h-screen">
+          <AppRoutes />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: '#111827',
+                color: '#f9fafb',
+                border: '1px solid #1F2937',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontFamily: 'Outfit, sans-serif',
+                padding: '12px 16px',
+              },
+              success: {
+                iconTheme: { primary: '#22c55e', secondary: '#fff' },
+              },
+              error: {
+                iconTheme: { primary: '#ef4444', secondary: '#fff' },
+              },
+            }}
+          />
+        </div>
       </BrowserRouter>
     </LoadScript>
   )

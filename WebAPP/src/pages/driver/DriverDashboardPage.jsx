@@ -92,7 +92,7 @@ const DriverDashboardPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#e8ece3]/50 to-[#e8ece3] dark:via-surface-dark/50 dark:to-surface-dark" />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto w-full px-4 pt-6 lg:pt-10">
+      <div className="relative z-10 max-w-5xl mx-auto w-full px-fluid pt-fluid lg:pt-10">
         
         {/* User Greeting & Status */}
         <div className="flex items-center justify-between mb-8">
@@ -108,7 +108,7 @@ const DriverDashboardPage = () => {
         </div>
 
         {/* 2. Status Card (Floating) */}
-        <div className="bg-white dark:bg-surface-card rounded-3xl shadow-xl border border-gray-100 dark:border-surface-border p-6 md:p-8 mb-10 overflow-hidden relative group">
+        <div className="bg-white dark:bg-surface-card rounded-3xl shadow-xl border border-gray-100 dark:border-surface-border p-fluid mb-10 overflow-hidden relative group">
           <div className={cn("absolute inset-0 opacity-10 transition-colors duration-500", isOnline ? "bg-brand-500" : "bg-gray-500")} />
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-5">
@@ -119,7 +119,7 @@ const DriverDashboardPage = () => {
                 {isOnline ? <RiDashboardFill size={32} /> : <RiToggleLine size={32} />}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                <h2 className="text-fluid-2xl font-bold text-gray-900 dark:text-white mb-1">
                   {isOnline ? 'Đang trực tuyến' : 'Đang ngoại tuyến'}
                 </h2>
                 <p className="text-gray-500 dark:text-gray-400 font-medium">
@@ -132,7 +132,7 @@ const DriverDashboardPage = () => {
               onClick={handleToggleStatus}
               disabled={toggling}
               className={cn(
-                'flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-base transition-all duration-300 shadow-lg shrink-0 w-full md:w-auto',
+                'flex items-center justify-center gap-2 px-fluid py-fluid-sm rounded-2xl font-bold text-base transition-all duration-300 shadow-lg shrink-0 w-full md:w-auto',
                 isOnline
                   ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-surface-dark dark:text-white dark:hover:bg-surface-border'
                   : 'bg-brand-500 text-white hover:bg-brand-400 hover:shadow-brand-500/40'
@@ -152,12 +152,12 @@ const DriverDashboardPage = () => {
         {/* 3. Main Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
           {stats.map((s) => (
-            <div key={s.label} className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+            <div key={s.label} className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-fluid flex flex-col gap-3 hover:shadow-md transition-shadow">
               <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', s.bg, s.color)}>
                 {s.icon}
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</div>
+                <div className="text-fluid-2xl font-bold text-gray-900 dark:text-white">{s.value}</div>
                 <div className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-1">{s.label}</div>
               </div>
             </div>
@@ -172,8 +172,8 @@ const DriverDashboardPage = () => {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {/* Performance Metrics */}
-              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Hiệu suất hoạt động</h3>
+              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-fluid">
+                <h3 className="text-fluid-lg font-bold text-gray-900 dark:text-white mb-6">Hiệu suất hoạt động</h3>
                 <div className="space-y-6">
                   {/* Acceptance Rate */}
                   <div className="space-y-3">
@@ -200,12 +200,12 @@ const DriverDashboardPage = () => {
               </div>
 
               {/* Weekly Mini Chart */}
-              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6 flex flex-col">
+              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-fluid flex flex-col">
                 <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Thu nhập 7 ngày</h3>
+                  <h3 className="text-fluid-lg font-bold text-gray-900 dark:text-white">Thu nhập 7 ngày</h3>
                   <span className="text-brand-500 font-bold bg-brand-50 dark:bg-brand-500/10 px-2 py-1 rounded-lg text-sm">+12%</span>
                 </div>
-                <div className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-4">
+                <div className="text-fluid-3xl font-display font-bold text-gray-900 dark:text-white mb-4">
                   {formatCurrency(mockWeeklyData.reduce((acc, curr) => acc + curr.amount, 0))}
                 </div>
                 <div className="flex-1 min-h-[100px] w-full mt-auto">
@@ -230,9 +230,9 @@ const DriverDashboardPage = () => {
             </div>
 
             {/* Recent trips */}
-            <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6 h-full">
+            <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-fluid h-full">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Chuyến đi gần đây</h3>
+                <h3 className="text-fluid-lg font-bold text-gray-900 dark:text-white">Chuyến đi gần đây</h3>
                 <button onClick={() => navigate('/driver/revenue')} className="text-brand-500 font-semibold text-sm hover:underline">Xem tất cả</button>
               </div>
 
@@ -288,7 +288,7 @@ const DriverDashboardPage = () => {
                   alt="Hotspot" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent flex flex-col justify-end p-6">
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent flex flex-col justify-end p-fluid">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
@@ -296,7 +296,7 @@ const DriverDashboardPage = () => {
                     </span>
                     <span className="text-brand-400 font-bold text-sm tracking-wide uppercase">Nhu cầu cao</span>
                   </div>
-                  <h4 className="text-white text-2xl font-bold mb-2">Khu vực trung tâm</h4>
+                  <h4 className="text-white text-fluid-2xl font-bold mb-2">Khu vực trung tâm</h4>
                   <p className="text-white/80 mb-6 text-sm">Đang có {dashboard?.availableBookings || 5} chuyến xe chờ tài xế quanh khu vực của bạn.</p>
                   
                   <button className="w-full bg-white text-gray-900 py-3 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center justify-center gap-2">
@@ -305,11 +305,11 @@ const DriverDashboardPage = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-8 text-center h-full flex flex-col items-center justify-center">
+              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-fluid text-center h-full flex flex-col items-center justify-center">
                 <div className="w-20 h-20 rounded-full bg-gray-100 dark:bg-surface-dark flex items-center justify-center mb-6">
                   <RiToggleLine size={40} className="text-gray-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Chưa sẵn sàng</h3>
+                <h3 className="text-fluid-xl font-bold text-gray-900 dark:text-white mb-3">Chưa sẵn sàng</h3>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Bật trực tuyến để nhận cuốc xe và tăng thu nhập ngay hôm nay!</p>
                 <button
                   onClick={handleToggleStatus}
@@ -321,7 +321,7 @@ const DriverDashboardPage = () => {
             )}
             
             {/* System Alerts */}
-            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl p-5 flex items-start gap-3">
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl p-fluid flex items-start gap-3">
               <RiStarLine size={20} className="text-blue-500 shrink-0 mt-0.5" />
               <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
                 Thưởng thêm <span className="font-bold">50.000đ</span> khi hoàn thành 5 chuyến trước 17:00 hôm nay.

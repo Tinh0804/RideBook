@@ -281,11 +281,11 @@ const TripTrackingPage = () => {
       <div className="w-full lg:w-[420px] flex flex-col h-[55vh] lg:h-full bg-surface-card border-b lg:border-b-0 lg:border-r border-[#cdd4c8] dark:border-surface-border z-10 shadow-[8px_0_30px_rgba(0,0,0,0.04)] shrink-0">
         
         {/* Header & Status (Sticky) */}
-        <div className="p-6 border-b border-[#cdd4c8] dark:border-surface-border bg-surface-card sticky top-0 z-20">
+        <div className="p-fluid border-b border-[#cdd4c8] dark:border-surface-border bg-surface-card sticky top-0 z-20">
           <div className="flex items-start justify-between mb-6">
             <div>
               <p className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-1">Mã chuyến đi</p>
-              <h1 className="font-mono font-bold text-content-main text-xl tracking-tight">#{booking.bookingId?.slice(-8)}</h1>
+              <h1 className="font-mono font-bold text-content-main text-fluid-xl tracking-tight">#{booking.bookingId?.slice(-8)}</h1>
             </div>
             <span className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border', STATUS_COLOR[booking.bookingStatus] || STATUS_COLOR[BOOKING_STATUS.PENDING])}>
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
@@ -322,10 +322,10 @@ const TripTrackingPage = () => {
         </div>
 
         {/* Scrollable Info Area */}
-        <div className="p-6 overflow-y-auto no-scrollbar space-y-6 flex-1">
+        <div className="p-fluid overflow-y-auto no-scrollbar space-y-6 flex-1">
           {/* Driver info */}
           {booking.driverId ? (
-            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-5 shadow-sm">
+            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-fluid shadow-sm">
               <h3 className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-4">Tài xế của bạn</h3>
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-3xl font-bold text-slate-400 overflow-hidden shrink-0 shadow-sm border border-surface-border">
@@ -360,7 +360,7 @@ const TripTrackingPage = () => {
               </div>
             </div>
           ) : booking.bookingStatus === BOOKING_STATUS.QUEUED ? (
-            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 dark:bg-purple-500/10 p-6 text-center flex flex-col items-center justify-center relative overflow-hidden space-y-3">
+            <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 dark:bg-purple-500/10 p-fluid text-center flex flex-col items-center justify-center relative overflow-hidden space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-1">
                 <RiCalendarEventLine size={28} />
               </div>
@@ -368,7 +368,7 @@ const TripTrackingPage = () => {
                 <span className="inline-block px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-300 font-bold text-xs border border-purple-500/20 mb-2">
                   ĐÃ LÊN LỊCH ĐÓN
                 </span>
-                <h3 className="font-display font-bold text-xl text-content-main">
+                <h3 className="font-display font-bold text-fluid-xl text-content-main">
                   {booking.scheduledAt
                     ? new Date(booking.scheduledAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })
                     : 'Chờ đến giờ hẹn'}
@@ -382,7 +382,7 @@ const TripTrackingPage = () => {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-[#f8faf6] dark:bg-surface-dark p-8 text-center flex flex-col items-center justify-center relative overflow-hidden min-h-[160px]">
+            <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-[#f8faf6] dark:bg-surface-dark p-fluid text-center flex flex-col items-center justify-center relative overflow-hidden min-h-[160px]">
                {/* Animated radar effect for finding driver */}
                <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
                  <div className="w-40 h-40 border-2 border-brand-500 rounded-full animate-ping" />
@@ -394,7 +394,7 @@ const TripTrackingPage = () => {
           )}
 
           {/* Route info */}
-          <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-5 shadow-sm">
+          <div className="rounded-2xl border border-[#cdd4c8] dark:border-surface-border bg-surface-card p-fluid shadow-sm">
             <h3 className="text-[10px] font-bold text-content-muted uppercase tracking-wider mb-4">Hành trình</h3>
             <div className="relative pl-6 space-y-6">
               <div className="absolute left-1.5 top-2 bottom-2 w-0.5 bg-surface-border rounded-full" />
@@ -424,7 +424,7 @@ const TripTrackingPage = () => {
             
             <div className="border-t border-[#cdd4c8] dark:border-surface-border pt-4 mt-6 flex justify-between items-end">
               <span className="text-[10px] font-bold text-content-muted uppercase tracking-wider">Tổng thanh toán</span>
-              <span className="font-display font-bold text-2xl tracking-tight text-slate-950 dark:text-white">{formatCurrency(booking.totalPrice)}</span>
+              <span className="font-display font-bold text-fluid-2xl tracking-tight text-slate-950 dark:text-white">{formatCurrency(booking.totalPrice)}</span>
             </div>
           </div>
 

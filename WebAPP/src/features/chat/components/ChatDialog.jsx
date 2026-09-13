@@ -68,9 +68,8 @@ const ChatDialog = ({ bookingId, receiverId, otherName, onClose }) => {
   const displayTitle = otherName || 'Người dùng'
 
   return (
-    <div className="fixed bottom-6 right-6 w-80 z-50 card shadow-2xl flex flex-col animate-slide-up"
-      style={{ height: 420 }}
-    >
+    <div className="fixed bottom-6 right-6 w-[calc(100vw-3rem)] sm:w-80 z-50 card shadow-2xl flex flex-col animate-slide-up"
+         style={{ height: '500px', maxHeight: 'calc(100vh - 120px)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border shrink-0">
         <div>

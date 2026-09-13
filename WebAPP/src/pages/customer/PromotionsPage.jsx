@@ -132,8 +132,8 @@ const CustomerPromotionsPage = () => {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col p-5">
-          <h3 className="mb-2 font-display text-lg font-bold leading-tight text-content-main line-clamp-2">
+        <div className="flex flex-1 flex-col p-fluid">
+          <h3 className="mb-2 font-display text-fluid-lg font-bold leading-tight text-content-main line-clamp-2">
             {promo.promotionName || `Ưu đãi giảm giá đặc biệt`}
           </h3>
           <p className="mb-5 min-h-[40px] text-sm leading-relaxed text-content-muted line-clamp-2">
@@ -143,7 +143,7 @@ const CustomerPromotionsPage = () => {
           <div className="mb-5 mt-auto flex items-end justify-between border-t border-surface-border pt-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-0.5">Giảm giá</p>
-              <p className="font-display text-2xl font-bold text-slate-950 dark:text-white">
+              <p className="font-display text-fluid-2xl font-bold text-slate-950 dark:text-white">
                 {promo.discountType === 'PERCENTAGE' && promo.discountValue 
                     ? `${promo.discountValue}%` 
                     : formatCurrency(promo.discountLimit)}
@@ -210,13 +210,13 @@ const CustomerPromotionsPage = () => {
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-5xl space-y-6 p-5 pb-10 lg:p-8"
+        className="mx-auto w-full max-w-5xl space-y-6 p-fluid pb-10 lg:p-8"
       >
         {/* Sleek Hero Section */}
-        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-6 sm:p-8 text-white shadow-sm">
+        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-fluid text-white shadow-sm">
           <div className="relative z-10 max-w-[80%]">
             <p className="mb-3 text-sm font-semibold text-lime-accent uppercase tracking-wider">BookCar Rewards</p>
-            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.04em]">
+            <h1 className="font-display text-fluid-4xl font-bold leading-[1.05] tracking-[-0.04em]">
               Ưu đãi<br />Độc quyền
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-white/55">
@@ -296,7 +296,7 @@ const CustomerPromotionsPage = () => {
               >
                 {promotions.length === 0 ? (
                   <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
-                    <p className="font-display text-xl font-bold text-content-main">Chưa có khuyến mãi mới</p>
+                    <p className="font-display text-fluid-xl font-bold text-content-main">Chưa có khuyến mãi mới</p>
                     <p className="mt-2 text-sm text-content-muted">Vui lòng quay lại sau nhé.</p>
                   </div>
                 ) : (
@@ -318,7 +318,7 @@ const CustomerPromotionsPage = () => {
               >
                 {!isAuth ? (
                   <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
-                    <p className="font-display text-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
+                    <p className="font-display text-fluid-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
                     <Button 
                       onClick={() => navigate('/login/customer')}
                       className="rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950"
@@ -353,7 +353,7 @@ const CustomerPromotionsPage = () => {
                         <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-surface-muted text-content-muted">
                           <RiTicketLine size={32} />
                         </div>
-                        <p className="font-display text-xl font-bold text-content-main">Ví trống</p>
+                        <p className="font-display text-fluid-xl font-bold text-content-main">Ví trống</p>
                         <p className="mt-2 text-sm text-content-muted">Hãy chuyển sang tab Khám phá để lưu mã nhé.</p>
                       </div>
                     ) : (
@@ -377,7 +377,7 @@ const CustomerPromotionsPage = () => {
               >
                 {!isAuth ? (
                   <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
-                    <p className="font-display text-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
+                    <p className="font-display text-fluid-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
                     <Button 
                       onClick={() => navigate('/login/customer')}
                       className="rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950"

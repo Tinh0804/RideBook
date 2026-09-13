@@ -62,17 +62,17 @@ const LoyaltyPage = ({ isSubComponent = false }) => {
     )}>
       <div className={cn(
         "mx-auto w-full max-w-3xl space-y-6",
-        isSubComponent ? "" : "p-5 lg:p-8"
+        isSubComponent ? "" : "p-fluid lg:p-8"
       )}>
         {!isSubComponent && (
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white tracking-tight">BookCar Loyalty</h1>
+            <h1 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white tracking-tight">BookCar Loyalty</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Hạng thành viên và lịch sử tích/tiêu xu</p>
           </div>
         )}
 
         {/* Overview Card */}
-        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm overflow-hidden relative">
+        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid shadow-sm overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl" />
           
           <div className="flex items-center gap-4 mb-6 relative z-10">
@@ -81,22 +81,22 @@ const LoyaltyPage = ({ isSubComponent = false }) => {
             </div>
             <div>
               <p className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hạng hiện tại</p>
-              <h2 className={cn("text-2xl font-black", tierInfo.color)}>{account.tier}</h2>
+              <h2 className={cn("text-fluid-2xl font-black", tierInfo.color)}>{account.tier}</h2>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 relative z-10">
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
+            <div className="p-fluid rounded-2xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
               <div className="flex items-center gap-2 mb-1">
                 <RiMoneyDollarCircleLine className="text-yellow-500" size={20} />
                 <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Xu BookCar</p>
               </div>
-              <p className="text-3xl font-black text-brand-600 dark:text-brand-400 mt-2">
+              <p className="text-fluid-3xl font-black text-brand-600 dark:text-brand-400 mt-2">
                 {account.currentPoints.toLocaleString()}
               </p>
             </div>
             
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
+            <div className="p-fluid rounded-2xl bg-gray-50 dark:bg-surface-dark border border-gray-100 dark:border-surface-border">
               <div className="flex items-center gap-2 mb-1">
                 <RiGiftLine className="text-brand-500" size={20} />
                 <p className="text-sm font-bold text-gray-600 dark:text-gray-300">Đặc quyền</p>
@@ -131,8 +131,8 @@ const LoyaltyPage = ({ isSubComponent = false }) => {
         </div>
 
         {/* How to earn coins Guide */}
-        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Làm thế nào để tích luỹ xu?</h3>
+        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid shadow-sm">
+          <h3 className="text-fluid-lg font-bold text-gray-900 dark:text-white mb-4">Làm thế nào để tích luỹ xu?</h3>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400">
@@ -167,16 +167,16 @@ const LoyaltyPage = ({ isSubComponent = false }) => {
         </div>
 
         {/* Transaction History */}
-        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-6 shadow-sm">
+        <div className="rounded-3xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <RiHistoryLine size={24} className="text-content-muted" />
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Lịch sử giao dịch</h3>
+            <h3 className="text-fluid-lg font-bold text-gray-900 dark:text-white">Lịch sử giao dịch</h3>
           </div>
 
           {transactions.length > 0 ? (
             <div className="space-y-4">
               {transactions.map((tx) => (
-                <div key={tx.transactionId} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-surface-dark">
+                <div key={tx.transactionId} className="flex items-center justify-between p-fluid rounded-2xl bg-gray-50 dark:bg-surface-dark">
                   <div className="flex items-start gap-3">
                     <div className={cn(
                       "mt-0.5 p-2 rounded-xl",
@@ -193,7 +193,7 @@ const LoyaltyPage = ({ isSubComponent = false }) => {
                     </div>
                   </div>
                   <div className={cn(
-                    "font-black text-lg",
+                    "font-black text-fluid-lg",
                     tx.transactionType === 'EARN' ? 'text-green-600' : 'text-red-600'
                   )}>
                     {tx.transactionType === 'EARN' ? '+' : '-'}{tx.points.toLocaleString()}

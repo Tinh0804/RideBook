@@ -6,7 +6,8 @@ import {
   RiLogoutBoxLine, RiDashboardLine, RiCarLine,
   RiBarChartLine, RiMapPinLine,
   RiMoneyDollarCircleLine, RiCarFill, RiStarLine,
-  RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line
+  RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line,
+  RiMenuLine
 } from 'react-icons/ri'
 import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/store/rootStore'
 import { useAuth } from '@/hooks/useAuth'
@@ -238,7 +239,12 @@ const MainLayout = () => {
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 280 : 80 }}
-        className="relative flex flex-col bg-surface-card dark:bg-surface-dark border-r border-surface-border z-30 h-full shrink-0 shadow-sm"
+        className={cn(
+          "flex flex-col bg-surface-card dark:bg-surface-dark border-r border-surface-border z-40 h-full shrink-0 shadow-sm transition-transform duration-300",
+          "max-lg:fixed max-lg:inset-y-0 max-lg:left-0",
+          !sidebarOpen && "max-lg:-translate-x-full",
+          "lg:relative"
+        )}
       >
         {/* Nút chiếc xe toggle sidebar */}
         <div className="absolute -right-5 top-10 z-40 hidden lg:block">
@@ -259,8 +265,8 @@ const MainLayout = () => {
         </div>
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-4 px-6 h-20 shrink-0 overflow-hidden whitespace-nowrap border-b border-surface-border group" aria-label="BookCar - Trang chủ">
-          <img src="/logo.png" alt="" className="h-10 w-10 rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6 shrink-0" />
+        <Link to="/" className="flex items-center gap-4 px-4 sm:px-6 h-14 sm:h-16 lg:h-20 shrink-0 overflow-hidden whitespace-nowrap border-b border-surface-border group" aria-label="BookCar - Trang chủ">
+          <img src="/logo.png" alt="" className="h-8 w-8 sm:h-10 sm:w-10 rounded-[12px] sm:rounded-[14px] object-cover shadow-sm transition-transform duration-300 group-hover:-rotate-6 shrink-0" />
           <AnimatePresence>
             {sidebarOpen && (
               <motion.span 
@@ -289,13 +295,13 @@ const MainLayout = () => {
                   isActive 
                     ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' 
                     : 'text-content-muted hover:bg-surface-muted hover:text-content-main',
-                  !sidebarOpen && 'justify-center px-0'
+                  !sidebarOpen && 'lg:justify-center lg:px-0'
                 )}
                 title={!sidebarOpen ? label : undefined}
               >
-                <Icon size={22} className={cn("shrink-0 transition-transform", isActive ? "scale-110" : "group-hover:scale-110")} />
+                <Icon size={20} className={cn("shrink-0 transition-transform", isActive ? "scale-110" : "group-hover:scale-110")} />
                 <AnimatePresence>
-                  {sidebarOpen && (
+                  {(sidebarOpen || window.innerWidth < 1024) && (
                     <motion.span 
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
@@ -315,13 +321,13 @@ const MainLayout = () => {
         <div className="p-4 border-t border-surface-border shrink-0 overflow-hidden whitespace-nowrap">
           <div className={cn(
             'flex items-center gap-3 p-2 rounded-xl bg-surface-muted/50 border border-surface-border',
-            !sidebarOpen && 'justify-center p-2'
+            !sidebarOpen && 'lg:justify-center lg:p-2'
           )}>
-            <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-white text-lg font-bold shrink-0 shadow-sm">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-brand-500 flex items-center justify-center text-white text-base sm:text-lg font-bold shrink-0 shadow-sm">
               {userProfile?.name?.[0] || user?.userName?.[0] || 'U'}
             </div>
             <AnimatePresence>
-              {sidebarOpen && (
+              {(sidebarOpen || window.innerWidth < 1024) && (
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -340,7 +346,7 @@ const MainLayout = () => {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-20 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
           onClick={toggleSidebar}
         />
       )}
@@ -349,14 +355,14 @@ const MainLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 relative">
         
         {/* Topbar */}
-        <header className="h-20 flex items-center justify-between px-6 lg:px-10 shrink-0 z-10">
+        <header className="h-14 sm:h-16 lg:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-10 shrink-0 z-10">
           
           {/* Mobile toggle */}
           <button
             onClick={toggleSidebar}
-            className="lg:hidden p-2 rounded-xl bg-surface-card border border-surface-border shadow-sm text-content-main"
+            className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-surface-card border border-surface-border shadow-sm text-content-main hover:bg-surface-muted transition-colors"
           >
-            <RiCarFill size={22} className="text-brand-500" />
+            <RiMenuLine size={24} className="text-content-main" />
           </button>
           
           <div className="flex-1" />
@@ -366,23 +372,23 @@ const MainLayout = () => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm"
               title="Đổi giao diện"
               aria-label="Đổi giao diện"
             >
-              {theme === 'dark' ? <RiSunLine size={18} /> : <RiMoonLine size={18} />}
+              {theme === 'dark' ? <RiSunLine size={16} /> : <RiMoonLine size={16} />}
             </button>
 
             {/* Notifications */}
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((o) => !o)}
-                className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm relative"
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:text-content-main hover:bg-surface-muted transition-colors shadow-sm relative"
                 aria-label="Thông báo"
               >
-                <RiNotification3Line size={18} />
+                <RiNotification3Line size={16} />
                 {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 border-2 border-surface-card rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 border-2 border-surface-card rounded-full text-[9px] sm:text-[10px] font-bold text-white flex items-center justify-center">
                     {notifCount > 9 ? '9+' : notifCount}
                   </span>
                 )}
@@ -395,7 +401,7 @@ const MainLayout = () => {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 top-14 w-80 bg-surface-card rounded-2xl shadow-card border border-surface-border z-50 overflow-hidden"
+                    className="absolute right-0 top-12 sm:top-14 w-[90vw] sm:w-80 max-w-sm bg-surface-card rounded-2xl shadow-card border border-surface-border z-50 overflow-hidden"
                   >
                     <div className="p-4 border-b border-surface-border flex items-center justify-between bg-surface-muted/30">
                       <h3 className="font-bold text-content-main">Thông báo</h3>
@@ -436,11 +442,11 @@ const MainLayout = () => {
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors shadow-sm"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-surface-card border border-surface-border text-content-muted hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-colors shadow-sm"
               title="Đăng xuất"
               aria-label="Đăng xuất"
             >
-              <RiLogoutBoxLine size={18} />
+              <RiLogoutBoxLine size={16} />
             </button>
           </div>
         </header>

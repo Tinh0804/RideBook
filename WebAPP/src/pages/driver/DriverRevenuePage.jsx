@@ -76,7 +76,7 @@ const DriverRevenuePage = () => {
   const questProgress = Math.min((selectedDayTripsCount / QUEST_GOAL) * 100, 100)
 
   return (
-    <div className="h-full overflow-y-auto bg-[#e8ece3] p-5 pb-10 dark:bg-surface-dark lg:p-8 pointer-events-auto">
+    <div className="h-full overflow-y-auto bg-[#e8ece3] p-fluid pb-10 dark:bg-surface-dark pointer-events-auto">
       <motion.div 
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
@@ -85,12 +85,12 @@ const DriverRevenuePage = () => {
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Doanh thu & Thu nhập</h1>
+            <h1 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white tracking-tight">Doanh thu & Thu nhập</h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Theo dõi thu nhập thực tế, chiết khấu và tiền thưởng</p>
           </div>
           
           {/* Global Date Picker */}
-          <div className="flex items-center gap-3 bg-white dark:bg-surface-card border border-gray-100 dark:border-surface-border px-4 py-2.5 rounded-xl shadow-sm">
+          <div className="flex items-center gap-3 bg-white dark:bg-surface-card border border-gray-100 dark:border-surface-border px-fluid py-2.5 rounded-xl shadow-sm">
             <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center">
               <RiCalendarLine className="text-brand-500" size={18} />
             </div>
@@ -110,7 +110,7 @@ const DriverRevenuePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Net Income Hero Card */}
-          <div className="lg:col-span-2 relative overflow-hidden rounded-3xl p-6 md:p-8 shadow-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white border border-white/10">
+          <div className="lg:col-span-2 relative overflow-hidden rounded-3xl p-fluid md:p-8 shadow-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white border border-white/10">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl opacity-50 translate-x-1/4 -translate-y-1/4"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/20 rounded-full blur-3xl opacity-50 -translate-x-1/4 translate-y-1/4"></div>
             
@@ -127,7 +127,7 @@ const DriverRevenuePage = () => {
               
               <div>
                 <p className="text-brand-100 text-sm font-medium mb-1">Sau khi trừ {(platformFeeRate * 100).toFixed(0)}% phí nền tảng</p>
-                <h2 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-sm">
+                <h2 className="font-display text-fluid-4xl font-bold tracking-tight text-white drop-shadow-sm">
                   {formatCurrency(finalIncome)}
                 </h2>
               </div>
@@ -152,12 +152,12 @@ const DriverRevenuePage = () => {
           {/* Quest & Today Summary */}
           <div className="lg:col-span-1 flex flex-col gap-4">
             {/* Selected Date's Net Insight */}
-            <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm border-l-4 border-l-brand-500">
+            <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid border border-gray-100 dark:border-surface-border shadow-sm border-l-4 border-l-brand-500">
               <p className="text-xs font-bold text-gray-500 dark:text-content-muted uppercase tracking-wider mb-2 flex items-center gap-2">
                 <RiCarLine className="text-brand-500" size={16} /> Số chuyến hoàn thành
               </p>
               <div className="flex items-baseline gap-2 mb-2">
-                <span className="font-display text-3xl font-bold text-gray-900 dark:text-white">{selectedDayTripsCount}</span>
+                <span className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white">{selectedDayTripsCount}</span>
                 <span className="text-sm font-medium text-gray-500">chuyến</span>
               </div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 w-fit px-2.5 py-1 rounded-md">
@@ -167,7 +167,7 @@ const DriverRevenuePage = () => {
             
             {/* Daily Quest Progress */}
             <div className={cn(
-              "bg-white dark:bg-surface-card rounded-2xl p-5 border shadow-sm border-l-4 flex-1 flex flex-col justify-center",
+              "bg-white dark:bg-surface-card rounded-2xl p-fluid border shadow-sm border-l-4 flex-1 flex flex-col justify-center",
               isQuestCompleted 
                 ? "border-l-yellow-400 border-gray-100 dark:border-surface-border" 
                 : "border-l-purple-500 border-gray-100 dark:border-surface-border"
@@ -183,7 +183,7 @@ const DriverRevenuePage = () => {
                 )}
               </div>
               
-              <p className="font-display text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(QUEST_REWARD)}</p>
+              <p className="font-display text-fluid-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCurrency(QUEST_REWARD)}</p>
               <p className="text-xs text-gray-500 font-medium mb-4">Chạy đủ {QUEST_GOAL} chuyến nhận ngay thưởng</p>
               
               <div className="space-y-2 mt-auto">
@@ -206,7 +206,7 @@ const DriverRevenuePage = () => {
 
         {/* Split: Cash vs Online Wallet */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-emerald-100 dark:border-emerald-500/20 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-emerald-100 dark:border-emerald-500/20 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl"></div>
             <div className="flex items-center gap-4 mb-5 relative z-10">
               <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
@@ -217,13 +217,13 @@ const DriverRevenuePage = () => {
                 <p className="text-xs text-gray-500 mt-0.5">Tiền khách trả trực tiếp cho bạn</p>
               </div>
             </div>
-            <h3 className="font-display text-3xl font-bold text-emerald-600 dark:text-emerald-400 relative z-10">{formatCurrency(cashCollected)}</h3>
+            <h3 className="font-display text-fluid-3xl font-bold text-emerald-600 dark:text-emerald-400 relative z-10">{formatCurrency(cashCollected)}</h3>
             <p className="text-xs text-gray-500 font-medium mt-4 border-t border-gray-100 dark:border-surface-border pt-3 relative z-10 leading-relaxed">
               *Lưu ý: Hệ thống sẽ tự động trừ <span className="font-bold text-gray-700 dark:text-gray-300">{(platformFeeRate * 100).toFixed(0)}%</span> phí nền tảng (<span className="font-bold text-red-500">{formatCurrency(cashCollected * platformFeeRate)}</span>) của các cuốc tiền mặt này từ Ví của bạn.
             </p>
           </div>
           
-          <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-blue-100 dark:border-blue-500/20 shadow-sm relative overflow-hidden">
+          <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-blue-100 dark:border-blue-500/20 shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
             <div className="flex items-center gap-4 mb-5 relative z-10">
               <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500">
@@ -234,7 +234,7 @@ const DriverRevenuePage = () => {
                 <p className="text-xs text-gray-500 mt-0.5">Khách thanh toán trực tuyến (VNPAY, Thẻ)</p>
               </div>
             </div>
-            <h3 className="font-display text-3xl font-bold text-blue-600 dark:text-blue-400 relative z-10">{formatCurrency(onlineIncome)}</h3>
+            <h3 className="font-display text-fluid-3xl font-bold text-blue-600 dark:text-blue-400 relative z-10">{formatCurrency(onlineIncome)}</h3>
             <p className="text-xs text-gray-500 font-medium mt-4 border-t border-gray-100 dark:border-surface-border pt-3 relative z-10 leading-relaxed">
               Số tiền này đã bao gồm trong tổng doanh thu. Tiền đã được <span className="font-bold text-brand-500">tự động cộng</span> vào Ví điện tử của bạn.
             </p>
@@ -242,10 +242,10 @@ const DriverRevenuePage = () => {
         </div>
 
         {/* Chart */}
-        <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-6">
+        <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white">Biểu đồ thu nhập</h2>
+              <h2 className="font-display text-fluid-xl font-bold text-gray-900 dark:text-white">Biểu đồ thu nhập</h2>
               <span className="text-sm font-bold text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-2 py-1 rounded-md">+15% so với kỳ trước</span>
             </div>
             <div className="flex gap-1 p-1 bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl">
@@ -294,9 +294,9 @@ const DriverRevenuePage = () => {
         </div>
 
         {/* Recent Trips */}
-        <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-5">
+        <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white">Chuyến đi gần đây</h2>
+            <h2 className="font-display text-fluid-xl font-bold text-gray-900 dark:text-white">Chuyến đi gần đây</h2>
             <button 
               onClick={() => navigate('/driver/history')}
               className="text-sm font-bold text-brand-500 hover:text-brand-600 transition-colors flex items-center gap-1 bg-brand-50 dark:bg-brand-500/10 px-3 py-1.5 rounded-lg"
@@ -322,7 +322,7 @@ const DriverRevenuePage = () => {
                     (trip.status === BOOKING_STATUS.COMPLETED || trip.bookingStatus === BOOKING_STATUS.COMPLETED) ? 'bg-brand-500' : 'bg-red-500',
                   )} />
                   
-                  <div className="bg-gray-50 dark:bg-surface-dark p-4 rounded-xl hover:bg-gray-100 dark:hover:bg-surface-border/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-transparent hover:border-gray-200 dark:hover:border-surface-border">
+                  <div className="bg-gray-50 dark:bg-surface-dark p-fluid rounded-xl hover:bg-gray-100 dark:hover:bg-surface-border/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-transparent hover:border-gray-200 dark:hover:border-surface-border">
                     <div className="flex-1">
                       <p className="text-sm font-bold text-gray-900 dark:text-white leading-relaxed mb-2">
                         {trip.dropoffLocation}
@@ -340,7 +340,7 @@ const DriverRevenuePage = () => {
                       </div>
                     </div>
                     <div className="sm:text-right shrink-0 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-surface-border pt-3 sm:pt-0 sm:pl-5">
-                      <p className="font-display font-bold text-xl text-gray-900 dark:text-white">{formatCurrency(trip.totalPrice)}</p>
+                      <p className="font-display font-bold text-fluid-xl text-gray-900 dark:text-white">{formatCurrency(trip.totalPrice)}</p>
                       <div className="flex items-center sm:justify-end gap-1 mt-1">
                         {trip.paymentMethod === 'CASH' ? (
                           <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-500/10 px-2.5 py-1 rounded-md">Tiền mặt</span>

@@ -54,7 +54,7 @@ const DriverRatingsPage = () => {
   const counts = getRatingSummary()
 
   return (
-    <div className="h-full overflow-y-auto bg-[#e8ece3] p-5 pb-10 dark:bg-surface-dark lg:p-8 pointer-events-auto">
+    <div className="h-full overflow-y-auto bg-[#e8ece3] p-fluid pb-10 dark:bg-surface-dark pointer-events-auto">
       <motion.div 
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
@@ -62,15 +62,15 @@ const DriverRatingsPage = () => {
         className="mx-auto max-w-4xl space-y-6"
       >
         <div className="mb-2">
-          <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Đánh giá từ khách hàng</h1>
+          <h1 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white tracking-tight">Đánh giá từ khách hàng</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Xem phản hồi và điểm đánh giá của bạn</p>
         </div>
 
         {/* Overview Section */}
-        <div className="bg-white dark:bg-surface-card rounded-2xl p-6 md:p-8 border border-gray-100 dark:border-surface-border shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-12">
+        <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-8 border border-gray-100 dark:border-surface-border shadow-sm flex flex-col md:flex-row items-center gap-8 md:gap-12">
           {/* Average Score */}
           <div className="flex flex-col items-center justify-center text-center">
-            <h2 className="text-6xl font-display font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-[clamp(2.5rem,6vw,3.75rem)] font-display font-bold text-gray-900 dark:text-white mb-2">
               {averageRating.toFixed(1)}
             </h2>
             <div className="flex text-yellow-400 mb-2">
@@ -111,7 +111,7 @@ const DriverRatingsPage = () => {
 
         {/* Ratings List */}
         <div className="space-y-4">
-          <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white mt-8 mb-4">Chi tiết đánh giá</h2>
+          <h2 className="font-display text-fluid-xl font-bold text-gray-900 dark:text-white mt-8 mb-4">Chi tiết đánh giá</h2>
           
           {ratings.length === 0 ? (
             <div className="py-12 text-center bg-white dark:bg-surface-card rounded-2xl border border-dashed border-gray-200 dark:border-surface-border">
@@ -122,7 +122,7 @@ const DriverRatingsPage = () => {
             </div>
           ) : (
             ratings.map((review, idx) => (
-              <div key={idx} className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm flex flex-col sm:flex-row gap-5">
+              <div key={idx} className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-gray-100 dark:border-surface-border shadow-sm flex flex-col sm:flex-row gap-5">
                 <div className="w-12 h-12 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center shrink-0">
                   <RiUserLine size={24} className="text-brand-500" />
                 </div>

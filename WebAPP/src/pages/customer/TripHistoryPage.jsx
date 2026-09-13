@@ -101,13 +101,13 @@ const TripHistoryPage = () => {
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-3xl space-y-6 p-5 pb-10 lg:p-8"
+        className="mx-auto w-full max-w-3xl space-y-6 p-fluid pb-10 lg:p-8"
       >
         {/* Header Section (Matching user's sleek editorial style) */}
-        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-6 sm:p-8 text-white shadow-sm">
+        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-slate-950 p-fluid text-white shadow-sm">
           <div className="relative z-10 max-w-[80%]">
             <p className="mb-3 text-sm font-semibold text-lime-accent uppercase tracking-wider">Hành trình của bạn</p>
-            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.04em]">
+            <h1 className="font-display text-fluid-4xl font-bold leading-[1.05] tracking-[-0.04em]">
               Lịch sử<br />Chuyến đi
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-white/55">
@@ -168,7 +168,7 @@ const TripHistoryPage = () => {
             <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-surface-muted text-content-muted">
               <RiCarLine size={32} />
             </div>
-            <p className="font-display text-xl font-bold text-content-main">Chưa có chuyến đi nào</p>
+            <p className="font-display text-fluid-xl font-bold text-content-main">Chưa có chuyến đi nào</p>
             <p className="mt-2 text-sm text-content-muted">Khám phá thành phố cùng BookCar ngay hôm nay.</p>
             <Button
               onClick={() => navigate('/customer/booking')}
@@ -185,7 +185,7 @@ const TripHistoryPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
                 key={trip.bookingId}
-                className="group relative overflow-hidden rounded-2xl border border-surface-border bg-surface-card p-5 sm:p-6 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-600"
+                className="group relative overflow-hidden rounded-2xl border border-surface-border bg-surface-card p-fluid shadow-sm transition hover:border-slate-300 dark:hover:border-slate-600"
               >
                 {/* Status & Date */}
                 <div className="mb-5 flex items-center justify-between border-b border-surface-border pb-4">
@@ -251,7 +251,7 @@ const TripHistoryPage = () => {
                   
                   <div className="text-right">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-0.5">Tổng cộng</p>
-                    <p className="font-display text-xl font-bold text-slate-950 dark:text-white">
+                    <p className="font-display text-fluid-xl font-bold text-slate-950 dark:text-white">
                       {formatCurrency(trip.totalPrice)}
                     </p>
                   </div>

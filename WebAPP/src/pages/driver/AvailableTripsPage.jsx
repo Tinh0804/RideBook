@@ -430,11 +430,11 @@ const DriverTripFlowPage = () => {
       <img src="/assets/images/map_bg.jpg" alt="Map" className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-20 pointer-events-none" />
       <div className="absolute inset-0 bg-white/40 dark:bg-surface-dark/40 backdrop-blur-[2px] pointer-events-none" />
 
-      <div className="relative z-10 bg-white/95 dark:bg-surface-card/95 backdrop-blur-md p-8 md:p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-11/12 text-center border border-gray-200 dark:border-surface-border">
+      <div className="relative z-10 bg-white/95 dark:bg-surface-card/95 backdrop-blur-md p-fluid md:p-10 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-11/12 text-center border border-gray-200 dark:border-surface-border">
         <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-surface-dark flex items-center justify-center mb-6 shadow-inner">
           <RiCarLine size={48} className="text-gray-400" />
         </div>
-        <h2 className="font-display text-2xl font-bold text-gray-900 dark:text-white mb-3">Đang ngoại tuyến</h2>
+        <h2 className="font-display text-fluid-2xl font-bold text-gray-900 dark:text-white mb-3">Đang ngoại tuyến</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-8 font-medium">
           Vui lòng bật trạng thái hoạt động để bắt đầu nhận cuốc và kiếm thêm thu nhập.
         </p>
@@ -473,7 +473,7 @@ const DriverTripFlowPage = () => {
 
         {/* Top Floating Card */}
         <div className="absolute top-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-lg z-10">
-          <div className="bg-white/95 dark:bg-surface-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 dark:border-surface-border p-4 flex items-center justify-between animate-fade-in-down">
+          <div className="bg-white/95 dark:bg-surface-card/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 dark:border-surface-border p-fluid-sm flex items-center justify-between animate-fade-in-down">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-brand-500/10 flex items-center justify-center relative shrink-0">
                 <span className="absolute inset-0 rounded-full border-2 border-brand-500 animate-ping opacity-60"></span>
@@ -492,10 +492,10 @@ const DriverTripFlowPage = () => {
           {incomingTrip && (
             <div className="space-y-4 animate-fade-in-up bg-gray-50 dark:bg-surface-dark p-2 -mx-4 -mb-4">
               {/* Price Card */}
-              <div className="bg-white dark:bg-surface-card rounded-xl p-4 shadow-sm border border-gray-100 dark:border-surface-border flex justify-between items-start">
+              <div className="bg-white dark:bg-surface-card rounded-xl p-fluid shadow-sm border border-gray-100 dark:border-surface-border flex justify-between items-start">
                 <div>
                   <div className="text-xs font-semibold text-gray-500 mb-1">Cước phí</div>
-                  <div className="font-display text-3xl font-bold text-gray-900 dark:text-white">
+                  <div className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white">
                     {formatCurrency(incomingTrip.totalPrice || incomingTrip.price)}
                   </div>
                   {incomingTrip.paymentMethod && (
@@ -530,7 +530,7 @@ const DriverTripFlowPage = () => {
                   </span>
                 </div>
                 
-                <div className="p-4">
+                <div className="p-fluid">
                   <div className="relative">
                     <div className="absolute left-[11px] top-4 bottom-4 w-0 border-l-2 border-dotted border-gray-300 dark:border-gray-600"></div>
                     <div className="space-y-6 relative z-10">
@@ -604,10 +604,10 @@ const DriverTripFlowPage = () => {
     <div className="h-full flex flex-col lg:flex-row bg-[#e8ece3] dark:bg-surface-dark overflow-hidden relative">
       {/* Vùng 1: Thông tin chuyến đi */}
       <div className="w-full lg:w-[420px] flex flex-col h-[55vh] lg:h-full bg-white dark:bg-surface-card border-b lg:border-b-0 lg:border-r border-gray-200 dark:border-surface-border z-10 shadow-2xl shrink-0">
-        <div className="p-5 md:p-6 border-b border-gray-100 dark:border-surface-border sticky top-0 z-20 bg-white/95 dark:bg-surface-card/95 backdrop-blur-sm">
+        <div className="p-fluid md:p-6 border-b border-gray-100 dark:border-surface-border sticky top-0 z-20 bg-white/95 dark:bg-surface-card/95 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="font-display font-bold text-gray-900 dark:text-white text-xl">Chuyến đi #{currentTrip.bookingId?.slice(-8)}</h1>
+              <h1 className="font-display font-bold text-gray-900 dark:text-white text-fluid-xl">Chuyến đi #{currentTrip.bookingId?.slice(-8)}</h1>
               <p className="text-xs text-gray-500 font-medium mt-1">Đang xử lý chuyến đi</p>
             </div>
             <span className="px-3 py-1.5 rounded-lg text-xs font-bold text-brand-500 bg-brand-50 dark:bg-brand-500/10 border border-brand-100 dark:border-brand-500/20 flex items-center">
@@ -635,10 +635,10 @@ const DriverTripFlowPage = () => {
         </div>
 
         {/* Scrollable Info Area */}
-        <div className="p-5 md:p-6 overflow-y-auto no-scrollbar space-y-6 flex-1 bg-gray-50/50 dark:bg-transparent">
+        <div className="p-fluid md:p-6 overflow-y-auto no-scrollbar space-y-6 flex-1 bg-gray-50/50 dark:bg-transparent">
           {/* Customer info */}
           {currentTrip.customerId && (
-            <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm">
+            <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid border border-gray-100 dark:border-surface-border shadow-sm">
               <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-4 uppercase tracking-wider">Khách hàng</h3>
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-2xl font-bold text-blue-500 shrink-0">
@@ -667,7 +667,7 @@ const DriverTripFlowPage = () => {
           )}
 
           {/* Route info */}
-          <div className="bg-white dark:bg-surface-card rounded-2xl p-5 border border-gray-100 dark:border-surface-border shadow-sm">
+          <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid border border-gray-100 dark:border-surface-border shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-5 uppercase tracking-wider">Hành trình & Cước phí</h3>
 
             <div className="relative mb-6">
@@ -709,7 +709,7 @@ const DriverTripFlowPage = () => {
                   {currentTrip.originalPrice && currentTrip.originalPrice > currentTrip.totalPrice && (
                     <span className="text-xs text-gray-400 line-through">{formatCurrency(currentTrip.originalPrice)}</span>
                   )}
-                  <span className="font-display font-bold text-brand-500 text-xl">{formatCurrency(currentTrip.totalPrice)}</span>
+                  <span className="font-display font-bold text-brand-500 text-fluid-xl">{formatCurrency(currentTrip.totalPrice)}</span>
                 </div>
               </div>
               <div className="flex justify-between items-center text-sm">

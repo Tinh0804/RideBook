@@ -69,23 +69,23 @@ const DriverHistoryPage = () => {
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-4xl space-y-6 p-5 pb-10 lg:p-8"
+        className="mx-auto w-full max-w-4xl space-y-6 p-fluid pb-10"
       >
         {/* Header Section (Matching user's sleek editorial style) */}
-        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-brand-600 p-6 sm:p-8 text-white shadow-sm">
+        <section className="relative min-h-40 overflow-hidden rounded-2xl bg-brand-600 p-fluid md:p-8 text-white shadow-sm">
           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-700 rounded-full blur-3xl opacity-50 translate-y-1/3 -translate-x-1/3" />
           
           <div className="relative z-10 max-w-[80%]">
             <p className="mb-3 text-sm font-semibold text-brand-100 uppercase tracking-wider">Hoạt động của bạn</p>
-            <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-[-0.04em]">
+            <h1 className="font-display text-fluid-4xl font-bold leading-[1.05] tracking-[-0.04em]">
               Lịch sử<br />Chuyến đi
             </h1>
             <p className="mt-4 text-sm leading-relaxed text-brand-50">
               Bạn đã thực hiện {totalElements} chuyến đi cùng hệ thống.
             </p>
           </div>
-          <span className="absolute -bottom-6 right-2 font-display text-[9rem] font-bold tracking-[-0.08em] text-white/[.08] select-none">
+          <span className="absolute -bottom-6 right-2 font-display text-[clamp(4rem,15vw,9rem)] font-bold tracking-[-0.08em] text-white/[.08] select-none">
             {totalElements.toString().padStart(2, '0')}
           </span>
         </section>
@@ -131,7 +131,7 @@ const DriverHistoryPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
                 key={trip.bookingId}
-                className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-5 sm:p-6 shadow-sm transition hover:border-brand-200 dark:hover:border-brand-500/30"
+                className="group relative overflow-hidden rounded-2xl border border-gray-100 dark:border-surface-border bg-white dark:bg-surface-card p-fluid md:p-6 shadow-sm transition hover:border-brand-200 dark:hover:border-brand-500/30"
               >
                 {/* Status & Date */}
                 <div className="mb-5 flex items-center justify-between border-b border-gray-100 dark:border-surface-border pb-4">
@@ -212,7 +212,7 @@ const DriverHistoryPage = () => {
                   
                   <div className="text-right">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-content-muted mb-0.5">Thu nhập chuyến</p>
-                    <p className="font-display text-xl font-bold text-brand-500">
+                    <p className="font-display text-fluid-xl font-bold text-brand-500">
                       {formatCurrency(trip.totalPrice)}
                     </p>
                   </div>

@@ -123,7 +123,7 @@ const DriverWalletPage = () => {
   )
 
   return (
-    <div className="h-full overflow-y-auto bg-[#e8ece3] p-5 pb-10 dark:bg-surface-dark lg:p-8 pointer-events-auto">
+    <div className="h-full overflow-y-auto bg-[#e8ece3] p-fluid pb-10 dark:bg-surface-dark pointer-events-auto">
       <motion.div 
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
@@ -131,12 +131,12 @@ const DriverWalletPage = () => {
         className="mx-auto max-w-4xl space-y-6"
       >
         <div className="mb-2">
-          <h1 className="font-display text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Ví điện tử</h1>
+          <h1 className="font-display text-fluid-3xl font-bold text-gray-900 dark:text-white tracking-tight">Ví điện tử</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Quản lý số dư, nạp và rút tiền</p>
         </div>
 
         {/* Balance card */}
-        <div className="relative overflow-hidden rounded-3xl p-8 shadow-xl bg-gradient-to-br from-brand-600 to-brand-800 border border-white/10 text-white">
+        <div className="relative overflow-hidden rounded-3xl p-fluid md:p-8 shadow-xl bg-gradient-to-br from-brand-600 to-brand-800 border border-white/10 text-white">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl opacity-50 translate-x-1/4 -translate-y-1/4"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/20 rounded-full blur-3xl opacity-50 -translate-x-1/4 translate-y-1/4"></div>
           
@@ -148,7 +148,7 @@ const DriverWalletPage = () => {
                 </div>
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-brand-200">Số dư khả dụng</p>
-                  <p className="font-display text-4xl font-bold text-white mt-1 tracking-tight drop-shadow-sm">
+                  <p className="font-display text-fluid-4xl font-bold text-white mt-1 tracking-tight drop-shadow-sm">
                     {formatCurrency(wallet?.balance || 0)}
                   </p>
                 </div>
@@ -173,8 +173,8 @@ const DriverWalletPage = () => {
         </div>
 
         {/* Transaction history */}
-        <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-5">
-          <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white">Lịch sử giao dịch</h2>
+        <div className="bg-white dark:bg-surface-card rounded-2xl p-fluid md:p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-5">
+          <h2 className="font-display text-fluid-xl font-bold text-gray-900 dark:text-white">Lịch sử giao dịch</h2>
           
           {transactions.length === 0 ? (
             <div className="py-12 text-center border border-dashed border-gray-200 dark:border-surface-border rounded-2xl">

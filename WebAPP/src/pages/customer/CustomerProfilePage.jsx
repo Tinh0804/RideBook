@@ -201,11 +201,11 @@ const CustomerProfilePage = () => {
         initial={{ opacity: 0, x: -18 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto w-full max-w-3xl space-y-8 p-5 pb-12 lg:p-8"
+        className="mx-auto w-full max-w-3xl space-y-8 p-fluid pb-12 lg:p-8"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-content-main tracking-tight">Hồ sơ cá nhân</h1>
+            <h1 className="font-display text-fluid-3xl font-bold text-content-main tracking-tight">Hồ sơ cá nhân</h1>
             <p className="text-sm text-content-muted mt-1">Quản lý thông tin và trạng thái thành viên</p>
           </div>
           {!editing && (
@@ -221,9 +221,9 @@ const CustomerProfilePage = () => {
         </div>
 
         {/* Profile Header & Tier */}
-        <div className="grid gap-6 md:grid-cols-[1fr_1.5fr]">
+        <div className="grid gap-fluid md:grid-cols-[1fr_1.5fr]">
           {/* Avatar Area */}
-          <div className="rounded-2xl border border-surface-border bg-surface-card p-6 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+          <div className="rounded-2xl border border-surface-border bg-surface-card p-fluid flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-24 bg-surface-muted/50" />
             <div className="relative mb-4 mt-6">
               <div className="h-28 w-28 rounded-full border-4 border-surface-card bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center text-5xl font-bold text-slate-400 shadow-md">
@@ -252,7 +252,7 @@ const CustomerProfilePage = () => {
           {loyalty && (
             <button 
               onClick={() => navigate('/customer/loyalty')}
-              className={cn("w-full text-left relative overflow-hidden rounded-2xl border p-6 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02]", tierInfo.bgClass)}
+              className={cn("w-full text-left relative overflow-hidden rounded-2xl border p-fluid shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02]", tierInfo.bgClass)}
             >
               <div className="flex items-start justify-between relative z-10">
                 <div className="flex items-center gap-3 min-w-0">
@@ -307,8 +307,8 @@ const CustomerProfilePage = () => {
         </div>
 
         {/* Profile Fields */}
-        <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
-          <h3 className="font-bold text-lg mb-6">Thông tin chi tiết</h3>
+        <div className="rounded-2xl border border-surface-border bg-surface-card p-fluid shadow-sm">
+          <h3 className="font-bold text-fluid-lg mb-6">Thông tin chi tiết</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <FormField label="Họ và tên">
               {editing
@@ -380,9 +380,9 @@ const CustomerProfilePage = () => {
         </div>
 
         {/* Favorite Places */}
-        <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
+        <div className="rounded-2xl border border-surface-border bg-surface-card p-fluid shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-lg">Địa điểm yêu thích</h3>
+            <h3 className="font-bold text-fluid-lg">Địa điểm yêu thích</h3>
             <Button 
               size="sm" 
               variant="outline" 
@@ -430,8 +430,8 @@ const CustomerProfilePage = () => {
 
         {/* Benefits Section */}
         {loyalty?.tierBenefits && loyalty?.tierBenefits?.length > 0 && (
-          <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+          <div className="rounded-2xl border border-surface-border bg-surface-card p-fluid shadow-sm">
+            <h3 className="font-bold text-fluid-lg mb-4 flex items-center gap-2">
               <RiVipCrownLine className="text-yellow-500" /> Đặc quyền {tierInfo.label}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

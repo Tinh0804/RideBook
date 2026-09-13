@@ -19,10 +19,12 @@ const changePasswordSchema = z.object({
 
 const ChangePasswordModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false)
-  if (!isOpen) return null
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  
+  const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(changePasswordSchema)
   })
+
+  if (!isOpen) return null
 
   const onSubmit = async (data) => {
     setLoading(true)
