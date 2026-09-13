@@ -473,7 +473,7 @@ const AdminDriversPage = () => {
                 {/* Transaction History */}
                 <div>
                   <h4 className="font-medium text-sm mb-3 text-content-muted uppercase tracking-wider">Lịch sử giao dịch</h4>
-                  <div className="border border-surface-border rounded-xl overflow-hidden">
+                  <div className="border border-surface-border rounded-xl overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-surface-dark">
                         <tr className="border-b border-surface-border text-content-muted">

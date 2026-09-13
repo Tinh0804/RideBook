@@ -435,6 +435,19 @@ const TripTrackingPage = () => {
                 Đánh giá chuyến đi
               </Button>
             )}
+            {booking.bookingStatus === BOOKING_STATUS.QUEUED && (
+              <Button
+                variant="outline"
+                fullWidth
+                className="h-12 rounded-xl border-brand-500 text-brand-600 font-bold hover:bg-brand-50"
+                onClick={() => {
+                  clearCurrentBooking()
+                  navigate('/customer/booking')
+                }}
+              >
+                Đặt chuyến khác
+              </Button>
+            )}
             {[BOOKING_STATUS.QUEUED, BOOKING_STATUS.PENDING, BOOKING_STATUS.ACCEPTED].includes(booking.bookingStatus) && (
               <Button
                 fullWidth
@@ -446,7 +459,7 @@ const TripTrackingPage = () => {
               </Button>
             )}
             <Button variant="outline" fullWidth className="h-12 rounded-xl border-[#cdd4c8] dark:border-surface-border font-bold text-content-main hover:border-slate-400" onClick={() => {
-              if (booking.bookingStatus === BOOKING_STATUS.COMPLETED || booking.bookingStatus === BOOKING_STATUS.CANCELLED) {
+              if ([BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.QUEUED].includes(booking.bookingStatus)) {
                 clearCurrentBooking()
               }
               navigate('/customer/home')

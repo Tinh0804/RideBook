@@ -5,9 +5,11 @@ import com.project.BookCarOnline.booking.dto.response.BookingDetailResponse;
 import com.project.BookCarOnline.booking.dto.response.BookingPromotionDTO;
 import com.project.BookCarOnline.booking.entity.Booking;
 import com.project.BookCarOnline.booking.entity.BookingPromotion;
+import com.project.BookCarOnline.booking.entity.Rating;
 import com.project.BookCarOnline.booking.entity.enums.BookingStatus;
 import com.project.BookCarOnline.booking.repository.BookingPromotionRepository;
 import com.project.BookCarOnline.booking.repository.BookingRepository;
+import com.project.BookCarOnline.booking.repository.RatingRepository;
 import com.project.BookCarOnline.catalog.dto.VehicleTypeSummary;
 import com.project.BookCarOnline.catalog.service.VehicleTypeService;
 import com.project.BookCarOnline.finance.dto.PaymentSummary;
@@ -44,6 +46,7 @@ public class BookingQueryService {
     private final VehicleTypeService vehicleTypeService;
     private final PaymentService paymentService;
     private final PricingService pricingService;
+    private final RatingRepository ratingRepository;
 
     public List<BookingDetailResponse> getAllBookings() {
         return bookingRepository.findAll().stream().map(this::toDetail).toList();
@@ -199,6 +202,8 @@ public class BookingQueryService {
         PaymentSummary payment = booking.getPaymentId() != null
                 ? paymentService.get(booking.getPaymentId())
                 : null;
+                
+        java.util.Optional<Rating> ratingOpt = ratingRepository.findByBookingNo_BookingId(booking.getBookingId());
 
         return BookingDetailResponse.builder()
                 .bookingId(booking.getBookingId())
@@ -230,6 +235,8 @@ public class BookingQueryService {
                         : null)
                 .paymentStatus(payment != null ? payment.paid() : null)
                 .appliedPromotions(promotionResponses)
+                .rating(ratingOpt.map(Rating::getScore).map(Double::intValue).orElse(null))
+                .review(ratingOpt.map(Rating::getReview).orElse(null))
                 .build();
     }
 

@@ -1,7 +1,6 @@
 package com.project.BookCarOnline.promotion.entity;
 
-import com.project.BookCarOnline.promotion.entity.enums.CustomerPromotionStatus;
-
+import com.project.BookCarOnline.promotion.entity.enums.PointTransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -17,31 +16,29 @@ import java.sql.Timestamp;
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table
-public class CustomerPromotion {
+public class PointTransaction {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(nullable = false, unique = true, length = 36)
-    String id;
+    String pointTransactionId;
 
-    @Column(name = "customer_id", length = 36)
-    String customerId;
+    @Column(nullable = false, length = 36)
+    String loyaltyAccountId;
 
-    @ManyToOne
-    @JoinColumn(name = "promotion_id")
-    Promotion promotion;
+    @Column(nullable = false)
+    Integer amount;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(length = 20)
-    CustomerPromotionStatus status;
+    PointTransactionType type;
 
-    @Column
-    Timestamp savedAt;
+    @Column(length = 255)
+    String description;
 
-    @Column
-    Timestamp usedAt;
+    @Column(length = 36)
+    String referenceId; // Booking ID or Promotion ID
 
-    @Column(columnDefinition = "integer DEFAULT 1", nullable = false)
-    @Builder.Default
-    Integer quantity = 1;
+    @Column(insertable = false, updatable = false)
+    Timestamp createdAt;
 }

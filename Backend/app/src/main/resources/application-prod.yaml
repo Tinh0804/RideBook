@@ -22,6 +22,28 @@ springdoc:
     swagger-ui:
         enabled: false
 
+app:
+    loyalty:
+        earn-rate: 1000.0
+        coin-value: 1000.0
+        tiers:
+            bronze:
+                threshold: 0
+                customer-multiplier: 1.0
+                driver-commission: 0.20
+            silver:
+                threshold: 1000
+                customer-multiplier: 1.2
+                driver-commission: 0.18
+            gold:
+                threshold: 2000
+                customer-multiplier: 1.5
+                driver-commission: 0.15
+            diamond:
+                threshold: 5000
+                customer-multiplier: 2.0
+                driver-commission: 0.10
+
 management:
     endpoint:
         health:

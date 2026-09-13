@@ -5,7 +5,7 @@ import {
   RiWalletLine, RiNotification3Line,
   RiLogoutBoxLine, RiDashboardLine, RiCarLine,
   RiBarChartLine, RiMapPinLine,
-  RiMoneyDollarCircleLine, RiCarFill,
+  RiMoneyDollarCircleLine, RiCarFill, RiStarLine,
   RiSunLine, RiMoonLine, RiTimeLine, RiPriceTag3Line
 } from 'react-icons/ri'
 import { useAuthStore, useUIStore, useBookingStore, useDriverStore } from '@/store/rootStore'
@@ -38,6 +38,7 @@ const DRIVER_NAV = [
   { to: '/driver/history',    icon: RiHistoryLine,             label: 'Lịch sử chuyến' },
   { to: '/driver/revenue',    icon: RiBarChartLine,            label: 'Doanh thu' },
   { to: '/driver/wallet',     icon: RiWalletLine,              label: 'Ví tiền' },
+  { to: '/driver/ratings',    icon: RiStarLine,                label: 'Đánh giá' },
   { to: '/driver/profile',    icon: RiUserLine,                label: 'Hồ sơ' },
 ]
 

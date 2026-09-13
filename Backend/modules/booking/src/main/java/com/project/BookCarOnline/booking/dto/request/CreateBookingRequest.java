@@ -50,6 +50,9 @@ public class CreateBookingRequest {
 
     String returnUrl;
 
+    @Schema(description = "Số xu muốn dùng để giảm giá")
+    Integer useCoins;
+
     @Schema(
             description = "Giờ đón dự kiến theo múi giờ Asia/Ho_Chi_Minh. Bỏ trống để đặt chuyến ngay; phải nằm trong tương lai khi được cung cấp.",
             type = "string",

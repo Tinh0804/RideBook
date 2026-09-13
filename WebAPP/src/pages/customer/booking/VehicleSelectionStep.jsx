@@ -38,6 +38,9 @@ const VehicleSelectionStep = ({
   selectedPromos,
   setSelectedPromos,
   myPromotions,
+  loyaltyAccount,
+  useCoins,
+  setUseCoins,
   paymentMethod,
   setPaymentMethod,
   paymentProvider,
@@ -221,51 +224,68 @@ const VehicleSelectionStep = ({
                   <Spinner />
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-                  {sortedVehicles.map((vehicle, index) => {
-                    const estimate = estimatedPrices.find(
-                      (item) => item.vehicleTypeId === vehicle.vehicleTypeId
-                    )
-                    const selected = selectedVType?.vehicleTypeId === vehicle.vehicleTypeId
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {estimatedPrices.map((est) => {
+                    const vType = vehicleTypes.find((v) => v.vehicleTypeId === est.vehicleTypeId)
+                    const isSelected = selectedVType?.vehicleTypeId === est.vehicleTypeId
+                    const hasDiscount = est.totalPrice < est.originalPrice
 
                     return (
                       <motion.button
-                        key={vehicle.vehicleTypeId || index}
+                        key={vType?.vehicleTypeId || est.vehicleTypeId}
                         type="button"
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => setSelectedVType(vehicle)}
+                        onClick={() => setSelectedVType(vType)}
                         className={cn(
-                          'relative min-w-0 overflow-hidden rounded-2xl border p-4 text-left transition-colors',
-                          selected
-                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                          'relative flex items-center justify-between p-4 rounded-2xl border text-left transition-all',
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10 shadow-sm'
                             : 'border-surface-border bg-surface-card hover:border-brand-500/40'
                         )}
                       >
-                        {selected && (
-                          <motion.span
-                            layoutId="selected-vehicle"
-                            className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand-500 text-white"
-                          >
-                            <RiCheckLine size={14} />
-                          </motion.span>
-                        )}
-                        <img
-                          src={vehicle.icon || '/images/bookcar-booking-car.webp'}
-                          alt={vehicle.vehicleTypeName}
-                          onError={(event) => {
-                            event.currentTarget.src = '/images/bookcar-booking-car.webp'
-                          }}
-                          className="h-16 w-24 object-contain"
-                        />
-                        <p className="mt-2 truncate font-bold text-content-main">{vehicle.vehicleTypeName}</p>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-content-muted">
-                          <RiUser3Line size={13} /> {vehicle.maxPassengers || 4} chỗ
-                        </p>
-                        <p className="mt-3 border-t border-surface-border pt-3 text-base font-bold text-brand-600 dark:text-brand-400">
-                          {estimate
-                            ? formatCurrency(estimate.totalPrice)
-                            : `${formatCurrency(vehicle.pricePerKm)}/km`}
-                        </p>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 flex-1 min-w-0 pr-2">
+                          <img
+                            src={vType?.icon || '/images/bookcar-booking-car.webp'}
+                            alt={vType?.vehicleTypeName}
+                            onError={(event) => {
+                              event.currentTarget.src = '/images/bookcar-booking-car.webp'
+                            }}
+                            className="h-12 w-auto sm:h-14 sm:w-20 object-contain shrink-0"
+                          />
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <p className="font-bold text-content-main truncate text-[13px] sm:text-base leading-tight">{vType?.vehicleTypeName}</p>
+                            <div className="text-[10px] sm:text-xs text-content-muted flex items-center gap-1 mt-0.5 sm:mt-1 overflow-hidden">
+                              <RiUser3Line size={12} className="shrink-0" />
+                              <span className="truncate">{vType?.maxPassengers || 4} chỗ</span>
+                            </div>
+                            <p className="text-[10px] text-content-muted truncate mt-0.5">
+                              {formatDistance(est.distance || DUMMY_DISTANCE)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right pl-2">
+                          {hasDiscount ? (
+                            <div className="flex flex-col items-end">
+                              <span className="text-[11px] md:text-sm font-semibold text-content-muted line-through">
+                                {formatCurrency(est.originalPrice)}
+                              </span>
+                              <span className="text-base md:text-lg font-black text-brand-600 dark:text-brand-400 leading-none mt-1">
+                                {formatCurrency(est.totalPrice)}
+                              </span>
+                              {(est.tierDiscount > 0 || est.coinsDiscount > 0) && (
+                                <span className="text-[9px] md:text-[10px] font-bold text-yellow-600 dark:text-yellow-400 mt-1 max-w-[80px] md:max-w-[100px] text-right leading-tight">
+                                  {est.tierDiscount > 0 && `Giảm hạng`}
+                                  {est.tierDiscount > 0 && est.coinsDiscount > 0 && ` + `}
+                                  {est.coinsDiscount > 0 && `${est.coinsDiscount/1000}k xu`}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-base md:text-lg font-black text-brand-600 dark:text-brand-400">
+                              {formatCurrency(est.totalPrice)}
+                            </span>
+                          )}
+                        </div>
                       </motion.button>
                     )
                   })}
@@ -410,58 +430,91 @@ const VehicleSelectionStep = ({
                 <RiArrowRightLine className="text-content-muted" />
               </button>
 
-              <div className="rounded-2xl border border-surface-border bg-surface-card p-4">
-                <p className="mb-3 font-bold text-content-main">Thanh toán</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: PAYMENT_METHOD.CASH, label: 'Tiền mặt', icon: RiMoneyDollarCircleLine },
-                    { value: PAYMENT_METHOD.ONLINE, label: 'Thẻ / Ví', icon: RiBankCardLine },
-                  ].map(({ value, label, icon: Icon }) => {
-                    const selected = paymentMethod === value
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setPaymentMethod(value)}
-                        className={cn(
-                          'flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition',
-                          selected
-                            ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
-                            : 'border-surface-border bg-surface-dark text-content-muted'
-                        )}
-                      >
-                        <Icon size={18} /> {label}
-                      </button>
-                    )
-                  })}
-                </div>
+              <div className="rounded-2xl border border-surface-border bg-surface-card p-4 space-y-4">
+                {/* Loyalty Coins */}
+                {loyaltyAccount && loyaltyAccount.currentPoints > 0 && (
+                  <div className="flex items-center justify-between p-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 dark:bg-yellow-500/5">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-500/20 text-yellow-600 dark:text-yellow-400">
+                        <RiMoneyDollarCircleLine size={20} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-content-main">Dùng Xu BookCar</p>
+                        <p className="text-xs font-medium text-content-muted">Bạn có {loyaltyAccount.currentPoints.toLocaleString()} xu</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="number"
+                        min="0"
+                        max={loyaltyAccount.currentPoints}
+                        className="w-20 !py-1.5 !px-2 text-center !rounded-xl !bg-surface-dark !border-surface-border font-bold"
+                        value={useCoins === 0 ? '' : useCoins}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          if (val >= 0 && val <= loyaltyAccount.currentPoints) {
+                            setUseCoins(val);
+                          }
+                        }}
+                        placeholder="0 xu"
+                      />
+                    </div>
+                  </div>
+                )}
 
-                <AnimatePresence initial={false}>
-                  {paymentMethod === PAYMENT_METHOD.ONLINE && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-3 grid grid-cols-2 gap-2 overflow-hidden"
-                    >
-                      {['VNPAY', 'MOMO'].map((provider) => (
+                <div>
+                  <p className="mb-3 font-bold text-content-main">Thanh toán</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: PAYMENT_METHOD.CASH, label: 'Tiền mặt', icon: RiMoneyDollarCircleLine },
+                      { value: PAYMENT_METHOD.ONLINE, label: 'Thẻ / Ví', icon: RiBankCardLine },
+                    ].map(({ value, label, icon: Icon }) => {
+                      const selected = paymentMethod === value
+                      return (
                         <button
-                          key={provider}
+                          key={value}
                           type="button"
-                          onClick={() => setPaymentProvider(provider)}
+                          onClick={() => setPaymentMethod(value)}
                           className={cn(
-                            'rounded-xl border px-3 py-2 text-sm font-bold transition',
-                            paymentProvider === provider
-                              ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                              : 'border-surface-border text-content-muted'
+                            'flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition',
+                            selected
+                              ? 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
+                              : 'border-surface-border bg-surface-dark text-content-muted'
                           )}
                         >
-                          {provider}
+                          <Icon size={18} /> {label}
                         </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      )
+                    })}
+                  </div>
+
+                  <AnimatePresence initial={false}>
+                    {paymentMethod === PAYMENT_METHOD.ONLINE && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-3 grid grid-cols-2 gap-2 overflow-hidden"
+                      >
+                        {['VNPAY', 'MOMO'].map((provider) => (
+                          <button
+                            key={provider}
+                            type="button"
+                            onClick={() => setPaymentProvider(provider)}
+                            className={cn(
+                              'rounded-xl border px-3 py-2 text-sm font-bold transition',
+                              paymentProvider === provider
+                                ? 'border-brand-500 text-brand-600 dark:text-brand-400'
+                                : 'border-surface-border text-content-muted'
+                            )}
+                          >
+                            {provider}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </section>
           </div>

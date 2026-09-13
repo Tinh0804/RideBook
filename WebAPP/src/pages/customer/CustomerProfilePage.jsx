@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { 
   RiCameraLine, RiEditLine, RiSaveLine, RiCloseLine, 
   RiStarLine, RiVipCrownLine, RiWalletLine, RiMedalLine,
-  RiTrophyLine, RiArrowRightLine, RiKeyLine
+  RiTrophyLine, RiArrowRightLine, RiKeyLine,
+  RiHome4Line, RiBuilding4Line, RiSuitcaseLine, RiMapPinLine
 } from 'react-icons/ri'
 import { useAuthStore } from '@/store/rootStore'
 import { customerApi } from '@/features/customer/api/customerApi'
@@ -12,35 +14,25 @@ import Input from '@/components/Elements/Input'
 import FormField from '@/components/Form/FormField'
 import Spinner from '@/components/Elements/Spinner'
 import ChangePasswordModal from '@/components/Form/ChangePasswordModal'
+import FavoritePlaceModal from '@/components/Form/FavoritePlaceModal'
 import { cn } from '@/utils/cn'
 import { formatCurrency } from '@/utils/currency'
 import { motion } from 'motion/react'
 
-// Mock API call
-const getLoyaltyInfo = async (customerId) => {
-  return {
-    tier: 'Platinum',
-    currentPoints: 1250,
-    lifetimePoints: 3420,
-    totalSpent: 2450000,
-    totalRides: 24,
-    nextTierPoints: 5000,
-    tierBenefits: {
-      discountRate: 15,
-      prioritySupport: true,
-      freeCancel: true,
-      exclusivePromotions: true
-    }
-  }
-}
+import { loyaltyApi } from '@/features/loyalty/api/loyaltyApi'
+import { favoritePlaceApi } from '@/features/customer/api/favoritePlaceApi'
 
 const CustomerProfilePage = () => {
   const { user, updateUser } = useAuthStore()
+  const navigate = useNavigate()
   const fileRef = useRef()
 
   const [profile,  setProfile]  = useState(null)
   const [loyalty,  setLoyalty]  = useState(null)
+  const [favoritePlaces, setFavoritePlaces] = useState([])
   const [editing,  setEditing]  = useState(false)
+  const [isPlaceModalOpen, setIsPlaceModalOpen] = useState(false)
+  const [editingPlace, setEditingPlace] = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
   const [form,     setForm]     = useState({})
@@ -51,11 +43,13 @@ const CustomerProfilePage = () => {
   useEffect(() => {
     Promise.all([
       customerApi.getMyInfo(),
-      getLoyaltyInfo(user?.id)
+      loyaltyApi.getMyAccount().catch(() => null),
+      favoritePlaceApi.getMyFavoritePlaces().catch(() => [])
     ])
-      .then(([info, loyaltyInfo]) => {
+      .then(([info, loyaltyInfo, places]) => {
         setProfile(info)
         setLoyalty(loyaltyInfo)
+        setFavoritePlaces(places)
         if (info) {
           setForm({ 
             customerName: info.customerName || '', 
@@ -106,6 +100,33 @@ const CustomerProfilePage = () => {
       toast.error(err?.response?.data?.message || 'Cập nhật thất bại')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeletePlace = async (placeId) => {
+    try {
+      await favoritePlaceApi.deleteFavoritePlace(placeId)
+      setFavoritePlaces(favoritePlaces.filter(p => p.favoritePlaceId !== placeId))
+      toast.success('Đã xóa địa điểm')
+    } catch (err) {
+      toast.error('Xóa thất bại')
+    }
+  }
+
+  const handleSavePlace = async (data) => {
+    try {
+      if (editingPlace) {
+        const updated = await favoritePlaceApi.updateFavoritePlace(editingPlace.favoritePlaceId, data)
+        setFavoritePlaces(favoritePlaces.map(p => p.favoritePlaceId === editingPlace.favoritePlaceId ? updated : p))
+        toast.success('Đã cập nhật địa điểm')
+      } else {
+        const added = await favoritePlaceApi.addFavoritePlace(data)
+        setFavoritePlaces([...favoritePlaces, added])
+        toast.success('Đã thêm địa điểm yêu thích')
+      }
+    } catch (err) {
+      toast.error('Lưu thất bại')
+      throw err
     }
   }
 
@@ -229,27 +250,35 @@ const CustomerProfilePage = () => {
 
           {/* Membership Tier */}
           {loyalty && (
-            <div className={cn("relative overflow-hidden rounded-2xl border p-6 shadow-sm flex flex-col justify-between", tierInfo.bgClass)}>
+            <button 
+              onClick={() => navigate('/customer/loyalty')}
+              className={cn("w-full text-left relative overflow-hidden rounded-2xl border p-6 shadow-sm flex flex-col justify-between transition-transform hover:scale-[1.02]", tierInfo.bgClass)}
+            >
               <div className="flex items-start justify-between relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className={cn("grid h-12 w-12 place-items-center rounded-xl", tierInfo.progressBg)}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", tierInfo.progressBg)}>
                     {tierInfo.icon}
                   </div>
-                  <div>
-                    <p className={cn("text-xs font-bold uppercase tracking-wider", tierInfo.muted)}>Hạng thành viên</p>
-                    <p className="font-display text-2xl font-bold">{tierInfo.label}</p>
+                  <div className="min-w-0">
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider truncate", tierInfo.muted)}>Hạng thành viên</p>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <span className="font-display text-lg sm:text-xl font-bold truncate">{tierInfo.label}</span>
+                      <span className="text-[9px] font-normal uppercase tracking-wider opacity-80 bg-current/10 px-2 py-0.5 rounded-full whitespace-nowrap mt-1 sm:mt-0">
+                        Xem chi tiết
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className={cn("text-xs font-bold uppercase tracking-wider", tierInfo.muted)}>Điểm thưởng</p>
-                  <p className="font-display text-2xl font-bold">{loyalty.currentPoints.toLocaleString()}</p>
+                <div className="text-right shrink-0 ml-4">
+                  <p className={cn("text-[10px] font-bold uppercase tracking-wider", tierInfo.muted)}>Xu BookCar</p>
+                  <p className="font-display text-lg sm:text-xl font-bold mt-0.5 text-brand-500">{loyalty.currentPoints.toLocaleString()}</p>
                 </div>
               </div>
 
-              <div className="mt-8 relative z-10">
-                {loyalty.nextTierPoints && (
+              <div className="mt-6 relative z-10">
+                {loyalty.nextTierPoints != null && loyalty.nextTierPoints > 0 && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold">
+                    <div className="flex justify-between text-[10px] font-bold">
                       <span className={tierInfo.muted}>Tiến trình lên hạng</span>
                       <span className={tierInfo.muted}>{loyalty.lifetimePoints.toLocaleString()} / {loyalty.nextTierPoints.toLocaleString()}</span>
                     </div>
@@ -265,15 +294,15 @@ const CustomerProfilePage = () => {
                 <div className="mt-6 flex gap-6 border-t border-current/10 pt-4">
                   <div>
                     <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", tierInfo.muted)}>Tổng chi tiêu</p>
-                    <p className="text-sm font-bold">{formatCurrency(loyalty.totalSpent)}</p>
+                    <p className="text-sm font-bold">{formatCurrency(loyalty.totalSpent || 0)}</p>
                   </div>
                   <div>
                     <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", tierInfo.muted)}>Số chuyến</p>
-                    <p className="text-sm font-bold">{loyalty.totalRides}</p>
+                    <p className="text-sm font-bold">{loyalty.totalRides || 0}</p>
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           )}
         </div>
 
@@ -350,44 +379,85 @@ const CustomerProfilePage = () => {
           )}
         </div>
 
+        {/* Favorite Places */}
+        <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-lg">Địa điểm yêu thích</h3>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              className="rounded-xl border-surface-border font-bold"
+              onClick={() => {
+                setEditingPlace(null)
+                setIsPlaceModalOpen(true)
+              }}
+            >
+              Thêm mới
+            </Button>
+          </div>
+          
+          {favoritePlaces.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {favoritePlaces.map(place => (
+                <div key={place.favoritePlaceId} className="flex items-center justify-between p-4 rounded-xl bg-surface-dark border border-surface-border">
+                  <div className="flex items-center gap-3 min-w-0 cursor-pointer flex-1" onClick={() => {
+                    setEditingPlace(place)
+                    setIsPlaceModalOpen(true)
+                  }}>
+                    <div className="w-10 h-10 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center shrink-0">
+                      {place.icon === 'HOME' ? <RiHome4Line size={20} /> : 
+                       place.icon === 'WORK' ? <RiBuilding4Line size={20} /> :
+                       place.icon === 'TRAVEL' ? <RiSuitcaseLine size={20} /> :
+                       <RiMapPinLine size={20} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-content-main truncate">{place.label}</p>
+                      <p className="text-xs text-content-muted truncate mt-0.5">{place.address}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeletePlace(place.favoritePlaceId)} className="p-2 text-content-muted hover:text-red-500 transition-colors shrink-0">
+                    <RiCloseLine size={20} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-content-muted">
+              Bạn chưa lưu địa điểm nào
+            </div>
+          )}
+        </div>
+
         {/* Benefits Section */}
-        {loyalty?.tierBenefits && (
+        {loyalty?.tierBenefits && loyalty?.tierBenefits?.length > 0 && (
           <div className="rounded-2xl border border-surface-border bg-surface-card p-6 shadow-sm">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
               <RiVipCrownLine className="text-yellow-500" /> Đặc quyền {tierInfo.label}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {loyalty.tierBenefits.discountRate > 0 && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
+              {loyalty.tierBenefits.map((benefit, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
                   <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
-                  <span className="text-sm font-bold text-content-main">Giảm {loyalty.tierBenefits.discountRate}% mỗi chuyến</span>
+                  <span className="text-sm font-bold text-content-main">{benefit}</span>
                 </div>
-              )}
-              {loyalty.tierBenefits.prioritySupport && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
-                  <span className="text-sm font-bold text-content-main">Hỗ trợ ưu tiên 24/7</span>
-                </div>
-              )}
-              {loyalty.tierBenefits.freeCancel && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
-                  <span className="text-sm font-bold text-content-main">Miễn phí hủy chuyến</span>
-                </div>
-              )}
-              {loyalty.tierBenefits.exclusivePromotions && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-muted/50 border border-surface-border">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-500/10 text-emerald-500">✓</span>
-                  <span className="text-sm font-bold text-content-main">Khuyến mãi độc quyền</span>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         )}
 
       </motion.div>
-      {showPasswordModal && (
-        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
+      <ChangePasswordModal 
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+      />
+
+      {isPlaceModalOpen && (
+        <FavoritePlaceModal
+          isOpen={isPlaceModalOpen}
+          onClose={() => setIsPlaceModalOpen(false)}
+          onSave={handleSavePlace}
+          initialData={editingPlace}
+        />
       )}
     </div>
   )

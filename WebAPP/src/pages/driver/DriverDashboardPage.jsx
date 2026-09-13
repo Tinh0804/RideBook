@@ -11,6 +11,17 @@ import { formatCurrency } from '@/utils/currency'
 import { formatDate } from '@/utils/formatDate'
 import Spinner from '@/components/Elements/Spinner'
 import { cn } from '@/utils/cn'
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts'
+
+const mockWeeklyData = [
+  { day: 'T2', amount: 450000 },
+  { day: 'T3', amount: 520000 },
+  { day: 'T4', amount: 380000 },
+  { day: 'T5', amount: 650000 },
+  { day: 'T6', amount: 720000 },
+  { day: 'T7', amount: 890000 },
+  { day: 'CN', amount: 950000 },
+]
 
 const DriverDashboardPage = () => {
   const navigate = useNavigate()
@@ -159,41 +170,61 @@ const DriverDashboardPage = () => {
           {/* Left Col */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Performance Metrics */}
-            <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Hiệu suất hoạt động</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
-                {/* Acceptance Rate */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Tỷ lệ nhận</span>
-                    <span className="font-bold text-xl text-brand-500">{dashboard?.acceptanceRate || 95}%</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Performance Metrics */}
+              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Hiệu suất hoạt động</h3>
+                <div className="space-y-6">
+                  {/* Acceptance Rate */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <span className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Tỷ lệ nhận</span>
+                      <span className="font-bold text-xl text-brand-500">{dashboard?.acceptanceRate || 95}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 dark:bg-surface-dark rounded-full overflow-hidden">
+                      <div className="h-full bg-brand-500 rounded-full" style={{ width: `${dashboard?.acceptanceRate || 95}%` }} />
+                    </div>
                   </div>
-                  <div className="h-2 bg-gray-100 dark:bg-surface-dark rounded-full overflow-hidden">
-                    <div className="h-full bg-brand-500 rounded-full" style={{ width: `${dashboard?.acceptanceRate || 95}%` }} />
+                  
+                  {/* Completion Rate */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <span className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Hoàn thành</span>
+                      <span className="font-bold text-xl text-blue-500">{dashboard?.completionRate || 98}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 dark:bg-surface-dark rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${dashboard?.completionRate || 98}%` }} />
+                    </div>
                   </div>
                 </div>
-                
-                {/* Completion Rate */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Hoàn thành</span>
-                    <span className="font-bold text-xl text-blue-500">{dashboard?.completionRate || 98}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 dark:bg-surface-dark rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500 rounded-full" style={{ width: `${dashboard?.completionRate || 98}%` }} />
-                  </div>
-                </div>
+              </div>
 
-                {/* Cancellation Rate */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-gray-500 dark:text-gray-400 font-semibold text-sm">Tỷ lệ hủy</span>
-                    <span className="font-bold text-xl text-red-500">{dashboard?.cancellationRate || 2}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 dark:bg-surface-dark rounded-full overflow-hidden">
-                    <div className="h-full bg-red-500 rounded-full" style={{ width: `${dashboard?.cancellationRate || 2}%` }} />
-                  </div>
+              {/* Weekly Mini Chart */}
+              <div className="bg-white dark:bg-surface-card rounded-2xl shadow-sm border border-gray-100 dark:border-surface-border p-6 flex flex-col">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Thu nhập 7 ngày</h3>
+                  <span className="text-brand-500 font-bold bg-brand-50 dark:bg-brand-500/10 px-2 py-1 rounded-lg text-sm">+12%</span>
+                </div>
+                <div className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-4">
+                  {formatCurrency(mockWeeklyData.reduce((acc, curr) => acc + curr.amount, 0))}
+                </div>
+                <div className="flex-1 min-h-[100px] w-full mt-auto">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={mockWeeklyData}>
+                      <defs>
+                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#84cc16" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#84cc16" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value) => [formatCurrency(value), 'Thu nhập']}
+                        labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '4px' }}
+                      />
+                      <Area type="monotone" dataKey="amount" stroke="#84cc16" strokeWidth={3} fillOpacity={1} fill="url(#colorAmount)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
@@ -305,4 +336,3 @@ const DriverDashboardPage = () => {
 }
 
 export default DriverDashboardPage
-

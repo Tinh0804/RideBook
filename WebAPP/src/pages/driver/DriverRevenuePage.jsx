@@ -244,7 +244,10 @@ const DriverRevenuePage = () => {
         {/* Chart */}
         <div className="bg-white dark:bg-surface-card rounded-2xl p-6 border border-gray-100 dark:border-surface-border shadow-sm space-y-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white">Biểu đồ thu nhập</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="font-display text-xl font-bold text-gray-900 dark:text-white">Biểu đồ thu nhập</h2>
+              <span className="text-sm font-bold text-brand-500 bg-brand-50 dark:bg-brand-500/10 px-2 py-1 rounded-md">+15% so với kỳ trước</span>
+            </div>
             <div className="flex gap-1 p-1 bg-gray-50 dark:bg-surface-dark border border-gray-200 dark:border-surface-border rounded-xl">
               {PERIOD_TABS.map((t) => (
                 <button

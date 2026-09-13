@@ -11,6 +11,7 @@ import Spinner from '@/components/Elements/Spinner';
 import Input from '@/components/Elements/Input';
 import { motion, AnimatePresence } from 'motion/react';
 import { RiTicketLine, RiArrowRightLine, RiTimeLine, RiFileCopyLine } from 'react-icons/ri';
+import LoyaltyPage from './LoyaltyPage';
 
 const PROMO_IMAGES = [
   "https://images.unsplash.com/photo-1542751371-adc2131af163?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
@@ -262,6 +263,20 @@ const CustomerPromotionsPage = () => {
               <motion.div layoutId="promoTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950 dark:bg-white" />
             )}
           </button>
+          <button
+            onClick={() => setActiveTab('LOYALTY')}
+            className={cn(
+              'px-5 py-3 text-sm font-bold transition-all relative',
+              activeTab === 'LOYALTY'
+                ? 'text-slate-950 dark:text-white'
+                : 'text-content-muted hover:text-content-main'
+            )}
+          >
+            Xu BookCar
+            {activeTab === 'LOYALTY' && (
+              <motion.div layoutId="promoTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-950 dark:bg-white" />
+            )}
+          </button>
         </div>
 
         {/* Content Area */}
@@ -347,6 +362,31 @@ const CustomerPromotionsPage = () => {
                       </div>
                     )}
                   </>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'LOYALTY' && (
+              <motion.div
+                key="loyalty"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {!isAuth ? (
+                  <div className="rounded-2xl border border-surface-border bg-surface-card py-20 text-center shadow-sm">
+                    <p className="font-display text-xl font-bold text-content-main mb-4">Bạn chưa đăng nhập</p>
+                    <Button 
+                      onClick={() => navigate('/login/customer')}
+                      className="rounded-xl bg-slate-950 font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950"
+                    >
+                      Đăng nhập để xem Xu
+                    </Button>
+                  </div>
+                ) : (
+                  <LoyaltyPage isSubComponent={true} />
                 )}
               </motion.div>
             )}

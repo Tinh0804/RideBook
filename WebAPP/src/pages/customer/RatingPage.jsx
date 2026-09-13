@@ -59,12 +59,12 @@ const RatingPage = () => {
       <div className="text-center space-y-4 pt-4">
         <div className="w-20 h-20 rounded-full bg-brand-500/20 border-2 border-brand-500/30 flex items-center justify-center text-3xl font-bold text-brand-400 mx-auto overflow-hidden">
           {booking.driver?.avatar
-            ? <img src={booking.driver.avatar} alt={booking.driver.name} className="w-full h-full object-cover" />
-            : booking.driver?.name?.[0] || '?'
+            ? <img src={booking.driver.avatar} alt={booking.driver?.name || booking.driverName} className="w-full h-full object-cover" />
+            : (booking.driver?.name || booking.driverName || '?')[0]
           }
         </div>
-        <div>
-          <h2 className="font-display text-xl font-bold text-content-main">{booking.driver?.name}</h2>
+        <div className="text-center mt-3">
+          <h2 className="font-display text-xl font-bold text-content-main">{booking.driver?.name || booking.driverName}</h2>
           <p className="text-content-muted text-sm mt-1">Đánh giá chuyến đi vừa rồi</p>
         </div>
       </div>

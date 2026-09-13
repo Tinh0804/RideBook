@@ -25,6 +25,8 @@ const TripHistoryPage        = lazy(() => import('@/pages/customer/TripHistoryPa
 const RatingPage             = lazy(() => import('@/pages/customer/RatingPage'))
 const CustomerProfilePage    = lazy(() => import('@/pages/customer/CustomerProfilePage'))
 const CustomerPromotionsPage = lazy(() => import('@/pages/customer/PromotionsPage'))
+const CustomerLoyaltyPage    = lazy(() => import('@/pages/customer/LoyaltyPage'))
+
 
 // Driver
 const DriverDashboardPage    = lazy(() => import('@/pages/driver/DriverDashboardPage'))
@@ -34,6 +36,9 @@ const DriverRevenuePage      = lazy(() => import('@/pages/driver/DriverRevenuePa
 const DriverWalletPage       = lazy(() => import('@/pages/driver/DriverWalletPage'))
 const DriverProfilePage      = lazy(() => import('@/pages/driver/DriverProfilePage'))
 const DriverHistoryPage      = lazy(() => import('@/pages/driver/DriverHistoryPage'))
+const DriverRatingsPage      = lazy(() => import('@/pages/driver/DriverRatingsPage'))
+const DriverLoyaltyPage      = lazy(() => import('@/pages/driver/LoyaltyPage'))
+
 
 // Admin
 const AdminDashboardPage     = lazy(() => import('@/pages/admin/AdminDashboardPage'))
@@ -101,6 +106,8 @@ const AppRoutes = () => (
           <Route path="customer/rating"   element={<RatingPage />} />
           <Route path="customer/profile"  element={<CustomerProfilePage />} />
           <Route path="customer/promotions"  element={<CustomerPromotionsPage />} />
+          <Route path="customer/loyalty"  element={<CustomerLoyaltyPage />} />
+
         </Route>
       </Route>
 
@@ -115,6 +122,9 @@ const AppRoutes = () => (
             <Route path="driver/wallet"       element={<DriverWalletPage />} />
             <Route path="driver/profile"      element={<DriverProfilePage />} />
             <Route path="driver/history"      element={<DriverHistoryPage />} />
+            <Route path="driver/ratings"      element={<DriverRatingsPage />} />
+            <Route path="driver/loyalty"      element={<DriverLoyaltyPage />} />
+
           </Route>
         </Route>
       </Route>

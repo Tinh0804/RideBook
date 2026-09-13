@@ -85,6 +85,14 @@ public class Booking {
     @Column
      Double distance;
 
+    @Column(columnDefinition = "integer DEFAULT 0", nullable = false)
+    @Builder.Default
+     Integer usedCoins = 0;
+
+    @Column(columnDefinition = "double precision DEFAULT 0", nullable = false)
+    @Builder.Default
+     Double tierDiscount = 0.0;
+
 //    // Extra field not in original DB - keep for future use
 //     @Column
 //     private Double duration;

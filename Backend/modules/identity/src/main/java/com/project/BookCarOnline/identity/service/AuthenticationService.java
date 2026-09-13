@@ -265,10 +265,10 @@ public class AuthenticationService {
     }
 
     public void changePassword(String oldPassword, String newPassword) {
-        String phone = SecurityUtils.getCurrentAccountId()
+        String accountId = SecurityUtils.getCurrentAccountId()
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
-        Account account = accountRepository.findByUserName(phone)
+        Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));
 
         if (!encoder.matches(oldPassword, account.getPassWord())) {

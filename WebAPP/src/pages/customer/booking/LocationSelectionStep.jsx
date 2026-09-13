@@ -5,14 +5,18 @@ import {
   RiMapPin2Line,
   RiMapPinLine,
   RiCrosshairLine,
-  RiLoader4Line
+  RiLoader4Line,
+  RiHome4Line,
+  RiBuilding4Line,
+  RiSuitcaseLine
 } from 'react-icons/ri'
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import Button from '@/components/Elements/Button'
 import AddressInput from '@/components/Map/AddressInput'
 import Spinner from '@/components/Elements/Spinner'
 import BookingJourneyProgress from './BookingJourneyProgress'
+import { favoritePlaceApi } from '@/features/customer/api/favoritePlaceApi'
 
 const LocationSelectionStep = ({
   pickup,
@@ -28,6 +32,13 @@ const LocationSelectionStep = ({
 }) => {
   const pickupInputRef = useRef(null)
   const [detectingPickup, setDetectingPickup] = useState(false)
+  const [favoritePlaces, setFavoritePlaces] = useState([])
+
+  useEffect(() => {
+    favoritePlaceApi.getMyFavoritePlaces()
+      .then(setFavoritePlaces)
+      .catch(console.error)
+  }, [])
 
   const handleDetectLocation = async () => {
     setDetectingPickup(true)
@@ -184,6 +195,33 @@ const LocationSelectionStep = ({
             </div>
           </div>
         </section>
+
+        {favoritePlaces.length > 0 && (
+          <section className="rounded-2xl border border-surface-border bg-surface-card p-5 shadow-sm">
+            <h3 className="mb-4 text-sm font-bold text-content-main">Địa điểm đã lưu</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {favoritePlaces.map(place => (
+                <button
+                  key={place.favoritePlaceId}
+                  type="button"
+                  onClick={() => setDropoff({ name: place.address, lat: place.lat, lng: place.lng })}
+                  className="flex shrink-0 items-center gap-3 rounded-xl border border-surface-border bg-surface-dark p-3 text-left transition hover:border-brand-500 active:scale-95"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-brand-500">
+                    {place.icon === 'HOME' ? <RiHome4Line size={20} /> : 
+                     place.icon === 'WORK' ? <RiBuilding4Line size={20} /> :
+                     place.icon === 'TRAVEL' ? <RiSuitcaseLine size={20} /> :
+                     <RiMapPinLine size={20} />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-content-main">{place.label}</p>
+                    <p className="w-32 truncate text-xs text-content-muted">{place.address}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <Button
           fullWidth

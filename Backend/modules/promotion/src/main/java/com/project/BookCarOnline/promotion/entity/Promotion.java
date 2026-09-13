@@ -2,13 +2,13 @@
 package com.project.BookCarOnline.promotion.entity;
 
 import com.project.BookCarOnline.promotion.entity.enums.DiscountType;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.hibernate.validator.constraints.UUID;
 
 import java.sql.Timestamp;

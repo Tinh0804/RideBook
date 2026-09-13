@@ -250,6 +250,20 @@ public class RideDispatcherService {
         bookingRepository.findById(bookingId).ifPresent(booking -> {
             if (!BookingStatus.PENDING.equals(booking.getBookingStatus()))
                 return;
+
+            // Chuyến đặt trước (có scheduledAt): không hủy tự động khi không có tài xế.
+            // Giữ nguyên trạng thái PENDING để tài xế có thể tự nhận hoặc hệ thống retry sau.
+            if (booking.getScheduledAt() != null) {
+                log.warn("[Dispatch] Không có tài xế cho chuyến đặt trước {}. Giữ PENDING để tài xế tự nhận.", bookingId);
+                if (booking.getCustomerId() != null) {
+                    messagingTemplate.convertAndSend(
+                            "/topic/customer/" + booking.getCustomerId(),
+                            "NO_DRIVER_FOUND_SCHEDULED:" + bookingId);
+                }
+                return;
+            }
+
+            // Chuyến đi ngay: hủy tự động khi không tìm được tài xế
             booking.setBookingStatus(BookingStatus.CANCELLED);
             bookingRepository.save(booking);
             log.warn("[Dispatch] Không có tài xế nhận booking {}. Đã tự động hủy.", bookingId);

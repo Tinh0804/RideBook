@@ -17,8 +17,9 @@ const changePasswordSchema = z.object({
   path: ['confirm']
 })
 
-const ChangePasswordModal = ({ onClose }) => {
+const ChangePasswordModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false)
+  if (!isOpen) return null
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(changePasswordSchema)
   })

@@ -130,6 +130,26 @@ app:
         otp: 300000
         password-reset-token: 3600000
         quote: 120
+    loyalty:
+        earn-rate: 1000.0  # 1000 VND = 1 point
+        coin-value: 1000.0 # 1 point = 1000 VND discount
+        tiers:
+            bronze:
+                threshold: 0
+                customer-multiplier: 1.0
+                driver-commission: 0.20
+            silver:
+                threshold: 1000
+                customer-multiplier: 1.2
+                driver-commission: 0.18
+            gold:
+                threshold: 2000
+                customer-multiplier: 1.5
+                driver-commission: 0.15
+            diamond:
+                threshold: 5000
+                customer-multiplier: 2.0
+                driver-commission: 0.10
     max-login-attempts: 5
 
 frontend:

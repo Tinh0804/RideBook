@@ -27,4 +27,8 @@ public class EstimatePriceRequest {
 
     // Hỗ trợ nhiều mã giảm giá
     List<String> promotionCodes;
+
+    String customerId;
+
+    Integer useCoins;
 }

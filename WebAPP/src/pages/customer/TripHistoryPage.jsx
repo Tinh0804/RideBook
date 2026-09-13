@@ -32,6 +32,8 @@ const TripHistoryPage = () => {
   const { userProfile, setUserProfile } = useAuthStore();
   const [trips, setTrips] = useState([]);
   const [filter, setFilter] = useState('ALL');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +64,28 @@ const TripHistoryPage = () => {
       .finally(() => setLoading(false));
   }, [userProfile?.id, userProfile?.customerId, setUserProfile]);
 
-  const filteredTrips = filter === 'ALL' ? trips : trips.filter((t) => t.bookingStatus === filter);
+  const filteredTrips = trips.filter((t) => {
+    if (filter !== 'ALL' && t.bookingStatus !== filter) return false;
+    
+    if (fromDate || toDate) {
+      const tripDate = new Date(t.scheduledAt || t.bookingTime);
+      tripDate.setHours(0, 0, 0, 0);
+      
+      if (fromDate) {
+        const from = new Date(fromDate);
+        from.setHours(0, 0, 0, 0);
+        if (tripDate < from) return false;
+      }
+      
+      if (toDate) {
+        const to = new Date(toDate);
+        to.setHours(0, 0, 0, 0);
+        if (tripDate > to) return false;
+      }
+    }
+    
+    return true;
+  });
 
   if (loading) {
     return (
@@ -97,21 +120,46 @@ const TripHistoryPage = () => {
         </section>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                'whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-bold transition-colors border',
-                filter === f.value
-                  ? 'bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white'
-                  : 'bg-surface-card text-content-muted border-surface-border hover:border-slate-400'
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={cn(
+                  'whitespace-nowrap rounded-xl px-5 py-2.5 text-sm font-bold transition-colors border',
+                  filter === f.value
+                    ? 'bg-slate-950 text-white border-slate-950 dark:bg-white dark:text-slate-950 dark:border-white'
+                    : 'bg-surface-card text-content-muted border-surface-border hover:border-slate-400'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-sm text-content-main focus:border-slate-400 focus:outline-none dark:focus:border-slate-600"
+                placeholder="Từ ngày"
+              />
+            </div>
+            <span className="text-content-muted">-</span>
+            <div className="relative">
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-sm text-content-main focus:border-slate-400 focus:outline-none dark:focus:border-slate-600"
+                placeholder="Đến ngày"
+              />
+            </div>
+          </div>
         </div>
 
         {/* Trip List */}
@@ -225,12 +273,25 @@ const TripHistoryPage = () => {
                   >
                     Đặt lại hành trình
                   </Button>
-                  {trip.bookingStatus === BOOKING_STATUS.COMPLETED && (
+                  {trip.bookingStatus === BOOKING_STATUS.COMPLETED && trip.rating ? (
+                    <div className="flex h-10 items-center justify-between rounded-xl border border-surface-border bg-surface-base px-3 flex-1 ml-2">
+                       <div className="flex items-center gap-1 text-yellow-500 font-medium text-sm">
+                         <RiStarLine size={16} />
+                         <span>{trip.rating}</span>
+                       </div>
+                       {trip.review && (
+                         <span className="text-xs text-content-muted truncate max-w-[120px]" title={trip.review}>
+                           "{trip.review}"
+                         </span>
+                       )}
+                    </div>
+                  ) : trip.bookingStatus === BOOKING_STATUS.COMPLETED && (
                     <Button 
                       size="sm" 
                       variant="outline" 
-                      className="h-10 w-10 shrink-0 rounded-xl p-0 border-surface-border text-content-muted hover:text-content-main"
+                      className="h-10 w-10 shrink-0 rounded-xl p-0 border-surface-border text-content-muted hover:text-content-main ml-2"
                       title="Đánh giá chuyến đi"
+                      onClick={() => navigate('/customer/rating', { state: { booking: trip } })}
                     >
                       <RiStarLine size={18} />
                     </Button>

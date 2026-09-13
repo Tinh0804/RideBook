@@ -148,15 +148,30 @@ const DriverHistoryPage = () => {
                     </span>
                     {trip.distance && (
                       <>
-                        <span className="text-gray-300 dark:text-surface-border">•</span>
-                        <span className="text-xs font-semibold text-gray-500 dark:text-content-muted">{trip.distance.toFixed(1)} km</span>
-                      </>
-                    )}
-                  </div>
+                      <span className="text-gray-300 dark:text-surface-border">•</span>
+                      <span className="text-xs font-semibold text-gray-500 dark:text-content-muted">{trip.distance.toFixed(1)} km</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {trip.bookingStatus === BOOKING_STATUS.COMPLETED && trip.rating && (
+                    <div className="flex h-7 items-center rounded-lg border border-surface-border bg-surface-base px-2">
+                      <div className="flex items-center gap-1 text-yellow-500 font-medium text-xs">
+                        <RiStarLine size={14} />
+                        <span>{trip.rating}</span>
+                      </div>
+                      {trip.review && (
+                        <span className="ml-2 pl-2 border-l border-surface-border text-xs text-content-muted truncate max-w-[120px]" title={trip.review}>
+                          "{trip.review}"
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <span className="font-mono text-xs font-medium text-gray-400 dark:text-content-muted">
                     #{trip.bookingId.slice(-6).toUpperCase()}
                   </span>
                 </div>
+              </div>
 
                 {/* Locations */}
                 <div className="relative space-y-4">

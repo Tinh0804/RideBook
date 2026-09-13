@@ -84,6 +84,12 @@ export const DriverProfileSchema = z.object({
   rating: data.score,
 }))
 
+export const BookingPromotionSchema = z.object({
+  promotionCode: z.string().catch(''),
+  promotionName: z.string().catch(''),
+  discountAmount: z.number().catch(0),
+})
+
 export const BookingDetailSchema = z.object({
   bookingId: z.string().catch(''),
   customerId: z.string().nullable().catch(''),
@@ -107,10 +113,10 @@ export const BookingDetailSchema = z.object({
   arrivalTime: z.string().nullable().catch(''),
   bookingStatus: z.string().catch('PENDING'),
   distance: z.number().nullable().catch(0),
-  duration: z.number().nullable().catch(0),
-  paymentMethod: z.string().nullable().catch(''),
-  paymentStatus: z.boolean().nullable().catch(false),
-  promotionCode: z.string().nullable().catch(''),
+  duration: z.number().nullable().catch(null),
+  paymentMethod: z.string().catch('CASH'),
+  paymentStatus: z.boolean().catch(false),
+  appliedPromotions: z.array(BookingPromotionSchema).catch([]),
   rating: z.number().nullable().catch(null),
   review: z.string().nullable().catch(''),
 })

@@ -19,6 +19,9 @@ public class FareQuote {
     Double originalPrice;
     Double totalPrice;
     Double discount;
+    Double tierDiscount;
+    Double coinsDiscount;
+    Integer usedCoins;
     List<String> promotionIds;  // Hỗ trợ nhiều mã giảm giá
     String pickupLocation;
     String dropoffLocation;

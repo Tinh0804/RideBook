@@ -24,6 +24,7 @@ import com.project.BookCarOnline.booking.repository.*;
 import com.project.BookCarOnline.finance.dto.PaymentSummary;
 import com.project.BookCarOnline.finance.service.PaymentService;
 import com.project.BookCarOnline.finance.service.WalletService;
+import com.project.BookCarOnline.promotion.service.LoyaltyService;
 import com.project.BookCarOnline.booking.dto.redis.DriverLocation;
 import com.project.BookCarOnline.booking.dto.redis.FareQuote;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -60,6 +61,7 @@ public class BookingService {
     PaymentService paymentService;
     WalletService walletService;
     PricingService pricingService;
+    LoyaltyService loyaltyService;
     PaymentTimeoutService paymentTimeoutService;
     GoogleMapService googleMapService;
     DriverCacheService driverCacheService;
@@ -70,9 +72,7 @@ public class BookingService {
 
     SimpMessagingTemplate messagingTemplate;
 
-    @NonFinal
-    @Value("${app.commission.platform-rate}")
-    protected double platformCommissionRate;
+
 
     public List<EstimatePriceResponse> estimatePrice(EstimatePriceRequest request) {
         return bookingQuoteService.estimate(request);
@@ -139,6 +139,8 @@ public class BookingService {
                 .scheduledAt(scheduledAt)
                 .bookingStatus(scheduledAt == null ? BookingStatus.PENDING : BookingStatus.QUEUED)
                 .distance(quote.getDistance())
+                .usedCoins(quote.getUsedCoins())
+                .tierDiscount(quote.getTierDiscount())
                 .paymentId(payment.paymentId())
                 .build();
         Booking saved = bookingRepository.save(booking);
@@ -169,6 +171,10 @@ public class BookingService {
 
         if (scheduledAt != null) {
             scheduledBookingQueue.schedule(saved.getBookingId(), scheduledAt);
+        }
+
+        if (quote.getUsedCoins() != null && quote.getUsedCoins() > 0) {
+            loyaltyService.redeemCoins(customer.customerId(), quote.getUsedCoins(), saved.getBookingId());
         }
 
         if (scheduledAt == null) {
@@ -470,13 +476,19 @@ public class BookingService {
             return;
         }
 
-        double commission = booking.getTotalPrice() * platformCommissionRate;
+        double driverCommissionRate = loyaltyService.getDriverCommissionRate(
+                loyaltyService.getOrCreateAccount(driverId).getTier()
+        );
+        double commission = booking.getTotalPrice() * driverCommissionRate;
         String typeDeduct = "FEE_BOOKING";
         if (PaymentMethod.CASH == payment.paymentMethod()) {
             walletService.deductBalance(driverId, commission, typeDeduct);
         } else {
             walletService.addBalance(driverId, booking.getTotalPrice() - commission);
         }
+
+        // Tích điểm cho khách hàng
+        loyaltyService.earnPointsFromTrip(booking.getCustomerId(), booking.getTotalPrice(), booking.getBookingId());
 
         identityQueryService.updateLastTripTime(driverId, LocalDateTime.now());
         driverCacheService.clearLocation(booking.getBookingId());

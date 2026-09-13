@@ -5,6 +5,8 @@ import com.project.BookCarOnline.booking.dto.response.RatingResponse;
 import com.project.BookCarOnline.booking.entity.Booking;
 import com.project.BookCarOnline.booking.entity.enums.BookingStatus;
 import com.project.BookCarOnline.booking.entity.Rating;
+import com.project.BookCarOnline.identity.entity.Driver;
+import com.project.BookCarOnline.identity.repository.DriverRepository;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import com.project.BookCarOnline.booking.mapper.RatingMapper;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
 public class RatingService {
     RatingRepository ratingRepository;
     BookingRepository bookingRepository;
+    DriverRepository driverRepository;
     RatingMapper ratingMapper;
 
     public RatingResponse createRating(CreateRatingRequest request) {
@@ -49,7 +52,26 @@ public class RatingService {
                 .createdAt(new Date())
                 .build();
 
-        return ratingMapper.toRatingResponse(ratingRepository.save(rating));
+        Rating savedRating = ratingRepository.save(rating);
+
+        // Calculate and update average rating for driver
+        if (booking.getDriverId() != null) {
+            updateDriverAverageScore(booking.getDriverId());
+        }
+
+        return ratingMapper.toRatingResponse(savedRating);
+    }
+
+    private void updateDriverAverageScore(String driverId) {
+        List<RatingResponse> driverRatings = getRatingsByDriverId(driverId);
+        if (!driverRatings.isEmpty()) {
+            double total = driverRatings.stream().mapToDouble(RatingResponse::getScore).sum();
+            double average = total / driverRatings.size();
+            driverRepository.findById(driverId).ifPresent(driver -> {
+                driver.setScore(average);
+                driverRepository.save(driver);
+            });
+        }
     }
 
     public List<RatingResponse> getRatingsByDriverId(String driverId) {

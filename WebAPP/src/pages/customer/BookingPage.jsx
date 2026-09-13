@@ -6,6 +6,7 @@ import { useAuthStore, useBookingStore } from '@/store/rootStore'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { bookingApi } from '@/features/booking/api/bookingApi'
 import { masterDataApi } from '@/features/booking/api/masterDataApi'
+import { loyaltyApi } from '@/features/loyalty/api/loyaltyApi'
 import { PAYMENT_METHOD, BOOKING_STATUS } from '@/config'
 import Spinner from '@/components/Elements/Spinner'
 import InteractiveMap from '@/components/Map/InteractiveMap'
@@ -84,6 +85,17 @@ const BookingPage = () => {
   const [countdown, setCountdown] = useState(0)
   const [isCanceling, setCanceling] = useState(false)
   const [myPromotions, setMyPromotions] = useState([])
+  
+  const [loyaltyAccount, setLoyaltyAccount] = useState(null)
+  const [useCoins, setUseCoins] = useState(0)
+
+  useEffect(() => {
+    if (step === 2) {
+      loyaltyApi.getMyAccount()
+        .then(res => setLoyaltyAccount(res))
+        .catch(err => console.error('Failed to load loyalty', err))
+    }
+  }, [step])
 
   // ── WebSocket ───────────────────────────────────────────────────────────────
   const onWsMessage = useCallback((topic, payload) => {
@@ -162,6 +174,7 @@ const BookingPage = () => {
       dropoffLat: sd.lat,
       dropoffLng: sd.lng,
       promotionCodes: selectedPromos.map(p => p.promotionCode),
+      useCoins: useCoins,
     }
     bookingApi.estimatePrice(payload)
       .then((estimates) => {
@@ -172,7 +185,7 @@ const BookingPage = () => {
       })
       .catch((error) => console.error('Estimate price failed', error))
       .finally(() => setEstimating(false))
-  }, [pickup, dropoff, selectedPromos, vehicleTypes])
+  }, [pickup, dropoff, selectedPromos, vehicleTypes, useCoins])
 
   useEffect(() => {
     if (step !== 2) return
@@ -212,6 +225,7 @@ const BookingPage = () => {
         promotionCodes:  selectedPromos.map(p => p.promotionCode),
         quoteId:         selectedEstimate?.quoteId,
         scheduledAt:     scheduledAt || null,
+        useCoins:        useCoins,
         returnUrl: `${window.location.origin}/customer/booking`
       }
       const booking = await bookingApi.createBooking(payload)
@@ -375,6 +389,9 @@ const BookingPage = () => {
             selectedPromos={selectedPromos}
             setSelectedPromos={setSelectedPromos}
             myPromotions={myPromotions}
+            loyaltyAccount={loyaltyAccount}
+            useCoins={useCoins}
+            setUseCoins={setUseCoins}
             paymentMethod={paymentMethod}
             setPaymentMethod={setPaymentMethod}
             paymentProvider={paymentProvider}

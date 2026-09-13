@@ -17,6 +17,8 @@ public class EstimatePriceResponse {
     Double originalPrice;
     Double totalPrice;
     Double discount;
+    Double tierDiscount;
+    Double coinsDiscount;
     String quoteId;
     Long expiryTime;
 }
