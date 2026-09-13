@@ -24,6 +24,10 @@ public class LoyaltyService {
     private final PointTransactionRepository pointTransactionRepository;
     private final LoyaltyProperties loyaltyProperties;
 
+    public int getCurrentPoints(String accountId) {
+        return getOrCreateAccount(accountId).getCurrentPoints();
+    }
+
     public LoyaltyAccount getOrCreateAccount(String accountId) {
         return loyaltyAccountRepository.findByAccountId(accountId).orElseGet(() -> {
             LoyaltyAccount newAccount = LoyaltyAccount.builder()

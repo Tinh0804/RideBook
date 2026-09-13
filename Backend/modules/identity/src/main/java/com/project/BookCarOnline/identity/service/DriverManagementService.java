@@ -154,6 +154,13 @@ public class DriverManagementService {
         accountRepository.save(account);
     }
 
+    @Transactional
+    public void updateDriverScore(String driverId, double score) {
+        Driver driver = getEntity(driverId);
+        driver.setScore(score);
+        driverRepository.save(driver);
+    }
+
     private Driver getEntity(String driverId) {
         return driverRepository.findById(driverId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXITED));

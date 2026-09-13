@@ -6,7 +6,6 @@ import com.project.BookCarOnline.booking.dto.response.EstimatePriceResponse;
 import com.project.BookCarOnline.catalog.dto.VehicleTypeSummary;
 import com.project.BookCarOnline.catalog.service.VehicleTypeService;
 import com.project.BookCarOnline.promotion.dto.PromotionQuote;
-import com.project.BookCarOnline.promotion.entity.LoyaltyAccount;
 import com.project.BookCarOnline.promotion.service.LoyaltyService;
 import com.project.BookCarOnline.promotion.service.PricingService;
 import com.project.BookCarOnline.shared.exception.AppException;
@@ -42,10 +41,10 @@ public class BookingQuoteService {
         Double coinsDiscount = 0.0;
         
         if (request.getCustomerId() != null) {
-            LoyaltyAccount account = loyaltyService.getOrCreateAccount(request.getCustomerId());
+            int currentPoints = loyaltyService.getCurrentPoints(request.getCustomerId());
             
             if (request.getUseCoins() != null && request.getUseCoins() > 0) {
-                int coinsToUse = Math.min(request.getUseCoins(), account.getCurrentPoints());
+                int coinsToUse = Math.min(request.getUseCoins(), currentPoints);
                 coinsDiscount = loyaltyService.calculateCoinDiscount(coinsToUse);
             }
         }

@@ -5,8 +5,7 @@ import com.project.BookCarOnline.booking.dto.response.RatingResponse;
 import com.project.BookCarOnline.booking.entity.Booking;
 import com.project.BookCarOnline.booking.entity.enums.BookingStatus;
 import com.project.BookCarOnline.booking.entity.Rating;
-import com.project.BookCarOnline.identity.entity.Driver;
-import com.project.BookCarOnline.identity.repository.DriverRepository;
+import com.project.BookCarOnline.identity.service.DriverManagementService;
 import com.project.BookCarOnline.shared.exception.AppException;
 import com.project.BookCarOnline.shared.exception.ErrorCode;
 import com.project.BookCarOnline.booking.mapper.RatingMapper;
@@ -30,7 +29,7 @@ import java.util.stream.Collectors;
 public class RatingService {
     RatingRepository ratingRepository;
     BookingRepository bookingRepository;
-    DriverRepository driverRepository;
+    DriverManagementService driverManagementService;
     RatingMapper ratingMapper;
 
     public RatingResponse createRating(CreateRatingRequest request) {
@@ -67,10 +66,7 @@ public class RatingService {
         if (!driverRatings.isEmpty()) {
             double total = driverRatings.stream().mapToDouble(RatingResponse::getScore).sum();
             double average = total / driverRatings.size();
-            driverRepository.findById(driverId).ifPresent(driver -> {
-                driver.setScore(average);
-                driverRepository.save(driver);
-            });
+            driverManagementService.updateDriverScore(driverId, average);
         }
     }
 
