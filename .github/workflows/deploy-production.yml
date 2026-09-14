@@ -39,36 +39,11 @@ jobs:
       - name: Checkout deployment bundle
         uses: actions/checkout@v4
 
-      - name: Configure SSH
-        env:
-          SSH_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
-        run: |
-          if [ -z "$SSH_KEY" ] || [ -z "$VM_HOST" ]; then
-            echo "Error: GCP_SSH_PRIVATE_KEY and GCP_VM_IP must be set in GitHub secrets or variables." >&2
-            exit 1
-          fi
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-
-      - name: Package deployment bundle
-        run: tar -czf "$RUNNER_TEMP/ridebook-deploy.tgz" -C deploy .
-
-      - name: Upload deployment bundle to VM
-        env:
-          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
-          VM_USER: ${{ secrets.GCP_VM_USER || vars.GCP_VM_USER || 'ubuntu' }}
-        run: |
-          scp -i ~/.ssh/id_rsa "$RUNNER_TEMP/ridebook-deploy.tgz" "${VM_USER}@${VM_HOST}:/tmp/ridebook-deploy-${GITHUB_SHA}.tgz"
-
-      - name: Deploy exact Backend digest
-        env:
-          IMAGE_REF: ${{ inputs.image_ref }}
-          VM_HOST: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
-          VM_USER: ${{ secrets.GCP_VM_USER || vars.GCP_VM_USER || 'ubuntu' }}
-        run: |
-          release_dir="/opt/ridebook/releases/${GITHUB_SHA}"
-          remote_command="sudo mkdir -p /opt/ridebook/releases /opt/ridebook/state /etc/ridebook && sudo chown -R \$(whoami):\$(whoami) /opt/ridebook && if [ ! -f /etc/ridebook/ridebook.env ] && [ -f /home/\$(whoami)/ridebook/.env ]; then sudo cp /home/\$(whoami)/ridebook/.env /etc/ridebook/ridebook.env; fi && sudo chmod 644 /etc/ridebook/ridebook.env 2>/dev/null || true && mkdir -p '${release_dir}' && tar -xzf '/tmp/ridebook-deploy-${GITHUB_SHA}.tgz' -C '${release_dir}' && '${release_dir}/scripts/deploy.sh' '${IMAGE_REF}'"
-          ssh -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" "$remote_command"
+      - name: Execute SSH Deployment
+        uses: ./.github/actions/ssh-deploy
+        with:
+          image_ref: ${{ inputs.image_ref }}
+          vm_host: ${{ secrets.GCP_VM_IP || vars.GCP_VM_IP }}
+          vm_user: ${{ secrets.GCP_VM_USER || vars.GCP_VM_USER || 'ubuntu' }}
+          ssh_private_key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          github_sha: ${{ github.sha }}
