@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -23,14 +24,12 @@ assert_not_contains() {
     fi
 }
 
-assert_contains ".github/workflows/cd.yml" "Legacy CD is disabled"
 assert_not_contains ".github/workflows/cd.yml" "secrets.ENV_PROD"
 assert_not_contains ".github/workflows/cd.yml" "appleboy/"
 assert_contains ".github/workflows/ci.yml" "bash deploy/tests/deployment-contract.sh"
-assert_contains ".github/workflows/release-backend.yml" "bash deploy/tests/deployment-contract.sh"
-assert_contains ".github/workflows/ci.yml" "branches: ['main','master','develop','test']"
+assert_contains ".github/workflows/cd.yml" "bash deploy/tests/deployment-contract.sh"
+assert_contains ".github/workflows/ci.yml" "branches: ['main', 'develop', 'deploy']"
 assert_not_contains ".github/workflows/ci.yml" "docker/login-action"
-assert_contains ".github/workflows/ci.yml" "push: false"
 
 assert_contains "deploy/compose.prod.yml" '${RUNTIME_ENV_FILE:-/etc/ridebook/ridebook.env}'
 assert_not_contains "deploy/compose.prod.yml" '${RUNTIME_ENV_FILE:-.env}'

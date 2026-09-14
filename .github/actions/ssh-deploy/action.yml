@@ -1,0 +1,62 @@
+name: 'SSH Deploy'
+description: 'Deploys an application bundle via SSH to a VM'
+inputs:
+  image_ref:
+    description: 'The immutable image reference'
+    required: true
+  vm_host:
+    description: 'The target VM IP address'
+    required: true
+  vm_user:
+    description: 'The target VM SSH user'
+    required: false
+    default: 'ubuntu'
+  ssh_private_key:
+    description: 'The SSH private key for authenticating with the VM'
+    required: true
+  github_sha:
+    description: 'The commit SHA to deploy'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure SSH
+      shell: bash
+      env:
+        SSH_KEY: ${{ inputs.ssh_private_key }}
+        VM_HOST: ${{ inputs.vm_host }}
+      run: |
+        if [ -z "$SSH_KEY" ] || [ -z "$VM_HOST" ]; then
+          echo "Error: SSH_KEY and VM_HOST must be set." >&2
+          exit 1
+        fi
+        mkdir -p ~/.ssh
+        echo "$SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+    - name: Package deployment bundle
+      shell: bash
+      run: tar -czf "$RUNNER_TEMP/ridebook-deploy.tgz" -C deploy .
+
+    - name: Upload deployment bundle to VM
+      shell: bash
+      env:
+        VM_HOST: ${{ inputs.vm_host }}
+        VM_USER: ${{ inputs.vm_user }}
+        GITHUB_SHA: ${{ inputs.github_sha }}
+      run: |
+        scp -i ~/.ssh/id_rsa "$RUNNER_TEMP/ridebook-deploy.tgz" "${VM_USER}@${VM_HOST}:/tmp/ridebook-deploy-${GITHUB_SHA}.tgz"
+
+    - name: Deploy exact Backend digest
+      shell: bash
+      env:
+        IMAGE_REF: ${{ inputs.image_ref }}
+        VM_HOST: ${{ inputs.vm_host }}
+        VM_USER: ${{ inputs.vm_user }}
+        GITHUB_SHA: ${{ inputs.github_sha }}
+      run: |
+        release_dir="/opt/ridebook/releases/${GITHUB_SHA}"
+        remote_command="sudo mkdir -p /opt/ridebook/releases /opt/ridebook/state /etc/ridebook && sudo chown -R \$(whoami):\$(whoami) /opt/ridebook && if [ ! -f /etc/ridebook/ridebook.env ] && [ -f /home/\$(whoami)/ridebook/.env ]; then sudo cp /home/\$(whoami)/ridebook/.env /etc/ridebook/ridebook.env; fi && sudo chmod 644 /etc/ridebook/ridebook.env 2>/dev/null || true && mkdir -p '${release_dir}' && tar -xzf '/tmp/ridebook-deploy-${GITHUB_SHA}.tgz' -C '${release_dir}' && '${release_dir}/scripts/deploy.sh' '${IMAGE_REF}'"
+        ssh -i ~/.ssh/id_rsa "${VM_USER}@${VM_HOST}" "$remote_command"

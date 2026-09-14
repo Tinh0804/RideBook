@@ -1,20 +1,58 @@
-name: Legacy CD (disabled)
+name: Continuous Deployment
 
-# Legacy workflow retained temporarily so existing GitHub references remain valid.
-# Production releases are owned exclusively by release-backend.yml and
-# deploy-production.yml.
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Backend/**'
+      - 'deploy/**'
+      - '.github/workflows/cd.yml'
+      - '.github/workflows/deploy-production.yml'
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy the published image after production approval
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
+  packages: write
+  pull-requests: read
 
 jobs:
-  migration-notice:
-    name: Legacy CD is disabled
+  automation:
+    uses: ./.github/workflows/reusable-validate-automation.yml
+
+  detect-changes:
+    uses: ./.github/workflows/reusable-detect-changes.yml
+
+  deployment-contract:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Explain the supported release path
-        run: |
-          echo "Legacy CD is disabled."
-          echo "Run the Release Backend workflow to deploy an immutable image digest."
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Validate deployment contracts
+        run: bash deploy/tests/deployment-contract.sh
+
+  build-and-publish:
+    needs: detect-changes
+    uses: ./.github/workflows/reusable-build-push-backend.yml
+    secrets: inherit
+
+  deploy-production:
+    name: Deploy published image
+    needs: build-and-publish
+    if: github.event_name != 'workflow_dispatch' || inputs.deploy
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-production.yml
+    with:
+      image_ref: ${{ needs.build-and-publish.outputs.image_ref }}
+    secrets: inherit

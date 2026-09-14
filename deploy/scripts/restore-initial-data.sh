@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
 set -euo pipefail
 
 if [[ $# -ne 2 || "$2" != "--confirm-empty-target" ]]; then

@@ -1,0 +1,46 @@
+name: Reusable Detect Changes
+
+on:
+  workflow_call:
+    outputs:
+      backend:
+        description: "True if backend files changed"
+        value: ${{ jobs.detect.outputs.backend }}
+      frontend:
+        description: "True if frontend files changed"
+        value: ${{ jobs.detect.outputs.frontend }}
+      deploy:
+        description: "True if deployment config or scripts changed"
+        value: ${{ jobs.detect.outputs.deploy }}
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  detect:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      deploy: ${{ steps.filter.outputs.deploy }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'Backend/**'
+              - '.github/workflows/reusable-lint-test-backend.yml'
+              - '.github/workflows/reusable-build-push-backend.yml'
+            frontend:
+              - 'WebAPP/**'
+              - '.github/workflows/reusable-lint-frontend.yml'
+            deploy:
+              - 'deploy/**'
+              - '.github/workflows/**'
