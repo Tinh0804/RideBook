@@ -54,7 +54,9 @@ public class BookingQuoteService {
         final Integer usedCoins = request.getUseCoins() != null ? request.getUseCoins() : 0;
         
         return vehicleTypeService.getVehicleTypeSummaries().stream()
-                .map(vehicleType -> createQuote(vehicleType, distance, promotions, expiresAt, finalTierDiscountRate, finalCoinsDiscount, usedCoins))
+                .map(vehicleType -> createQuote(
+                        vehicleType, distance, promotions, expiresAt,
+                        finalTierDiscountRate, finalCoinsDiscount, usedCoins))
                 .toList();
     }
 

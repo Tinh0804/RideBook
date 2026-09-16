@@ -24,12 +24,20 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class VehicleTypeService {
 
-    VehicleTypeRepository vehicleTypeRepository;
-    TimeSlotRepository timeSlotRepository;
-    VehicleTypePricingRepository vehicleTypePricingRepository;
+    final VehicleTypeRepository vehicleTypeRepository;
+    final TimeSlotRepository timeSlotRepository;
+    final VehicleTypePricingRepository vehicleTypePricingRepository;
+
+    @org.springframework.context.annotation.Lazy
+    @org.springframework.beans.factory.annotation.Autowired
+    VehicleTypeService self;
+
+    private VehicleTypeService getSelf() {
+        return self != null ? self : this;
+    }
 
     @Cacheable("vehicleTypes")
     public List<VehicleType> getAllVehicleTypes() {
@@ -37,7 +45,7 @@ public class VehicleTypeService {
     }
 
     public List<VehicleTypeSummary> getVehicleTypeSummaries() {
-        return vehicleTypeRepository.findAll().stream().map(this::toSummary).toList();
+        return getSelf().getAllVehicleTypes().stream().map(this::toSummary).toList();
     }
 
     public VehicleTypeSummary getVehicleTypeSummary(String vehicleTypeId) {
@@ -148,7 +156,7 @@ public class VehicleTypeService {
 
     public double getCurrentSurcharge(String vehicleTypeId) {
         return getCurrentSurcharge(
-                vehicleTypeId, timeSlotRepository.findAll(), vehicleTypePricingRepository.findAll());
+                vehicleTypeId, getSelf().getAllTimeSlots(), getSelf().getAllPricing());
     }
 
     private VehicleTypeSummary toSummary(VehicleType vehicleType) {
