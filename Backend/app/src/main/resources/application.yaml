@@ -68,6 +68,7 @@ spring:
             max-file-size: 5MB
             max-request-size: 5MB
     cache:
+        type : redis
         redis:
             cache-null-values: true
 jwt:

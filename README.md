@@ -178,7 +178,7 @@ Mở **2 trình duyệt ẩn danh**:
 |---------|----------|----------|--------------|
 | **Admin** | `admin` | `admin` | Quản trị viên hệ thống |
 | **Customer** | `customer` | `123456` | Nguyễn Văn A |
-| **Driver** | `driver` | `123456` | Lê Văn C |
+| **Driver** | `driver` | `12345` | Lê Văn C |
 
 *Bạn cũng có thể tự đăng ký tài khoản mới trực tiếp trên hệ thống.*
 

@@ -68,6 +68,11 @@ public class RedisConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+            name = "spring.cache.type",
+            havingValue = "redis",
+            matchIfMissing = true
+    )
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         GenericJackson2JsonRedisSerializer jsonSerializer = buildJacksonSerializer();
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
@@ -81,6 +86,15 @@ public class RedisConfig {
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
                 .build();
+    }
+
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+            name = "spring.cache.type",
+            havingValue = "none"
+    )
+    public CacheManager noOpCacheManager() {
+        return new org.springframework.cache.support.NoOpCacheManager();
     }
 
     @Bean
